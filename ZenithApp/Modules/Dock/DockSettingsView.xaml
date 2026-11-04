@@ -6,12 +6,27 @@
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              xmlns:local="clr-namespace:ZenithApp.Modules.Dock"
              mc:Ignorable="d" 
-             d:DesignHeight="600" d:DesignWidth="650">
+             d:DesignHeight="700" d:DesignWidth="650">
     <StackPanel>
         <!-- Параметры отображения и поведения -->
         <ui:Card Padding="16" Margin="0,0,0,12">
             <StackPanel>
-                <!-- Автоскрытие -->
+                <!-- Заменять панель задач Windows -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Заменять панель задач Windows" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Включает автоскрытие штатной панели задач Windows. При выходе или отключении исходное состояние восстанавливается." 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding ReplaceWindowsTaskbar, Mode=TwoWay}" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Автоскрытие дока -->
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -19,7 +34,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="Автоскрытие дока" FontWeight="SemiBold" FontSize="15" />
-                        <TextBlock Text="Док скрывается и появляется при подведении курсора к нижней границе экрана" 
+                        <TextBlock Text="Док скрывается и появляется при подведении курсора к нижней границе экрана (по умолчанию выключено — док всегда на виду)" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    Margin="0,2,0,0" TextWrapping="Wrap" />
                     </StackPanel>
@@ -34,7 +49,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock Text="Плавное увеличение под курсором (Magnification)" FontWeight="SemiBold" FontSize="15" />
-                        <TextBlock Text="Интерактивное плавное масштабирование иконок при наведении курсора" 
+                        <TextBlock Text="Интерактивное плавное масштабирование иконок при наведении курсора без потери четкости" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    Margin="0,2,0,0" TextWrapping="Wrap" />
                     </StackPanel>

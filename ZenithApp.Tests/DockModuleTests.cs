@@ -71,13 +71,15 @@ public class DockModuleTests
     }
 
     [Fact]
-    public void IconExtractionService_MissingItem_ReturnsNullGracefully()
+    public void IconExtractionService_MissingItem_ReturnsFallbackIcon()
     {
         var missingPath = @"C:\NonExistentPath\totally_missing_program_xyz.exe";
-        var icon = IconExtractionService.GetIcon(missingPath);
+        var logger = new TestLogger();
+        var icon = IconExtractionService.GetIcon(missingPath, 64, logger);
 
-        // Does not throw and returns null, allowing UI to render missing badge
-        Assert.Null(icon);
+        // Должен возвращаться запасной значок, а событие неудачного извлечения должно быть залогировано
+        Assert.NotNull(icon);
+        Assert.Contains(logger.Logs, m => m.Contains("[IconExtraction]") && m.Contains("totally_missing_program_xyz.exe"));
     }
 
     [Fact]
@@ -87,5 +89,35 @@ public class DockModuleTests
         var isRunning = ProcessInteractionService.IsRunning("notepad.exe", out _);
         // Method returns cleanly without exceptions
         Assert.True(isRunning || !isRunning);
+    }
+
+    [Fact]
+    public void DockSettings_DefaultValues_AreCorrect()
+    {
+        var settings = new DockSettings();
+        // Режим по умолчанию: Всегда виден (автоскрытие выключено)
+        Assert.False(settings.AutoHide);
+        // Заменять панель задач Windows по умолчанию: ВКЛЮЧЕНО
+        Assert.True(settings.ReplaceWindowsTaskbar);
+        Assert.False(settings.TaskbarStateModified);
+        Assert.Null(settings.OriginalTaskbarState);
+    }
+
+    [Fact]
+    public void DockModule_CrashGuard_RestoresTaskbarState()
+    {
+        var logger = new TestLogger();
+        var settingsService = new TestSettingsService();
+        var hotkeyService = new TestHotkeyService();
+
+        // Симулируем падение приложения при измененном состоянии панели задач
+        settingsService.Current.Dock.TaskbarStateModified = true;
+        settingsService.Current.Dock.OriginalTaskbarState = 2; // ABS_ALWAYSONTOP
+
+        using var module = new DockModule(logger, settingsService, hotkeyService);
+
+        // Crash Guard должен сбросить флаг модификации
+        Assert.False(module.Settings.TaskbarStateModified);
+        Assert.Contains(logger.Logs, m => m.Contains("Crash Guard"));
     }
 }

@@ -1,4 +1,6 @@
+using System;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using ZenithApp.Core.Hotkeys;
@@ -28,6 +30,9 @@ public sealed class DockModule : BaseFeatureModule
     {
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
+
+        // Crash Guard: если при прошлом падении панель задач осталась в изменённом состоянии, восстанавливаем её
+        CheckCrashGuard();
     }
 
     public override string Id => ModuleId;
@@ -36,17 +41,37 @@ public sealed class DockModule : BaseFeatureModule
 
     public DockSettings Settings => _settingsService.Current.Dock;
 
+    private void CheckCrashGuard()
+    {
+        try
+        {
+            if (Settings.TaskbarStateModified && Settings.OriginalTaskbarState.HasValue)
+            {
+                Logger.LogWarning($"[DockModule] Crash Guard: обнаружен флаг несохранённого состояния панели задач (было {Settings.OriginalTaskbarState.Value}). Восстанавливаем...");
+                WindowsTaskbarService.RestoreState(Settings.OriginalTaskbarState.Value, Logger);
+                Settings.TaskbarStateModified = false;
+                _settingsService.Save();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[DockModule] Crash Guard: ошибка при восстановлении панели задач: {ex.Message}", ex);
+        }
+    }
+
     protected override Task OnEnableAsync()
     {
         Logger.LogInfo("[DockModule] Включение модуля...");
 
-        // Ensure default items if empty
         EnsureDefaultItems();
-
-        // Register hotkey
         RegisterDockHotkey();
 
-        // Create UI elements on WPF Dispatcher
+        // Если включен режим «Заменять панель задач Windows», запоминаем исходное состояние и включаем автоскрытие
+        if (Settings.ReplaceWindowsTaskbar)
+        {
+            ApplyTaskbarReplacement(true);
+        }
+
         Application.Current?.Dispatcher.Invoke(() =>
         {
             lock (_lock)
@@ -68,6 +93,7 @@ public sealed class DockModule : BaseFeatureModule
                 }
                 else
                 {
+                    // Режим по умолчанию «Всегда виден»
                     _dockWindow.Show();
                     _dockWindow.ShowDockAnimated();
                 }
@@ -83,6 +109,12 @@ public sealed class DockModule : BaseFeatureModule
         Logger.LogInfo("[DockModule] Отключение модуля...");
 
         UnregisterDockHotkey();
+
+        // Восстанавливаем исходное состояние панели задач Windows
+        if (Settings.ReplaceWindowsTaskbar || Settings.TaskbarStateModified)
+        {
+            ApplyTaskbarReplacement(false);
+        }
 
         Application.Current?.Dispatcher.Invoke(() =>
         {
@@ -108,11 +140,49 @@ public sealed class DockModule : BaseFeatureModule
         return Task.CompletedTask;
     }
 
+    public void ApplyTaskbarReplacement(bool enable)
+    {
+        try
+        {
+            if (enable)
+            {
+                // Запоминаем текущее состояние, если оно ещё не было зафиксировано
+                if (!Settings.OriginalTaskbarState.HasValue)
+                {
+                    Settings.OriginalTaskbarState = WindowsTaskbarService.GetTaskbarState();
+                    Settings.TaskbarStateModified = true;
+                    _settingsService.Save();
+                }
+
+                WindowsTaskbarService.SetAutoHide(true, Logger);
+            }
+            else
+            {
+                if (Settings.OriginalTaskbarState.HasValue)
+                {
+                    WindowsTaskbarService.RestoreState(Settings.OriginalTaskbarState.Value, Logger);
+                }
+                else
+                {
+                    // Если значение не было сохранено, выключаем автоскрытие
+                    WindowsTaskbarService.SetAutoHide(false, Logger);
+                }
+
+                Settings.TaskbarStateModified = false;
+                Settings.OriginalTaskbarState = null;
+                _settingsService.Save();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError($"[DockModule] Ошибка переключения режима панели задач: {ex.Message}", ex);
+        }
+    }
+
     private void EnsureDefaultItems()
     {
         if (Settings.Items.Count == 0)
         {
-            // Add common standard apps if they exist
             var windir = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
             var notepad = Path.Combine(windir, "System32", "notepad.exe");
             var explorer = Path.Combine(windir, "explorer.exe");
@@ -207,6 +277,16 @@ public sealed class DockModule : BaseFeatureModule
 
             UnregisterDockHotkey();
             RegisterDockHotkey();
+
+            // Обработка настройки «Заменять панель задач Windows»
+            if (Settings.ReplaceWindowsTaskbar)
+            {
+                ApplyTaskbarReplacement(true);
+            }
+            else
+            {
+                ApplyTaskbarReplacement(false);
+            }
 
             if (_dockWindow != null)
             {

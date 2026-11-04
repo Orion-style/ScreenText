@@ -1,4 +1,6 @@
+using System;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Media;
 
@@ -29,7 +31,7 @@ public static class ScreenHelper
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
+    public struct RECT
     {
         public int Left;
         public int Top;
@@ -56,6 +58,17 @@ public static class ScreenHelper
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern nint FindWindow(string lpClassName, string? lpWindowName);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(nint hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsWindowVisible(nint hWnd);
 
     public static ScreenBounds GetTargetScreenBounds(DockMonitorTarget target, Visual visual)
     {
@@ -106,5 +119,46 @@ public static class ScreenHelper
             WorkingWidth = SystemParameters.WorkArea.Width,
             WorkingHeight = SystemParameters.WorkArea.Height
         };
+    }
+
+    /// <summary>
+    /// Проверяет, отображается ли в данный момент панель задач Windows в нижней части целевого экрана.
+    /// </summary>
+    public static bool GetBottomTaskbarOverlap(ScreenBounds screen, Visual visual, out double taskbarHeight)
+    {
+        taskbarHeight = 0;
+        try
+        {
+            var hWnd = FindWindow("Shell_TrayWnd", null);
+            if (hWnd != nint.Zero && IsWindowVisible(hWnd) && GetWindowRect(hWnd, out var rect))
+            {
+                var dpi = VisualTreeHelper.GetDpi(visual);
+                var dpiX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
+                var dpiY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
+
+                var tbLeft = rect.Left / dpiX;
+                var tbTop = rect.Top / dpiY;
+                var tbRight = rect.Right / dpiX;
+                var tbBottom = rect.Bottom / dpiY;
+                var tbHeight = tbBottom - tbTop;
+
+                // Проверяем, находится ли панель задач на этом мониторе и прижата ли она к низу
+                var monitorBottom = screen.Top + screen.Height;
+                var isBottom = Math.Abs(tbBottom - monitorBottom) <= 10;
+                var horizontalOverlap = tbRight > screen.Left && tbLeft < (screen.Left + screen.Width);
+
+                if (isBottom && horizontalOverlap && tbHeight > 10)
+                {
+                    taskbarHeight = tbHeight;
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Игнорируем
+        }
+
+        return false;
     }
 }

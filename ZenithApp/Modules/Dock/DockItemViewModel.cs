@@ -1,5 +1,7 @@
+using System.IO;
 using System.Windows.Input;
 using System.Windows.Media;
+using ZenithApp.Core.Logging;
 using ZenithApp.UI.Common;
 
 namespace ZenithApp.Modules.Dock;
@@ -7,6 +9,7 @@ namespace ZenithApp.Modules.Dock;
 public sealed class DockItemViewModel : ViewModelBase
 {
     private readonly DockItem _item;
+    private readonly IAppLogger? _logger;
     private ImageSource? _icon;
     private bool _isRunning;
     private bool _isMissing;
@@ -15,9 +18,10 @@ public sealed class DockItemViewModel : ViewModelBase
 
     public DockItem Item => _item;
 
-    public DockItemViewModel(DockItem item)
+    public DockItemViewModel(DockItem item, IAppLogger? logger = null)
     {
         _item = item;
+        _logger = logger;
         ReloadIcon();
     }
 
@@ -25,7 +29,7 @@ public sealed class DockItemViewModel : ViewModelBase
 
     public string Title
     {
-        get => string.IsNullOrWhiteSpace(_item.Title) ? System.IO.Path.GetFileNameWithoutExtension(_item.TargetPath) : _item.Title;
+        get => string.IsNullOrWhiteSpace(_item.Title) ? Path.GetFileNameWithoutExtension(_item.TargetPath) : _item.Title;
         set
         {
             if (_item.Title != value)
@@ -83,14 +87,19 @@ public sealed class DockItemViewModel : ViewModelBase
 
     public void ReloadIcon()
     {
-        var iconSource = IconExtractionService.GetIcon(_item.TargetPath, 64);
-        if (iconSource == null)
+        // Проверяем наличие целевого файла на диске
+        var targetExists = File.Exists(_item.TargetPath) || Directory.Exists(_item.TargetPath);
+        if (!targetExists)
         {
-            IsMissing = true;
+            var resolved = IconExtractionService.ResolveShortcutTarget(_item.TargetPath);
+            targetExists = File.Exists(resolved) || Directory.Exists(resolved);
         }
-        else
+
+        IsMissing = !targetExists;
+
+        var iconSource = IconExtractionService.GetIcon(_item.TargetPath, 64, _logger);
+        if (iconSource != null)
         {
-            IsMissing = false;
             Icon = iconSource;
         }
     }

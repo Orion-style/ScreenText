@@ -1,3 +1,4 @@
+using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -7,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using ZenithApp.Core.Logging;
 
 namespace ZenithApp.Modules.Dock;
@@ -27,6 +29,7 @@ public partial class DockWindow : Window
     private readonly IAppLogger _logger;
     private bool _isMouseInside;
     private bool _isDockVisible = true;
+    private readonly DispatcherTimer _fullScreenCheckTimer;
 
     public ObservableCollection<DockItemViewModel> Items { get; } = new();
 
@@ -40,11 +43,19 @@ public partial class DockWindow : Window
         Loaded += OnLoaded;
         MouseEnter += OnDockMouseEnter;
         MouseLeave += OnDockMouseLeave;
+
+        // Периодическая проверка полноэкранного режима для скрытия дока поверх игр/видео
+        _fullScreenCheckTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(500)
+        };
+        _fullScreenCheckTimer.Tick += OnFullScreenCheckTick;
+        _fullScreenCheckTimer.Start();
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
-        // Set window styles: WS_EX_NOACTIVATE ensures window NEVER steals keyboard focus from active application
+        // WS_EX_NOACTIVATE гарантирует, что клики по доку не отбирают фокус ввода у активного приложения
         var helper = new WindowInteropHelper(this);
         var exStyle = GetWindowLong(helper.Handle, GWL_EXSTYLE);
         SetWindowLong(helper.Handle, GWL_EXSTYLE, exStyle | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW);
@@ -53,12 +64,36 @@ public partial class DockWindow : Window
         UpdatePosition();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        _fullScreenCheckTimer.Stop();
+    }
+
+    private void OnFullScreenCheckTick(object? sender, EventArgs e)
+    {
+        if (ProcessInteractionService.IsForegroundWindowFullScreen())
+        {
+            if (Visibility == Visibility.Visible)
+            {
+                Visibility = Visibility.Hidden;
+            }
+        }
+        else
+        {
+            if (_isDockVisible && Visibility != Visibility.Visible)
+            {
+                Visibility = Visibility.Visible;
+            }
+        }
+    }
+
     public void ReloadItems()
     {
         Items.Clear();
         foreach (var item in _module.Settings.Items)
         {
-            var vm = new DockItemViewModel(item);
+            var vm = new DockItemViewModel(item, _logger);
             Items.Add(vm);
         }
         UpdatePosition();
@@ -78,22 +113,54 @@ public partial class DockWindow : Window
         {
             var screenBounds = ScreenHelper.GetTargetScreenBounds(_module.Settings.MonitorTarget, this);
 
-            // Measure desirable size
+            // Замеряем размер док-панели
             Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
 
             var dockWidth = ActualWidth > 0 ? ActualWidth : DesiredSize.Width;
             var dockHeight = ActualHeight > 0 ? ActualHeight : DesiredSize.Height;
 
             Left = screenBounds.WorkingLeft + (screenBounds.WorkingWidth - dockWidth) / 2;
-            Top = screenBounds.WorkingTop + screenBounds.WorkingHeight - dockHeight - _module.Settings.BottomMargin;
+
+            double bottomBase;
+            if (_module.Settings.ReplaceWindowsTaskbar)
+            {
+                // При замене панели задач Windows: панель скрыта, отталкиваемся от абсолютного низа экрана
+                bottomBase = screenBounds.Top + screenBounds.Height;
+
+                // Проверяем, не всплыла ли панель задач снизу (например, курсор подведён к краю)
+                if (ScreenHelper.GetBottomTaskbarOverlap(screenBounds, this, out var taskbarHeight))
+                {
+                    // Панель задач всплыла: не налезаем на неё
+                    bottomBase -= taskbarHeight;
+                }
+            }
+            else
+            {
+                // Стандартный режим с видимой панелью задач: отталкиваемся от рабочей области
+                bottomBase = screenBounds.WorkingTop + screenBounds.WorkingHeight;
+            }
+
+            Top = bottomBase - dockHeight - _module.Settings.BottomMargin;
         });
     }
 
     public void ShowDockAnimated()
     {
-        if (_isDockVisible) return;
-        _isDockVisible = true;
+        if (ProcessInteractionService.IsForegroundWindowFullScreen())
+        {
+            return;
+        }
 
+        if (_isDockVisible)
+        {
+            UpdatePosition();
+            RefreshRunningStates();
+            Visibility = Visibility.Visible;
+            Opacity = 1.0;
+            return;
+        }
+
+        _isDockVisible = true;
         UpdatePosition();
         RefreshRunningStates();
 
@@ -146,7 +213,7 @@ public partial class DockWindow : Window
     {
         _isMouseInside = false;
 
-        // Reset scales
+        // Сброс масштаба всех иконок
         for (int i = 0; i < Items.Count; i++)
         {
             Items[i].Scale = 1.0;
@@ -165,7 +232,6 @@ public partial class DockWindow : Window
         if (sender is FrameworkElement elem && elem.DataContext is DockItemViewModel hoveredItem)
         {
             var maxFactor = _module.Settings.MagnificationFactor;
-
             var hoveredIndex = Items.IndexOf(hoveredItem);
             if (hoveredIndex < 0) return;
 
@@ -194,7 +260,6 @@ public partial class DockWindow : Window
 
     private void OnItemMouseLeave(object sender, MouseEventArgs e)
     {
-        // If left dock item area
         if (!_isMouseInside)
         {
             for (int i = 0; i < Items.Count; i++)
@@ -231,7 +296,7 @@ public partial class DockWindow : Window
     private void PlayBounceAnimation(DockItemViewModel item)
     {
         var sw = Stopwatch.StartNew();
-        var timer = new System.Windows.Threading.DispatcherTimer
+        var timer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(16)
         };

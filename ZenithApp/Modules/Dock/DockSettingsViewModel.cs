@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows.Input;
 using ZenithApp.UI.Common;
 
@@ -35,6 +36,7 @@ public sealed class DockSettingsViewModel : ViewModelBase
     private readonly ZenithApp.Core.Settings.ISettingsService _settingsService;
 
     private bool _autoHide;
+    private bool _replaceWindowsTaskbar;
     private int _bottomMargin;
     private double _iconSize;
     private bool _enableMagnification;
@@ -51,6 +53,7 @@ public sealed class DockSettingsViewModel : ViewModelBase
         _settingsService = settingsService;
 
         _autoHide = _module.Settings.AutoHide;
+        _replaceWindowsTaskbar = _module.Settings.ReplaceWindowsTaskbar;
         _bottomMargin = _module.Settings.BottomMargin;
         _iconSize = _module.Settings.IconSize;
         _enableMagnification = _module.Settings.EnableMagnification;
@@ -76,6 +79,19 @@ public sealed class DockSettingsViewModel : ViewModelBase
             if (SetProperty(ref _autoHide, value))
             {
                 _module.Settings.AutoHide = value;
+                _module.ApplySettingsChanges();
+            }
+        }
+    }
+
+    public bool ReplaceWindowsTaskbar
+    {
+        get => _replaceWindowsTaskbar;
+        set
+        {
+            if (SetProperty(ref _replaceWindowsTaskbar, value))
+            {
+                _module.Settings.ReplaceWindowsTaskbar = value;
                 _module.ApplySettingsChanges();
             }
         }
