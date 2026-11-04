@@ -1,0 +1,171 @@
+<UserControl x:Class="ZenithApp.Modules.SmartLinks.SmartLinksSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:ZenithApp.Modules.SmartLinks"
+             mc:Ignorable="d" 
+             d:DesignWidth="600">
+    <StackPanel>
+        <!-- Предупреждение, если модуль Скриншот выключен -->
+        <Border Margin="0,0,0,14" 
+                Padding="14,12" 
+                CornerRadius="8" 
+                Background="#2B2312" 
+                BorderBrush="#D97706" 
+                BorderThickness="1">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Visibility" Value="Collapsed" />
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsScreenshotModuleEnabled}" Value="False">
+                            <Setter Property="Visibility" Value="Visible" />
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ui:SymbolIcon Symbol="Warning24" 
+                               FontSize="20" 
+                               Foreground="#FBBF24" 
+                               VerticalAlignment="Top" 
+                               Margin="0,2,12,0" />
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="Требуется включить модуль «Скриншот области и OCR»" 
+                               FontWeight="SemiBold" 
+                               Foreground="#FDE68A" 
+                               FontSize="14" />
+                    <TextBlock Text="Модуль «Умные подсказки» работает поверх распознавания текста и QR-кодов со снимков экрана. Включите модуль «Скриншот области и OCR» в списке функций, чтобы умные действия активировались при вызове горячей клавиши OCR." 
+                               Foreground="#FCD34D" 
+                               FontSize="12.5" 
+                               TextWrapping="Wrap" 
+                               Margin="0,4,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Настройка: Автооткрытие ссылок из текста -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Открывать ссылки автоматически при выделении" 
+                               FontWeight="SemiBold" 
+                               FontSize="14.5" />
+                    <TextBlock Text="Если в распознанном тексте найдена ровно одна ссылка (http/https), она немедленно откроется в браузере по умолчанию." 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               FontSize="12.5" 
+                               Margin="0,4,0,0" 
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" 
+                                 IsChecked="{Binding AutoOpenUrls, Mode=TwoWay}" 
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Настройка: Автооткрытие ссылок из QR -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Открывать ссылки из QR-кодов автоматически" 
+                               FontWeight="SemiBold" 
+                               FontSize="14.5" />
+                    <TextBlock Text="Внимание: вредоносные QR-коды часто ведут на поддельные сайты. Рекомендуется держать выключенным для предварительного просмотра ссылки." 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               FontSize="12.5" 
+                               Margin="0,4,0,0" 
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" 
+                                 IsChecked="{Binding AutoOpenQrUrls, Mode=TwoWay}" 
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Настройка: Показывать подсказку для обычного текста -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Показывать подсказку для обычного текста" 
+                               FontWeight="SemiBold" 
+                               FontSize="14.5" />
+                    <TextBlock Text="Отображать всплывающее меню с кнопками «Копировать», «Найти в Google» и «Перевести» для любого текста." 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               FontSize="12.5" 
+                               Margin="0,4,0,0" 
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" 
+                                 IsChecked="{Binding ShowPopupForPlainText, Mode=TwoWay}" 
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Настройка: Язык перевода -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Язык перевода по умолчанию" 
+                               FontWeight="SemiBold" 
+                               FontSize="14.5" />
+                    <TextBlock Text="Код языка для Google Translate (ru, en, de, fr, es, zh-CN и т.д.)." 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               FontSize="12.5" 
+                               Margin="0,4,0,0" 
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:TextBox Grid.Column="1" 
+                            Text="{Binding DefaultTranslateLanguage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                            Width="120" 
+                            VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Настройка: Время автозакрытия -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Время автозакрытия подсказки (сек)" 
+                               FontWeight="SemiBold" 
+                               FontSize="14.5" />
+                    <TextBlock Text="Подсказка не закрывается, пока курсор мыши находится над ней." 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               FontSize="12.5" 
+                               Margin="0,4,0,0" 
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:NumberBox Grid.Column="1" 
+                              Value="{Binding PopupTimeoutSeconds, Mode=TwoWay}" 
+                              Minimum="3" 
+                              Maximum="60" 
+                              Width="120" 
+                              VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+    </StackPanel>
+</UserControl>

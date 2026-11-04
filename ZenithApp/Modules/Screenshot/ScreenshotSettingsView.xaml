@@ -1,0 +1,116 @@
+<UserControl x:Class="ZenithApp.Modules.Screenshot.ScreenshotSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="600">
+    <StackPanel>
+        <!-- Хоткей для обычного скриншота -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Горячая клавиша скриншота" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Нажмите на поле и задайте сочетание (по умолчанию Ctrl+Shift+S)" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,4,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBox x:Name="TxtScreenshotHotkey" 
+                             Grid.Column="1" 
+                             Width="180" 
+                             Text="{Binding ScreenshotHotkeyText, Mode=OneWay}" 
+                             IsReadOnly="True" 
+                             Cursor="Hand"
+                             PreviewKeyDown="OnScreenshotHotkeyKeyDown"
+                             VerticalAlignment="Center"
+                             TextAlignment="Center" />
+                </Grid>
+
+                <!-- Сообщение о конфликте хоткея -->
+                <ui:InfoBar Title="Конфликт горячих клавиш"
+                            Message="{Binding ScreenshotConflictMessage}"
+                            IsOpen="{Binding HasScreenshotConflict}"
+                            Severity="Error"
+                            IsClosable="False"
+                            Margin="0,12,0,0" />
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Хоткей для OCR -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Горячая клавиша скриншота с OCR" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Копирование распознанного текста в буфер обмена (по умолчанию Ctrl+Shift+T)" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,4,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBox x:Name="TxtOcrHotkey" 
+                             Grid.Column="1" 
+                             Width="180" 
+                             Text="{Binding OcrHotkeyText, Mode=OneWay}" 
+                             IsReadOnly="True" 
+                             Cursor="Hand"
+                             PreviewKeyDown="OnOcrHotkeyKeyDown"
+                             VerticalAlignment="Center"
+                             TextAlignment="Center" />
+                </Grid>
+
+                <!-- Сообщение о конфликте хоткея OCR -->
+                <ui:InfoBar Title="Конфликт горячих клавиш"
+                            Message="{Binding OcrConflictMessage}"
+                            IsOpen="{Binding HasOcrConflict}"
+                            Severity="Error"
+                            IsClosable="False"
+                            Margin="0,12,0,0" />
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Опция сохранения скриншотов в папку -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Сохранять скриншоты в папку" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Автоматически записывать снимок в формате PNG в выбранный каталог" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,4,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" 
+                                     IsChecked="{Binding SaveToFile, Mode=TwoWay}" 
+                                     VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid Margin="0,12,0,0" Visibility="{Binding SaveToFile, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox Grid.Column="0" 
+                             Text="{Binding SaveFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                             Margin="0,0,8,0"
+                             VerticalAlignment="Center" />
+                    <ui:Button Grid.Column="1" 
+                               Content="Обзор..." 
+                               Command="{Binding BrowseFolderCommand}" 
+                               VerticalAlignment="Center" />
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+    </StackPanel>
+</UserControl>

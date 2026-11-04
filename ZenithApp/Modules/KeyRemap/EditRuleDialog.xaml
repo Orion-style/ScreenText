@@ -1,0 +1,119 @@
+<ui:FluentWindow x:Class="ZenithApp.Modules.KeyRemap.EditRuleDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:ZenithApp.Modules.KeyRemap"
+        mc:Ignorable="d"
+        Title="{Binding Title}"
+        Height="540" Width="480"
+        MinHeight="480" MinWidth="420"
+        WindowStartupLocation="CenterOwner"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Grid Margin="20,10,20,16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="{Binding Title}" ShowMaximize="False" ShowMinimize="False" Margin="-20,-10,-20,10" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,0,0,10">
+                <!-- Описание / Имя правила -->
+                <TextBlock Text="Название правила (необязательно)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <ui:TextBox Text="{Binding RuleName, UpdateSourceTrigger=PropertyChanged}" 
+                            PlaceholderText="Например: CapsLock в Backspace" 
+                            Margin="0,0,0,14" />
+
+                <!-- Исходная клавиша / Сочетание -->
+                <TextBlock Text="Исходная клавиша (нажмите на поле и нажмите клавишу на клавиатуре)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBox x:Name="TxtTriggerKey"
+                         Text="{Binding TriggerDisplay, Mode=OneWay}"
+                         IsReadOnly="True"
+                         Cursor="Hand"
+                         Focusable="True"
+                         TextAlignment="Center"
+                         FontWeight="Bold"
+                         PreviewKeyDown="OnTriggerKeyDown"
+                         Margin="0,0,0,14" />
+
+                <!-- Тип действия -->
+                <TextBlock Text="Действие" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <ComboBox SelectedIndex="{Binding ActionTypeIndex, Mode=TwoWay}" Margin="0,0,0,14" HorizontalAlignment="Stretch">
+                    <ComboBoxItem Content="Заменить на другую клавишу" />
+                    <ComboBoxItem Content="Заменить на сочетание клавиш" />
+                    <ComboBoxItem Content="Отключить клавишу (подавить)" />
+                </ComboBox>
+
+                <!-- Целевая клавиша (если не отключить) -->
+                <StackPanel Visibility="{Binding IsTargetVisible, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,14">
+                    <TextBlock Text="Целевая клавиша (нажмите на поле и нажмите клавишу на клавиатуре)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBox x:Name="TxtTargetKey"
+                             Text="{Binding TargetDisplay, Mode=OneWay}"
+                             IsReadOnly="True"
+                             Cursor="Hand"
+                             Focusable="True"
+                             TextAlignment="Center"
+                             FontWeight="Bold"
+                             PreviewKeyDown="OnTargetKeyDown"
+                             Margin="0,0,0,8" />
+
+                    <!-- Чекбоксы модификаторов для комбинации -->
+                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsComboModifiersVisible, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,4,0,0">
+                        <CheckBox Content="Ctrl" IsChecked="{Binding TargetCtrl, Mode=TwoWay}" Margin="0,0,12,0" />
+                        <CheckBox Content="Alt" IsChecked="{Binding TargetAlt, Mode=TwoWay}" Margin="0,0,12,0" />
+                        <CheckBox Content="Shift" IsChecked="{Binding TargetShift, Mode=TwoWay}" Margin="0,0,12,0" />
+                        <CheckBox Content="Win" IsChecked="{Binding TargetWin, Mode=TwoWay}" />
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Фильтр приложений (задел на будущее) -->
+                <ui:Card Padding="12" Margin="0,0,0,14">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Фильтр по приложениям" FontWeight="SemiBold" />
+                                <TextBlock Text="Применять правило только в определенных программах" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding EnableAppFilter, Mode=TwoWay}" />
+                        </Grid>
+                        
+                        <StackPanel Margin="0,10,0,0" Visibility="{Binding EnableAppFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                <RadioButton Content="Только в этих:" IsChecked="{Binding AppFilterIsWhitelist, Mode=TwoWay}" Margin="0,0,12,0" />
+                                <RadioButton Content="Везде, кроме этих:" />
+                            </StackPanel>
+                            <ui:TextBox Text="{Binding FilterProcessesText, UpdateSourceTrigger=PropertyChanged}" 
+                                        PlaceholderText="notepad, chrome, telegram" />
+                        </StackPanel>
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- Ошибка валидации -->
+                <ui:InfoBar Title="Внимание" 
+                            Message="{Binding ValidationError}" 
+                            IsOpen="{Binding HasValidationError}" 
+                            Severity="Error" 
+                            IsClosable="False" 
+                            Margin="0,0,0,10" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Кнопки действий -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <ui:Button Content="Отмена" Width="100" Margin="0,0,10,0" Click="OnCancelClick" />
+            <ui:Button Content="Сохранить" Appearance="Primary" Width="120" Click="OnSaveClick" />
+        </StackPanel>
+    </Grid>
+</ui:FluentWindow>

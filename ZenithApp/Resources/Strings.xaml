@@ -1,0 +1,30 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Общие строки интерфейса -->
+    <sys:String x:Key="App_Title">Zenith Utility</sys:String>
+    <sys:String x:Key="App_TrayTooltip">Zenith Utility — работает в фоне</sys:String>
+    <sys:String x:Key="Tray_OpenSettings">Настройки</sys:String>
+    <sys:String x:Key="Tray_Exit">Выход</sys:String>
+
+    <!-- Настройки: Раздел Общие -->
+    <sys:String x:Key="Nav_General">Общие</sys:String>
+    <sys:String x:Key="Nav_Modules">Модули</sys:String>
+    <sys:String x:Key="General_Header">Общие параметры</sys:String>
+    <sys:String x:Key="General_Startup_Title">Запуск при старте Windows</sys:String>
+    <sys:String x:Key="General_Startup_Desc">Автоматически запускать утилиту в системном трее при входе в систему</sys:String>
+    <sys:String x:Key="General_Theme_Title">Тема оформления</sys:String>
+    <sys:String x:Key="General_Theme_Desc">Выберите предпочитаемую цветовую схему или системную</sys:String>
+    <sys:String x:Key="Theme_System">Как в системе</sys:String>
+    <sys:String x:Key="Theme_Light">Светлая</sys:String>
+    <sys:String x:Key="Theme_Dark">Тёмная</sys:String>
+    <sys:String x:Key="General_Data_Title">Файлы конфигурации</sys:String>
+    <sys:String x:Key="General_Data_Desc">Открыть папку с настройками и журналами в Проводнике</sys:String>
+    <sys:String x:Key="General_Btn_OpenFolder">Открыть папку</sys:String>
+
+    <!-- Настройки модулей -->
+    <sys:String x:Key="Module_EnableToggle">Включить функцию</sys:String>
+    <sys:String x:Key="Module_ConfigPlaceholder">Параметры модуля будут доступны после подключения рабочей реализации.</sys:String>
+    <sys:String x:Key="Module_StatusActive">Модуль активен</sys:String>
+    <sys:String x:Key="Module_StatusInactive">Модуль отключен (ресурсы не используются)</sys:String>
+</ResourceDictionary>
