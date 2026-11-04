@@ -9,6 +9,7 @@
         xmlns:smartlinks="clr-namespace:ZenithApp.Modules.SmartLinks"
         xmlns:keyremap="clr-namespace:ZenithApp.Modules.KeyRemap"
         xmlns:quicklook="clr-namespace:ZenithApp.Modules.QuickLook"
+        xmlns:snapzones="clr-namespace:ZenithApp.Modules.SnapZones"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -298,6 +299,13 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <quicklook:QuickLookSettingsView DataContext="{Binding QuickLookSettings}" />
+                            </ContentControl>
+
+                            <!-- Настройки модуля SnapZones -->
+                            <ContentControl x:Name="SnapZonesConfigContainer" 
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                <snapzones:SnapZonesSettingsView DataContext="{Binding SnapZonesSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

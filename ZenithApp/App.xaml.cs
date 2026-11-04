@@ -105,7 +105,8 @@ public partial class App : Application
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<KeyRemapModule>());
         services.AddSingleton<QuickLookModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<QuickLookModule>());
-        services.AddSingleton<IFeatureModule, SnapZonesModule>();
+        services.AddSingleton<SnapZonesModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<SnapZonesModule>());
         services.AddSingleton<IFeatureModule, T9PredictorModule>();
 
         // Module Manager

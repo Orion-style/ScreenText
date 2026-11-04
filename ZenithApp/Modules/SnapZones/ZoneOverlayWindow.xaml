@@ -1,0 +1,13 @@
+<Window x:Class="ZenithApp.Modules.SnapZones.ZoneOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Focusable="False"
+        IsHitTestVisible="False"
+        WindowStartupLocation="Manual">
+    <Canvas x:Name="OverlayCanvas" Background="Transparent" />
+</Window>

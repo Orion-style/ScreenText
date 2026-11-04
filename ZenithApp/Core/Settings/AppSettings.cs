@@ -16,6 +16,7 @@ public sealed class AppSettings
     public ZenithApp.Modules.SmartLinks.SmartLinksSettings SmartLinks { get; set; } = new();
     public ZenithApp.Modules.KeyRemap.KeyRemapSettings KeyRemap { get; set; } = new();
     public ZenithApp.Modules.QuickLook.QuickLookSettings QuickLook { get; set; } = new();
+    public ZenithApp.Modules.SnapZones.SnapZonesSettings SnapZones { get; set; } = new();
 
     public bool IsModuleEnabled(string moduleId, bool defaultValue = false)
     {

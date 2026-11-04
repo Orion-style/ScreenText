@@ -1,0 +1,229 @@
+<UserControl x:Class="ZenithApp.Modules.SnapZones.SnapZonesSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:ZenithApp.Modules.SnapZones"
+             mc:Ignorable="d" 
+             d:DesignHeight="850" d:DesignWidth="600">
+    <StackPanel>
+        <!-- Режим срабатывания -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Режим активации зон" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                <TextBlock Text="Выберите, когда зоны должны отображаться при перетаскивании окон" 
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                           Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                <RadioButton Content="Удерживать клавишу Shift при перетаскивании (Рекомендуется)" 
+                             IsChecked="{Binding IsShiftTriggerMode, Mode=TwoWay}" 
+                             Margin="0,0,0,8" />
+                <RadioButton Content="Показывать всегда при любом перетаскивании окна" 
+                             IsChecked="{Binding IsAlwaysTriggerMode, Mode=TwoWay}" />
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Раскладка по умолчанию и превью -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Раскладка зон по умолчанию" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Выберите шаблон разделения пространства мониторов" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,4,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" 
+                              ItemsSource="{Binding PresetOptions}" 
+                              DisplayMemberPath="Name" 
+                              SelectedIndex="{Binding SelectedPresetIndex, Mode=TwoWay}" 
+                              Width="220" 
+                              VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Раскладки для отдельных мониторов -->
+                <TextBlock Text="Раскладка для каждого монитора:" FontWeight="SemiBold" FontSize="13" Margin="0,8,0,6" />
+                <ItemsControl ItemsSource="{Binding MonitorPresets}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,4,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{Binding DisplayName}" VerticalAlignment="Center" FontSize="13" />
+                                <ComboBox Grid.Column="1" Width="180"
+                                          SelectedValue="{Binding SelectedPresetName, Mode=TwoWay}"
+                                          SelectedValuePath="Tag">
+                                    <ComboBoxItem Content="2 колонки (50/50)" Tag="TwoColumns5050" />
+                                    <ComboBoxItem Content="3 колонки" Tag="ThreeColumns" />
+                                    <ComboBoxItem Content="2 колонки (66/33)" Tag="TwoColumns6633" />
+                                    <ComboBoxItem Content="2 колонки (33/66)" Tag="TwoColumns3366" />
+                                    <ComboBoxItem Content="2 ряда" Tag="TwoRows" />
+                                    <ComboBoxItem Content="Сетка 2x2" Tag="Grid2x2" />
+                                    <ComboBoxItem Content="Главная + 2 боковых" Tag="PriorityGrid" />
+                                    <ComboBoxItem Content="По центру" Tag="CenterSingle" />
+                                    <ComboBoxItem Content="Пользовательская" Tag="Custom" />
+                                </ComboBox>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Простой редактор пользовательской раскладки -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Конструктор пользовательской сетки (Custom)" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                <TextBlock Text="Задайте количество колонок и рядов для шаблона «Пользовательская»" 
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                           Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Количество колонок (по вертикали)" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Slider Minimum="1" Maximum="6" Value="{Binding CustomColumns, Mode=TwoWay}" Width="120" Margin="0,0,10,0" TickFrequency="1" IsSnapToTickEnabled="True" />
+                        <TextBlock Text="{Binding CustomColumns}" Width="25" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Количество рядов (по горизонтали)" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Slider Minimum="1" Maximum="4" Value="{Binding CustomRows, Mode=TwoWay}" Width="120" Margin="0,0,10,0" TickFrequency="1" IsSnapToTickEnabled="True" />
+                        <TextBlock Text="{Binding CustomRows}" Width="25" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Отступы и восстановление размера -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Зазор между соседними зонами" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Slider Minimum="0" Maximum="32" Value="{Binding ZoneSpacing, Mode=TwoWay}" Width="120" Margin="0,0,10,0" TickFrequency="2" IsSnapToTickEnabled="True" />
+                        <TextBlock Text="{Binding ZoneSpacingText}" Width="45" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Отступ от краёв экрана / панели задач" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Slider Minimum="0" Maximum="32" Value="{Binding ScreenMargin, Mode=TwoWay}" Width="120" Margin="0,0,10,0" TickFrequency="2" IsSnapToTickEnabled="True" />
+                        <TextBlock Text="{Binding ScreenMarginText}" Width="45" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Восстанавливать исходный размер окна" FontWeight="SemiBold" />
+                        <TextBlock Text="Возвращает прежние размеры окна при вытаскивании из зоны" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   FontSize="12" Margin="0,2,0,0" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding RestoreOriginalSizeOnUnsnap, Mode=TwoWay}" VerticalAlignment="Center" />
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Горячие клавиши -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Горячие клавиши управления окнами" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                <TextBlock Text="Используйте системные горячие клавиши без запуска перетаскивания:" 
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                           Margin="0,0,0,10" />
+
+                <Grid Margin="0,2,0,2">
+                    <TextBlock Text="Предыдущая / следующая зона:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="Ctrl + Alt + Left / Right" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                </Grid>
+                <Grid Margin="0,2,0,2">
+                    <TextBlock Text="Закрепить в зоне с номером 1..9:" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <TextBlock Text="Ctrl + Alt + [1..9]" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Список исключений -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Исключённые приложения" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                <TextBlock Text="Окна этих программ не будут перехватываться и закрепляться в зонах" 
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                           Margin="0,0,0,12" TextWrapping="Wrap" />
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBox Grid.Column="0" 
+                                PlaceholderText="Имя процесса (например, notepad или game)" 
+                                Text="{Binding NewProcessName, UpdateSourceTrigger=PropertyChanged}" 
+                                Margin="0,0,8,0" />
+                    <ui:Button Grid.Column="1" 
+                               Content="Добавить" 
+                               Icon="{ui:SymbolIcon Add20}" 
+                               Command="{Binding AddExcludedProcessCommand}" />
+                </Grid>
+
+                <ItemsControl ItemsSource="{Binding ExcludedProcesses}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" 
+                                    CornerRadius="6" 
+                                    Padding="10,6" 
+                                    Margin="0,2,0,2">
+                                <Grid>
+                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" FontWeight="Medium" />
+                                    <ui:Button HorizontalAlignment="Right" 
+                                               Padding="6,2" 
+                                               Icon="{ui:SymbolIcon Dismiss16}" 
+                                               ToolTip="Удалить из исключений"
+                                               Command="{Binding DataContext.RemoveExcludedProcessCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                               CommandParameter="{Binding}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Информация о системном Snap Windows -->
+        <ui:InfoBar Title="Конфликт со штатным Snap Windows"
+                    Message="Если стандартные всплывающие подсказки Windows 11 мешают, вы можете отключить их в: Параметры Windows -> Система -> Многозадачность -> Прикрепление окон (Snap)."
+                    Severity="Informational"
+                    IsOpen="True"
+                    IsClosable="False" />
+    </StackPanel>
+</UserControl>
