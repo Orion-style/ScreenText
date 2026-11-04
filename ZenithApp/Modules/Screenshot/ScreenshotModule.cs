@@ -243,7 +243,6 @@ public sealed class ScreenshotModule : BaseFeatureModule
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            NotificationToast.Show("Текст не найден", "Распознавание текста", ToastNotificationType.Error);
             return;
         }
 
