@@ -69,15 +69,6 @@ public partial class SettingsWindow : FluentWindow
                 ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
                 SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
                 KeyRemapConfigContainer.Visibility = Visibility.Visible;
-                DockConfigContainer.Visibility = Visibility.Collapsed;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
-            }
-            else if (moduleVm.Id == ZenithApp.Modules.Dock.DockModule.ModuleId)
-            {
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                DockConfigContainer.Visibility = Visibility.Visible;
                 CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else
@@ -85,7 +76,6 @@ public partial class SettingsWindow : FluentWindow
                 ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
                 SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
                 KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                DockConfigContainer.Visibility = Visibility.Collapsed;
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
             }
         }

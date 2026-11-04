@@ -6,7 +6,6 @@ using Wpf.Ui.Appearance;
 using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
-using ZenithApp.Modules.Dock;
 using ZenithApp.Modules.KeyRemap;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
@@ -22,7 +21,6 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly ScreenshotModule? _screenshotModule;
     private readonly SmartLinksModule? _smartLinksModule;
     private readonly KeyRemapModule? _keyRemapModule;
-    private readonly DockModule? _dockModule;
 
     private bool _startWithWindows;
     private int _selectedThemeIndex; // 0 = System, 1 = Light, 2 = Dark
@@ -34,8 +32,7 @@ public sealed class SettingsViewModel : ViewModelBase
         ModuleManager moduleManager,
         ScreenshotModule? screenshotModule = null,
         SmartLinksModule? smartLinksModule = null,
-        KeyRemapModule? keyRemapModule = null,
-        DockModule? dockModule = null)
+        KeyRemapModule? keyRemapModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -43,7 +40,6 @@ public sealed class SettingsViewModel : ViewModelBase
         _screenshotModule = screenshotModule;
         _smartLinksModule = smartLinksModule;
         _keyRemapModule = keyRemapModule;
-        _dockModule = dockModule;
 
         _startWithWindows = _settingsService.Current.StartWithWindows;
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
@@ -67,18 +63,12 @@ public sealed class SettingsViewModel : ViewModelBase
             KeyRemapSettings = new KeyRemapSettingsViewModel(_keyRemapModule, _settingsService);
         }
 
-        if (_dockModule != null)
-        {
-            DockSettings = new DockSettingsViewModel(_dockModule, _settingsService);
-        }
-
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
     }
 
     public ScreenshotSettingsViewModel? ScreenshotSettings { get; }
     public SmartLinksSettingsViewModel? SmartLinksSettings { get; }
     public KeyRemapSettingsViewModel? KeyRemapSettings { get; }
-    public DockSettingsViewModel? DockSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 

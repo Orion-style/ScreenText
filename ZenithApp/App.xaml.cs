@@ -6,7 +6,6 @@ using ZenithApp.Core.Logging;
 using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
-using ZenithApp.Modules.Dock;
 using ZenithApp.Modules.KeyRemap;
 using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
@@ -104,8 +103,6 @@ public partial class App : Application
         services.AddSingleton<ITextRecognizedHandler>(sp => sp.GetRequiredService<SmartLinksModule>());
         services.AddSingleton<KeyRemapModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<KeyRemapModule>());
-        services.AddSingleton<DockModule>();
-        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<DockModule>());
         services.AddSingleton<IFeatureModule, QuickLookModule>();
         services.AddSingleton<IFeatureModule, SnapZonesModule>();
         services.AddSingleton<IFeatureModule, T9PredictorModule>();

@@ -32,9 +32,7 @@ c:\Project\10\ZenithApp\
 │       └── AutoLaunchService.cs
 │
 ├── Modules\                        # Папки модулей (изолированные плагины)
-│   ├── Dock\                       # 1. Док-панель (macOS-стиль)
-│   │   └── DockModule.cs
-│   ├── Screenshot\                 # 2. Скриншот области и OCR
+│   ├── Screenshot\                 # 1. Скриншот области и OCR
 │   │   └── ScreenshotModule.cs
 │   ├── SmartLinks\                 # 3. Умные подсказки для ссылок и QR
 │   │   └── SmartLinksModule.cs
