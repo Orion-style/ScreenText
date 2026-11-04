@@ -11,6 +11,7 @@ using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.Modules.SnapZones;
+using ZenithApp.Modules.T9Predictor;
 using ZenithApp.UI.Common;
 
 namespace ZenithApp.UI.ViewModels;
@@ -25,6 +26,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly KeyRemapModule? _keyRemapModule;
     private readonly QuickLookModule? _quickLookModule;
     private readonly SnapZonesModule? _snapZonesModule;
+    private readonly T9PredictorModule? _t9PredictorModule;
 
     private bool _startWithWindows;
     private int _selectedThemeIndex; // 0 = System, 1 = Light, 2 = Dark
@@ -38,7 +40,8 @@ public sealed class SettingsViewModel : ViewModelBase
         SmartLinksModule? smartLinksModule = null,
         KeyRemapModule? keyRemapModule = null,
         QuickLookModule? quickLookModule = null,
-        SnapZonesModule? snapZonesModule = null)
+        SnapZonesModule? snapZonesModule = null,
+        T9PredictorModule? t9PredictorModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -48,6 +51,7 @@ public sealed class SettingsViewModel : ViewModelBase
         _keyRemapModule = keyRemapModule;
         _quickLookModule = quickLookModule;
         _snapZonesModule = snapZonesModule;
+        _t9PredictorModule = t9PredictorModule;
 
         _startWithWindows = _settingsService.Current.StartWithWindows;
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
@@ -81,6 +85,11 @@ public sealed class SettingsViewModel : ViewModelBase
             SnapZonesSettings = new SnapZonesSettingsViewModel(_snapZonesModule, _settingsService);
         }
 
+        if (_t9PredictorModule != null)
+        {
+            T9PredictorSettings = new T9PredictorSettingsViewModel(_t9PredictorModule, _settingsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
     }
 
@@ -89,6 +98,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public KeyRemapSettingsViewModel? KeyRemapSettings { get; }
     public QuickLookSettingsViewModel? QuickLookSettings { get; }
     public SnapZonesSettingsViewModel? SnapZonesSettings { get; }
+    public T9PredictorSettingsViewModel? T9PredictorSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 

@@ -88,6 +88,17 @@ public partial class SettingsWindow : FluentWindow
                 KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
                 QuickLookConfigContainer.Visibility = Visibility.Collapsed;
                 SnapZonesConfigContainer.Visibility = Visibility.Visible;
+                T9PredictorConfigContainer.Visibility = Visibility.Collapsed;
+                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
+            }
+            else if (moduleVm.Id == ZenithApp.Modules.T9Predictor.T9PredictorModule.ModuleId)
+            {
+                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
+                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
+                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
+                QuickLookConfigContainer.Visibility = Visibility.Collapsed;
+                SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
+                T9PredictorConfigContainer.Visibility = Visibility.Visible;
                 CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else
@@ -97,6 +108,7 @@ public partial class SettingsWindow : FluentWindow
                 KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
                 QuickLookConfigContainer.Visibility = Visibility.Collapsed;
                 SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
+                T9PredictorConfigContainer.Visibility = Visibility.Collapsed;
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
             }
         }
