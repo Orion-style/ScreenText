@@ -15,6 +15,7 @@ public sealed class AppSettings
     public ZenithApp.Modules.Screenshot.ScreenshotSettings Screenshot { get; set; } = new();
     public ZenithApp.Modules.SmartLinks.SmartLinksSettings SmartLinks { get; set; } = new();
     public ZenithApp.Modules.KeyRemap.KeyRemapSettings KeyRemap { get; set; } = new();
+    public ZenithApp.Modules.Dock.DockSettings Dock { get; set; } = new();
 
     public bool IsModuleEnabled(string moduleId, bool defaultValue = false)
     {

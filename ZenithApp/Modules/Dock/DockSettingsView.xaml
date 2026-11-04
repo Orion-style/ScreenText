@@ -1,0 +1,164 @@
+<UserControl x:Class="ZenithApp.Modules.Dock.DockSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:ZenithApp.Modules.Dock"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="650">
+    <StackPanel>
+        <!-- Параметры отображения и поведения -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <!-- Автоскрытие -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Автоскрытие дока" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Док скрывается и появляется при подведении курсора к нижней границе экрана" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoHide, Mode=TwoWay}" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Эффект увеличения (Mac magnification) -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Плавное увеличение под курсором (Magnification)" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Интерактивное плавное масштабирование иконок при наведении курсора" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding EnableMagnification, Mode=TwoWay}" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Анимация прыжка при запуске -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Анимация запуска приложений (Bounce)" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Легкий прыжок значка при клике на программу" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding EnableBounceAnimation, Mode=TwoWay}" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Горячая клавиша -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Горячая клавиша показа/скрытия" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Быстрое переключение видимости панели" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <ui:TextBox Grid.Column="1" Text="{Binding HotkeyText, Mode=OneWay}" IsReadOnly="True" Width="140" TextAlignment="Center" />
+                </Grid>
+
+                <!-- Выбор монитора -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Экран для отображения" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Показывать док на основном экране или на экране с курсором" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" SelectedIndex="{Binding SelectedMonitorIndex, Mode=TwoWay}" Width="160">
+                        <ComboBoxItem Content="Основной монитор" />
+                        <ComboBoxItem Content="Монитор с курсором" />
+                    </ComboBox>
+                </Grid>
+
+                <!-- Отступ снизу -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock Text="Отступ от нижнего края (px)" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Расстояние между панелью и границей экрана / панели задач" 
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <ComboBox Grid.Column="1" SelectedValue="{Binding BottomMargin, Mode=TwoWay}" SelectedValuePath="Tag" Width="120">
+                        <ComboBoxItem Content="0 px" Tag="0" />
+                        <ComboBoxItem Content="6 px" Tag="6" />
+                        <ComboBoxItem Content="12 px" Tag="12" />
+                        <ComboBoxItem Content="20 px" Tag="20" />
+                        <ComboBoxItem Content="32 px" Tag="32" />
+                    </ComboBox>
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Заголовок закрепленных программ -->
+        <Grid Margin="0,4,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="Закрепленные программы" FontWeight="Bold" FontSize="16" />
+                <TextBlock Text="Перетаскивайте .exe или .lnk файлы прямо на док или добавляйте через кнопку" 
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+            </StackPanel>
+            <ui:Button Grid.Column="1" 
+                       Content="Добавить программу" 
+                       Icon="{ui:SymbolIcon Add24}" 
+                       Appearance="Primary" 
+                       Click="OnAddFileClicked" />
+        </Grid>
+
+        <!-- Список элементов -->
+        <ItemsControl ItemsSource="{Binding Items}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate DataType="{x:Type local:DockSettingsItemViewModel}">
+                    <ui:Card Padding="12" Margin="0,0,0,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" />
+                                <TextBlock Text="{Binding TargetPath}" 
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                           FontSize="11" 
+                                           TextTrimming="CharacterEllipsis" 
+                                           Margin="0,2,0,0" />
+                            </StackPanel>
+
+                            <ui:Button Grid.Column="1" Icon="{ui:SymbolIcon ArrowUp24}" Command="{Binding MoveUpCommand}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="2" Icon="{ui:SymbolIcon ArrowDown24}" Command="{Binding MoveDownCommand}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="3" Icon="{ui:SymbolIcon Delete24}" Appearance="Danger" Command="{Binding DeleteCommand}" VerticalAlignment="Center" />
+                        </Grid>
+                    </ui:Card>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>
