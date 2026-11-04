@@ -49,7 +49,7 @@ public partial class QuickLookWindow : Window
         Focus();
 
         // Подписываемся на Deactivated только после полной загрузки и активации
-        Dispatcher.BeginInvoke(new Action(() =>
+        _ = Dispatcher.BeginInvoke(new Action(() =>
         {
             Deactivated += OnWindowDeactivated;
         }), System.Windows.Threading.DispatcherPriority.Background);

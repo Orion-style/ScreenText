@@ -180,30 +180,32 @@ public static class ExplorerSelectionService
                     dynamic window = windows.Item(i);
                     if (window == null) continue;
 
+#pragma warning disable CS8602
                     nint hwnd = (nint)window.HWND;
                     if (hwnd == foregroundHwnd)
                     {
                         dynamic document = window.Document;
                         if (document == null) continue;
 
-                        dynamic selectedItems = document.SelectedItems();
-                        if (selectedItems == null || selectedItems.Count != 1)
+                        dynamic? selectedItems = document.SelectedItems();
+                        if (selectedItems == null || (int)selectedItems.Count != 1)
                         {
                             return null; // Not exactly 1 item selected
                         }
 
-                        dynamic item = selectedItems.Item(0);
-                        if (item == null || item.IsFolder)
+                        dynamic? item = selectedItems.Item(0);
+                        if (item == null || (bool)item.IsFolder)
                         {
                             return null; // Ignore folder
                         }
 
-                        string path = (string)item.Path;
-                        if (File.Exists(path))
+                        string? path = (string?)item.Path;
+                        if (!string.IsNullOrEmpty(path) && File.Exists(path))
                         {
                             return path;
                         }
                     }
+#pragma warning restore CS8602
                 }
                 catch
                 {
@@ -241,20 +243,22 @@ public static class ExplorerSelectionService
                     dynamic doc = window.Document;
                     if (doc == null) continue;
 
+#pragma warning disable CS8602
                     // Check if document view is desktop
-                    dynamic selectedItems = doc.SelectedItems();
-                    if (selectedItems != null && selectedItems.Count == 1)
+                    dynamic? selectedItems = doc.SelectedItems();
+                    if (selectedItems != null && (int)selectedItems.Count == 1)
                     {
-                        dynamic item = selectedItems.Item(0);
-                        if (item != null && !item.IsFolder)
+                        dynamic? item = selectedItems.Item(0);
+                        if (item != null && !(bool)item.IsFolder)
                         {
-                            string path = (string)item.Path;
-                            if (File.Exists(path))
+                            string? path = (string?)item.Path;
+                            if (!string.IsNullOrEmpty(path) && File.Exists(path))
                             {
                                 return path;
                             }
                         }
                     }
+#pragma warning restore CS8602
                 }
                 catch
                 {
