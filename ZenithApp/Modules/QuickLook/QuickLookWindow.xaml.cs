@@ -36,7 +36,6 @@ public partial class QuickLookWindow : Window
         ImgHeaderIcon.Source = QuickLookIconHelper.GetFileIcon(filePath, 32);
 
         Loaded += OnWindowLoaded;
-        Deactivated += OnWindowDeactivated;
         PreviewKeyDown += OnWindowPreviewKeyDown;
     }
 
@@ -44,6 +43,17 @@ public partial class QuickLookWindow : Window
     {
         ApplyInitialWindowBounds();
         AnimateWindowOpen();
+
+        // Активируем окно и даем ему фокус, чтобы оно захватило активность
+        Activate();
+        Focus();
+
+        // Подписываемся на Deactivated только после полной загрузки и активации
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            Deactivated += OnWindowDeactivated;
+        }), System.Windows.Threading.DispatcherPriority.Background);
+
         await LoadContentAsync();
     }
 
@@ -436,8 +446,11 @@ public partial class QuickLookWindow : Window
 
     private void OnWindowDeactivated(object? sender, EventArgs e)
     {
-        // Close when clicking outside of the preview window
-        CloseWindowCleanly();
+        // При клике в любое другое окно/приложение или на рабочий стол закрываем окно
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            CloseWindowCleanly();
+        }));
     }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)
