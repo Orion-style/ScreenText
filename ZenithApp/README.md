@@ -38,12 +38,8 @@ c:\Project\10\ZenithApp\
 │   │   └── SmartLinksModule.cs
 │   ├── QuickLook\                  # 4. Quick Look по клавише Space
 │   │   └── QuickLookModule.cs
-│   ├── SnapZones\                  # 5. Закрепление окон по зонам (FancyZones)
+│   ├── SnapZones\                  # 5. Закрепление окон по зонам / Always on Top
 │   │   └── SnapZonesModule.cs
-│   ├── KeyRemap\                   # 6. Переназначение клавиш
-│   │   └── KeyRemapModule.cs
-│   └── T9Predictor\                # 7. T9 / Инлайн-автодополнение слов
-│       └── T9PredictorModule.cs
 │
 ├── Resources\                      # Ресурсы, строки локализации и иконки
 │   ├── app.ico                     # Системная иконка

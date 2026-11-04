@@ -10,7 +10,6 @@
         xmlns:keyremap="clr-namespace:ZenithApp.Modules.KeyRemap"
         xmlns:quicklook="clr-namespace:ZenithApp.Modules.QuickLook"
         xmlns:snapzones="clr-namespace:ZenithApp.Modules.SnapZones"
-        xmlns:t9="clr-namespace:ZenithApp.Modules.T9Predictor"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -307,13 +306,6 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <snapzones:SnapZonesSettingsView DataContext="{Binding SnapZonesSettings}" />
-                            </ContentControl>
-
-                            <!-- Настройки модуля T9Predictor -->
-                            <ContentControl x:Name="T9PredictorConfigContainer" 
-                                            Visibility="Collapsed"
-                                            Margin="0,0,0,16">
-                                <t9:T9PredictorSettingsView DataContext="{Binding T9PredictorSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

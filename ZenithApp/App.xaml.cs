@@ -11,7 +11,6 @@ using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.Modules.SnapZones;
-using ZenithApp.Modules.T9Predictor;
 using ZenithApp.UI.Tray;
 using ZenithApp.UI.ViewModels;
 using ZenithApp.UI.Views;
@@ -107,8 +106,6 @@ public partial class App : Application
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<QuickLookModule>());
         services.AddSingleton<SnapZonesModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<SnapZonesModule>());
-        services.AddSingleton<T9PredictorModule>();
-        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<T9PredictorModule>());
 
         // Module Manager
         services.AddSingleton<ModuleManager>();
