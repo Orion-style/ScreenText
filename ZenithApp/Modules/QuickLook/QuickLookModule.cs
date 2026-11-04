@@ -10,6 +10,7 @@ public sealed class QuickLookModule : BaseFeatureModule
 {
     public const string ModuleId = "quick_look";
     private const int VK_SPACE = 0x20;
+    private const int VK_ESCAPE = 0x1B;
 
     private readonly IKeyboardHookService _hookService;
     private readonly ISettingsService _settingsService;
@@ -51,8 +52,8 @@ public sealed class QuickLookModule : BaseFeatureModule
 
     private bool OnLowLevelKeyboardInput(KeyboardHookEventArgs e)
     {
-        // 1. Быстрый фильтр: интересует только нажатие пробела (VK_SPACE)
-        if (e.VirtualCode != VK_SPACE)
+        // 1. Быстрый фильтр: интересует только пробел (VK_SPACE) и Esc (VK_ESCAPE)
+        if (e.VirtualCode != VK_SPACE && e.VirtualCode != VK_ESCAPE)
         {
             return false;
         }
@@ -63,7 +64,7 @@ public sealed class QuickLookModule : BaseFeatureModule
             return false;
         }
 
-        // Если окно предпросмотра уже открыто, повторное нажатие пробела закрывает его
+        // Если окно предпросмотра активно/открыто — закрываем его по Esc или повторному Пробелу
         lock (_previewLock)
         {
             if (_activePreviewWindow != null)
@@ -75,8 +76,14 @@ public sealed class QuickLookModule : BaseFeatureModule
                         CloseActivePreview();
                     });
                 }
-                return true; // Подавляем пробел, так как он закрывает окно предпросмотра
+                return true; // Подавляем клавишу, чтобы закрытие отработало чисто
             }
+        }
+
+        // Если окно НЕ открыто, Esc нас не интересует — отдаем его системе
+        if (e.VirtualCode == VK_ESCAPE)
+        {
+            return false;
         }
 
         // Обрабатываем только KeyDown (не KeyUp)
