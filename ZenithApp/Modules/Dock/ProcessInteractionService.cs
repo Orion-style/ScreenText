@@ -70,6 +70,8 @@ public static class ProcessInteractionService
 
     private const uint MONITOR_DEFAULTTONEAREST = 2;
 
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _targetExeNameCache = new(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>
     /// Checks if a running process matches the given target path or process name.
     /// Fast check without heavy allocations.
@@ -79,8 +81,13 @@ public static class ProcessInteractionService
         foundProcess = null;
         if (string.IsNullOrWhiteSpace(targetPath)) return false;
 
-        var resolvedTarget = IconExtractionService.ResolveShortcutTarget(targetPath);
-        var exeName = Path.GetFileNameWithoutExtension(resolvedTarget);
+        if (!_targetExeNameCache.TryGetValue(targetPath, out var exeName))
+        {
+            var resolvedTarget = IconExtractionService.ResolveShortcutTarget(targetPath);
+            exeName = Path.GetFileNameWithoutExtension(resolvedTarget);
+            _targetExeNameCache[targetPath] = exeName;
+        }
+
         if (string.IsNullOrWhiteSpace(exeName)) return false;
 
         try
