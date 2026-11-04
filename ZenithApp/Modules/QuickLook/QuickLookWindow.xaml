@@ -1,0 +1,184 @@
+<Window x:Class="ZenithApp.Modules.QuickLook.QuickLookWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="Manual">
+
+    <Window.Resources>
+        <DropShadowEffect x:Key="WindowShadow" BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.45" />
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" 
+            Margin="16" 
+            CornerRadius="12" 
+            Background="{DynamicResource ApplicationBackgroundBrush}"
+            BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            Effect="{StaticResource WindowShadow}">
+        
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="42" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Верхняя шапка с заголовком и кнопками (перетаскивание окна) -->
+            <Grid Grid.Row="0" Background="Transparent" MouseLeftButtonDown="OnHeaderMouseLeftButtonDown">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Image x:Name="ImgHeaderIcon" Grid.Column="0" Width="20" Height="20" Margin="14,0,8,0" VerticalAlignment="Center" />
+
+                <TextBlock x:Name="TxtHeaderTitle" 
+                           Grid.Column="1" 
+                           VerticalAlignment="Center" 
+                           FontWeight="SemiBold" 
+                           FontSize="13" 
+                           TextTrimming="CharacterEllipsis" 
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+
+                <ui:Button x:Name="BtnOpenDefault" 
+                           Grid.Column="2" 
+                           Margin="0,0,6,0" 
+                           Padding="8,4" 
+                           ToolTip="Открыть в программе по умолчанию (Enter)" 
+                           Icon="{ui:SymbolIcon ArrowUpRight20}" 
+                           Click="OnOpenDefaultClicked" />
+
+                <ui:Button x:Name="BtnClose" 
+                           Grid.Column="3" 
+                           Margin="0,0,10,0" 
+                           Padding="8,4" 
+                           ToolTip="Закрыть (Esc или Пробел)" 
+                           Icon="{ui:SymbolIcon Dismiss20}" 
+                           Click="OnCloseClicked" />
+            </Grid>
+
+            <!-- Основная область контента -->
+            <Grid Grid.Row="1" x:Name="ContentHost" ClipToBounds="True">
+                
+                <!-- 1. Изображение -->
+                <ScrollViewer x:Name="ImageViewer" Visibility="Collapsed" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <Grid MouseWheel="OnImageMouseWheel">
+                        <Image x:Name="ImgPreview" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Image.LayoutTransform>
+                                <ScaleTransform x:Name="ImgScaleTransform" ScaleX="1" ScaleY="1" />
+                            </Image.LayoutTransform>
+                        </Image>
+                    </Grid>
+                </ScrollViewer>
+
+                <!-- 2. PDF просмотрщик -->
+                <Grid x:Name="PdfViewer" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <StackPanel x:Name="PdfPagesPanel" HorizontalAlignment="Center" Margin="12" />
+                    </ScrollViewer>
+
+                    <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="8,4">
+                        <TextBlock x:Name="TxtPdfPageInfo" HorizontalAlignment="Center" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Border>
+                </Grid>
+
+                <!-- 3. Медиаплеер (Видео и Аудио) -->
+                <Grid x:Name="MediaViewer" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <MediaElement x:Name="Player" 
+                                  Grid.Row="0" 
+                                  LoadedBehavior="Manual" 
+                                  UnloadedBehavior="Close" 
+                                  Stretch="Uniform" 
+                                  MouseLeftButtonUp="OnPlayerMouseLeftButtonUp" />
+
+                    <!-- Подложка для аудиофайлов (обложка/значок + имя) -->
+                    <StackPanel x:Name="AudioInfoPanel" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image x:Name="ImgAudioCover" Width="120" Height="120" Margin="0,0,0,16" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="TxtAudioTitle" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <!-- Панель управления плеером -->
+                    <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,6">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="100" />
+                            </Grid.ColumnDefinitions>
+
+                            <ui:Button x:Name="BtnPlayPause" Grid.Column="0" Padding="8,4" Margin="0,0,8,0" Click="OnPlayPauseClicked" Icon="{ui:SymbolIcon Pause20}" />
+                            
+                            <TextBlock x:Name="TxtMediaTime" Grid.Column="1" VerticalAlignment="Center" FontSize="12" Margin="0,0,8,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Text="00:00 / 00:00" />
+
+                            <Slider x:Name="SliderProgress" Grid.Column="2" VerticalAlignment="Center" Minimum="0" Value="0" PreviewMouseDown="OnSliderProgressMouseDown" PreviewMouseUp="OnSliderProgressMouseUp" ValueChanged="OnSliderProgressValueChanged" />
+
+                            <ui:SymbolIcon Symbol="Speaker220" Grid.Column="3" Margin="12,0,6,0" VerticalAlignment="Center" FontSize="16" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <Slider x:Name="SliderVolume" Grid.Column="4" VerticalAlignment="Center" Minimum="0" Maximum="1" Value="0.8" ValueChanged="OnVolumeChanged" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- 4. Текст и код -->
+                <Grid x:Name="TextViewer" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                        <TextBox x:Name="TxtContent" 
+                                 FontFamily="Cascadia Mono, Consolas, Courier New" 
+                                 FontSize="13" 
+                                 IsReadOnly="True" 
+                                 BorderThickness="0" 
+                                 Background="Transparent" 
+                                 Padding="16" 
+                                 Foreground="{DynamicResource TextFillColorPrimaryBrush}" 
+                                 TextWrapping="NoWrap" />
+                    </ScrollViewer>
+
+                    <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,4">
+                        <Grid>
+                            <TextBlock x:Name="TxtTextFooterEncoding" FontSize="12" HorizontalAlignment="Left" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <TextBlock x:Name="TxtTextFooterTruncated" FontSize="12" HorizontalAlignment="Right" Foreground="#FFAA33" FontWeight="SemiBold" Visibility="Collapsed" Text="Файл усечён до установленного лимита" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- 5. Карточка файла (Generic Card / Не удалось открыть) -->
+                <Grid x:Name="GenericCardViewer" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="32">
+                    <StackPanel HorizontalAlignment="Center">
+                        <Image x:Name="ImgGenericIcon" Width="96" Height="96" Margin="0,0,0,16" HorizontalAlignment="Center" />
+                        <TextBlock x:Name="TxtGenericStatus" Visibility="Collapsed" Text="Не удалось открыть предпросмотр" Foreground="#FF5555" FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                        <TextBlock x:Name="TxtGenericFileName" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,6" />
+                        <TextBlock x:Name="TxtGenericDetails" FontSize="13" HorizontalAlignment="Center" TextAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,20" />
+                        <ui:Button Content="Открыть в программе по умолчанию" Icon="{ui:SymbolIcon Open20}" HorizontalAlignment="Center" Padding="16,8" Click="OnOpenDefaultClicked" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <!-- Статус/Индикатор загрузки -->
+            <ProgressBar x:Name="LoadingBar" Grid.Row="2" Height="3" IsIndeterminate="True" Visibility="Collapsed" />
+        </Grid>
+    </Border>
+</Window>

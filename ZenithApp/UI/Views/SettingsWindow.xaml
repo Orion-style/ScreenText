@@ -8,6 +8,7 @@
         xmlns:screenshot="clr-namespace:ZenithApp.Modules.Screenshot"
         xmlns:smartlinks="clr-namespace:ZenithApp.Modules.SmartLinks"
         xmlns:keyremap="clr-namespace:ZenithApp.Modules.KeyRemap"
+        xmlns:quicklook="clr-namespace:ZenithApp.Modules.QuickLook"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Height="640" Width="960"
@@ -289,6 +290,13 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <keyremap:KeyRemapSettingsView DataContext="{Binding KeyRemapSettings}" />
+                            </ContentControl>
+
+                            <!-- Настройки модуля QuickLook -->
+                            <ContentControl x:Name="QuickLookConfigContainer" 
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                <quicklook:QuickLookSettingsView DataContext="{Binding QuickLookSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

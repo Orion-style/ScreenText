@@ -7,6 +7,7 @@ using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
 using ZenithApp.Modules.KeyRemap;
+using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.UI.Common;
@@ -21,6 +22,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly ScreenshotModule? _screenshotModule;
     private readonly SmartLinksModule? _smartLinksModule;
     private readonly KeyRemapModule? _keyRemapModule;
+    private readonly QuickLookModule? _quickLookModule;
 
     private bool _startWithWindows;
     private int _selectedThemeIndex; // 0 = System, 1 = Light, 2 = Dark
@@ -32,7 +34,8 @@ public sealed class SettingsViewModel : ViewModelBase
         ModuleManager moduleManager,
         ScreenshotModule? screenshotModule = null,
         SmartLinksModule? smartLinksModule = null,
-        KeyRemapModule? keyRemapModule = null)
+        KeyRemapModule? keyRemapModule = null,
+        QuickLookModule? quickLookModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -40,6 +43,7 @@ public sealed class SettingsViewModel : ViewModelBase
         _screenshotModule = screenshotModule;
         _smartLinksModule = smartLinksModule;
         _keyRemapModule = keyRemapModule;
+        _quickLookModule = quickLookModule;
 
         _startWithWindows = _settingsService.Current.StartWithWindows;
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
@@ -63,12 +67,18 @@ public sealed class SettingsViewModel : ViewModelBase
             KeyRemapSettings = new KeyRemapSettingsViewModel(_keyRemapModule, _settingsService);
         }
 
+        if (_quickLookModule != null)
+        {
+            QuickLookSettings = new QuickLookSettingsViewModel(_quickLookModule, _settingsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
     }
 
     public ScreenshotSettingsViewModel? ScreenshotSettings { get; }
     public SmartLinksSettingsViewModel? SmartLinksSettings { get; }
     public KeyRemapSettingsViewModel? KeyRemapSettings { get; }
+    public QuickLookSettingsViewModel? QuickLookSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 

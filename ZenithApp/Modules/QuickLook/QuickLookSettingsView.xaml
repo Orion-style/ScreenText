@@ -1,0 +1,101 @@
+<UserControl x:Class="ZenithApp.Modules.QuickLook.QuickLookSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             mc:Ignorable="d" 
+             d:DesignHeight="550" d:DesignWidth="600">
+    <StackPanel>
+        <!-- Автовоспроизведение медиа -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="Автовоспроизведение аудио и видео" FontWeight="SemiBold" FontSize="15" />
+                    <TextBlock Text="Автоматически начинать проигрывание медиафайлов при открытии предпросмотра" 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" 
+                                 IsChecked="{Binding AutoPlayMedia, Mode=TwoWay}" 
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Максимальный размер окна -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Максимальный размер окна" FontWeight="SemiBold" FontSize="15" />
+                    <TextBlock Text="Ограничение габаритов окна предпросмотра в процентах от разрешения рабочего экрана" 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider Minimum="50" Maximum="95" TickFrequency="5" IsSnapToTickEnabled="True" 
+                            Value="{Binding MaxWindowScreenPercent, Mode=TwoWay}" Width="140" Margin="0,0,12,0" />
+                    <TextBlock Text="{Binding MaxWindowScreenPercentText}" Width="45" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </StackPanel>
+            </Grid>
+        </ui:Card>
+
+        <!-- Лимит текстовых файлов -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Лимит размера для текстовых файлов" FontWeight="SemiBold" FontSize="15" />
+                    <TextBlock Text="Файлы большего размера считываются только частично во избежание зависаний" 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider Minimum="256" Maximum="8192" TickFrequency="256" IsSnapToTickEnabled="True" 
+                            Value="{Binding MaxTextFileSizeKb, Mode=TwoWay}" Width="140" Margin="0,0,12,0" />
+                    <TextBlock Text="{Binding MaxTextFileSizeKbText}" Width="65" VerticalAlignment="Center" FontWeight="SemiBold" />
+                </StackPanel>
+            </Grid>
+        </ui:Card>
+
+        <!-- Группы поддерживаемых форматов -->
+        <ui:Card Padding="16">
+            <StackPanel>
+                <TextBlock Text="Поддерживаемые категории файлов" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                <TextBlock Text="Отключённые категории будут открываться как стандартная карточка файла" 
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                           Margin="0,0,0,16" TextWrapping="Wrap" />
+
+                <Grid Margin="0,0,0,10">
+                    <TextBlock Text="Изображения (PNG, JPG, GIF, WebP, BMP, ICO)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch HorizontalAlignment="Right" IsChecked="{Binding EnableImages, Mode=TwoWay}" />
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <TextBlock Text="PDF-документы (Windows.Data.Pdf)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch HorizontalAlignment="Right" IsChecked="{Binding EnablePdf, Mode=TwoWay}" />
+                </Grid>
+
+                <Grid Margin="0,0,0,10">
+                    <TextBlock Text="Видео и аудио (MP4, MKV, AVI, MP3, WAV, FLAC и др.)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch HorizontalAlignment="Right" IsChecked="{Binding EnableMedia, Mode=TwoWay}" />
+                </Grid>
+
+                <Grid>
+                    <TextBlock Text="Текст и исходный код (TXT, MD, JSON, CS, PY, JS, HTML и др.)" VerticalAlignment="Center" />
+                    <ui:ToggleSwitch HorizontalAlignment="Right" IsChecked="{Binding EnableText, Mode=TwoWay}" />
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+    </StackPanel>
+</UserControl>

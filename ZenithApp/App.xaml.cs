@@ -103,7 +103,8 @@ public partial class App : Application
         services.AddSingleton<ITextRecognizedHandler>(sp => sp.GetRequiredService<SmartLinksModule>());
         services.AddSingleton<KeyRemapModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<KeyRemapModule>());
-        services.AddSingleton<IFeatureModule, QuickLookModule>();
+        services.AddSingleton<QuickLookModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<QuickLookModule>());
         services.AddSingleton<IFeatureModule, SnapZonesModule>();
         services.AddSingleton<IFeatureModule, T9PredictorModule>();
 
