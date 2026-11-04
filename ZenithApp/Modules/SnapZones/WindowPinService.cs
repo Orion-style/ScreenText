@@ -6,17 +6,19 @@ using System.Windows;
 
 namespace ZenithApp.Modules.SnapZones;
 
-public static class WindowPlacementService
+public static class WindowPinService
 {
     private const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
-    private const uint SWP_NOZORDER = 0x0004;
-    private const uint SWP_NOACTIVATE = 0x0010;
-    private const uint SWP_FRAMECHANGED = 0x0020;
-    private const int SW_RESTORE = 9;
+    private const int GWL_EXSTYLE = -20;
+    private const long WS_EX_TOPMOST = 0x00000008L;
 
-    private const int GWL_STYLE = -16;
-    private const long WS_THICKFRAME = 0x00040000L;
-    private const long WS_MAXIMIZEBOX = 0x00010000L;
+    private static readonly nint HWND_TOPMOST = new nint(-1);
+    private static readonly nint HWND_NOTOPMOST = new nint(-2);
+
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOACTIVATE = 0x0010;
+    private const uint SWP_SHOWWINDOW = 0x0040;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
@@ -33,15 +35,7 @@ public static class WindowPlacementService
 
     [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool IsZoomed(nint hWnd);
-
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ShowWindow(nint hWnd, int nCmdShow);
+    public static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
     [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr", SetLastError = true)]
     private static extern nint GetWindowLongPtr64(nint hWnd, int nIndex);
@@ -58,17 +52,33 @@ public static class WindowPlacementService
     [DllImport("user32.dll")]
     public static extern nint GetForegroundWindow();
 
-    public static long GetWindowStyle(nint hWnd)
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindow(nint hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindowVisible(nint hWnd);
+
+    public static long GetWindowExStyle(nint hWnd)
     {
         if (nint.Size == 8)
-            return (long)GetWindowLongPtr64(hWnd, GWL_STYLE);
-        return GetWindowLong32(hWnd, GWL_STYLE);
+            return (long)GetWindowLongPtr64(hWnd, GWL_EXSTYLE);
+        return GetWindowLong32(hWnd, GWL_EXSTYLE);
     }
 
-    public static bool IsResizableWindow(nint hWnd)
+    public static bool IsWindowTopmost(nint hWnd)
     {
-        long style = GetWindowStyle(hWnd);
-        return (style & WS_THICKFRAME) != 0;
+        if (hWnd == nint.Zero) return false;
+        long exStyle = GetWindowExStyle(hWnd);
+        return (exStyle & WS_EX_TOPMOST) != 0;
+    }
+
+    public static bool SetWindowTopmost(nint hWnd, bool topmost)
+    {
+        if (hWnd == nint.Zero) return false;
+        nint insertAfter = topmost ? HWND_TOPMOST : HWND_NOTOPMOST;
+        return SetWindowPos(hWnd, insertAfter, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
     }
 
     public static string GetProcessName(nint hWnd)
@@ -93,9 +103,9 @@ public static class WindowPlacementService
         return sb.ToString();
     }
 
-    public static bool IsSnapCandidate(nint hWnd, IEnumerable<string> excludedProcesses)
+    public static bool IsPinnableWindow(nint hWnd, IEnumerable<string> excludedProcesses)
     {
-        if (hWnd == nint.Zero) return false;
+        if (hWnd == nint.Zero || !IsWindow(hWnd) || !IsWindowVisible(hWnd)) return false;
 
         string cls = GetWindowClassName(hWnd);
         if (cls.Equals("Progman", StringComparison.OrdinalIgnoreCase) ||
@@ -130,40 +140,5 @@ public static class WindowPlacementService
 
         GetWindowRect(hWnd, out RECT winRect);
         return new Rect(winRect.Left, winRect.Top, Math.Max(0, winRect.Right - winRect.Left), Math.Max(0, winRect.Bottom - winRect.Top));
-    }
-
-    public static bool SnapWindowToZone(nint hWnd, Rect targetBounds)
-    {
-        if (hWnd == nint.Zero) return false;
-
-        try
-        {
-            // If window is maximized, restore it first
-            if (IsZoomed(hWnd))
-            {
-                ShowWindow(hWnd, SW_RESTORE);
-            }
-
-            GetWindowRect(hWnd, out RECT normalRect);
-            Rect frameRect = GetExtendedFrameBounds(hWnd);
-
-            // Compute shadow/margin difference
-            int borderLeft = (int)(frameRect.Left - normalRect.Left);
-            int borderTop = (int)(frameRect.Top - normalRect.Top);
-            int borderRight = (int)(normalRect.Right - frameRect.Right);
-            int borderBottom = (int)(normalRect.Bottom - frameRect.Bottom);
-
-            // Adjust target bounds so that the visual frame aligns exactly with zone rect
-            int finalX = (int)targetBounds.Left - borderLeft;
-            int finalY = (int)targetBounds.Top - borderTop;
-            int finalW = (int)targetBounds.Width + borderLeft + borderRight;
-            int finalH = (int)targetBounds.Height + borderTop + borderBottom;
-
-            return SetWindowPos(hWnd, nint.Zero, finalX, finalY, finalW, finalH, SWP_NOZORDER | SWP_FRAMECHANGED);
-        }
-        catch
-        {
-            return false;
-        }
     }
 }

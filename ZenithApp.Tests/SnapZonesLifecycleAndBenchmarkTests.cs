@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Windows;
 using ZenithApp.Core.Hotkeys;
 using ZenithApp.Core.Logging;
 using ZenithApp.Core.Settings;
@@ -56,7 +56,7 @@ public class SnapZonesLifecycleAndBenchmarkTests
         // 1. Enable module
         await module.EnableAsync();
         Assert.True(module.IsEnabled);
-        Assert.True(hotkeyService.Registered.Count > 0);
+        Assert.Single(hotkeyService.Registered);
 
         long memEnabledIdle = GC.GetTotalMemory(true);
         long idleDelta = memEnabledIdle - memStart;
@@ -74,31 +74,5 @@ public class SnapZonesLifecycleAndBenchmarkTests
         long memFinal = GC.GetTotalMemory(true);
         long leak = memFinal - memStart;
         Assert.True(leak < 1024 * 1024, $"Retained memory after lifecycle: {leak} bytes");
-    }
-
-    [Fact]
-    public void SnapHotkeyController_RegistersAllKeys()
-    {
-        var logger = new TestLogger();
-        var hotkeyService = new MockHotkeyService();
-        var settings = new SnapZonesSettings();
-
-        using var controller = new SnapHotkeyController(
-            hotkeyService, 
-            logger, 
-            settings, 
-            () => ZoneLayoutPreset.TwoColumns5050, 
-            () => null);
-
-        controller.RegisterHotkeys();
-
-        Assert.True(hotkeyService.Registered.ContainsKey("Snap_PrevZone"));
-        Assert.True(hotkeyService.Registered.ContainsKey("Snap_NextZone"));
-        Assert.True(hotkeyService.Registered.ContainsKey("Snap_Zone_1"));
-        Assert.True(hotkeyService.Registered.ContainsKey("Snap_Zone_2"));
-        Assert.True(hotkeyService.Registered.ContainsKey("Snap_Zone_9"));
-
-        controller.UnregisterHotkeys();
-        Assert.Empty(hotkeyService.Registered);
     }
 }

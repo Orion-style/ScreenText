@@ -83,7 +83,6 @@ public partial class SettingsWindow : FluentWindow
             }
             else if (moduleVm.Id == ZenithApp.Modules.SnapZones.SnapZonesModule.ModuleId)
             {
-                _viewModel.SnapZonesSettings?.RefreshMonitors();
                 ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
                 SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
                 KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
