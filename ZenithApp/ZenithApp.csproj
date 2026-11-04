@@ -27,7 +27,11 @@
 
   <ItemGroup>
     <Resource Include="Resources\app.ico" />
+    <Resource Include="Resources\app.png" />
     <None Update="Resources\app.ico">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Resources\app.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

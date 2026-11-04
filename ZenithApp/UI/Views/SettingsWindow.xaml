@@ -11,6 +11,7 @@
         xmlns:quicklook="clr-namespace:ZenithApp.Modules.QuickLook"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
+        Icon="/Resources/app.ico"
         Height="640" Width="960"
         MinHeight="500" MinWidth="720"
         WindowStartupLocation="CenterScreen"
