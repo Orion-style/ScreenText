@@ -12,12 +12,21 @@ public sealed class KeyRemapModule : BaseFeatureModule
 {
     public const string ModuleId = "key_remap";
 
+    private sealed class ActiveRemapState
+    {
+        public List<int> PressedKeys { get; } = new();
+        public List<int> TemporarilyReleasedModifiers { get; } = new();
+    }
+
     private readonly IKeyboardHookService _hookService;
     private readonly ISettingsService _settingsService;
     private IDisposable? _hookSubscription;
 
-    // Track active synthesized keys to release them accurately on physical release or abort
-    private readonly ConcurrentDictionary<int, List<int>> _activeSynthesizedMap = new();
+    // Track active synthesized keys and temporarily released modifiers
+    private readonly ConcurrentDictionary<int, ActiveRemapState> _activeSynthesizedMap = new();
+
+    // Track keys that are currently suppressed/disabled to suppress matching KeyUp events
+    private readonly ConcurrentDictionary<int, bool> _activeDisabledKeys = new();
 
     // Emergency escape tracking: Ctrl+Shift+Esc held
     private long _emergencyStartTimeTicks;
@@ -80,36 +89,71 @@ public sealed class KeyRemapModule : BaseFeatureModule
 
         var vk = e.VirtualCode;
 
-        // Query synchronous current state of modifier keys from Windows
-        var ctrlPressed = (GetKeyState(VirtualKeyHelper.VK_CONTROL) & 0x8000) != 0;
-        var altPressed = (GetKeyState(VirtualKeyHelper.VK_MENU) & 0x8000) != 0;
-        var shiftPressed = (GetKeyState(VirtualKeyHelper.VK_SHIFT) & 0x8000) != 0;
-        var winPressed = (GetKeyState(VirtualKeyHelper.VK_LWIN) & 0x8000) != 0 || (GetKeyState(VirtualKeyHelper.VK_RWIN) & 0x8000) != 0;
-
-        // Handle KeyUp for an already mapped key
+        // Handle KeyUp for an already mapped or disabled key
         if (e.IsKeyUp)
         {
-            if (_activeSynthesizedMap.TryRemove(vk, out var activeKeys))
+            if (_activeDisabledKeys.TryRemove(vk, out _))
             {
-                // Release in reverse order
-                for (int i = activeKeys.Count - 1; i >= 0; i--)
+                e.SuppressKeyPress = true;
+                return true;
+            }
+
+            if (_activeSynthesizedMap.TryRemove(vk, out var activeState))
+            {
+                // Release in reverse order (target key, then synthesized modifiers)
+                for (int i = activeState.PressedKeys.Count - 1; i >= 0; i--)
                 {
-                    KeyboardInputSender.SendKeyUp(activeKeys[i]);
+                    KeyboardInputSender.SendKeyUp(activeState.PressedKeys[i]);
                 }
+
+                // Restore any modifiers that were temporarily released, if the user is still physically holding them
+                for (int i = 0; i < activeState.TemporarilyReleasedModifiers.Count; i++)
+                {
+                    var mod = activeState.TemporarilyReleasedModifiers[i];
+                    if (IsModifierPhysicallyPressed(mod))
+                    {
+                        KeyboardInputSender.SendKeyDown(mod);
+                    }
+                }
+
                 e.SuppressKeyPress = true;
                 return true;
             }
         }
 
+        // Query current physical modifier state (excluding vk itself if vk is a modifier key)
+        var ctrlPressed = !VirtualKeyHelper.IsControlKey(vk) && IsModifierPhysicallyPressed(VirtualKeyHelper.VK_CONTROL);
+        var altPressed = !VirtualKeyHelper.IsAltKey(vk) && IsModifierPhysicallyPressed(VirtualKeyHelper.VK_MENU);
+        var shiftPressed = !VirtualKeyHelper.IsShiftKey(vk) && IsModifierPhysicallyPressed(VirtualKeyHelper.VK_SHIFT);
+        var winPressed = !VirtualKeyHelper.IsWinKey(vk) && (IsModifierPhysicallyPressed(VirtualKeyHelper.VK_LWIN) || IsModifierPhysicallyPressed(VirtualKeyHelper.VK_RWIN));
+
         // Handle KeyDown: find matching enabled rule
         if (e.IsKeyDown)
         {
+            // Handle key repeat for already active synthesized keys
+            if (_activeSynthesizedMap.TryGetValue(vk, out var existingState))
+            {
+                if (existingState.PressedKeys.Count > 0)
+                {
+                    var targetKey = existingState.PressedKeys[^1];
+                    KeyboardInputSender.SendKeyDown(targetKey);
+                }
+                e.SuppressKeyPress = true;
+                return true;
+            }
+
+            if (_activeDisabledKeys.ContainsKey(vk))
+            {
+                e.SuppressKeyPress = true;
+                return true;
+            }
+
             for (int i = 0; i < rules.Count; i++)
             {
                 var rule = rules[i];
                 if (!rule.IsEnabled) continue;
 
-                if (rule.TriggerVirtualKey == vk)
+                if (VirtualKeyHelper.AreKeysEquivalent(rule.TriggerVirtualKey, vk))
                 {
                     // Check modifiers match
                     var matchMods = (rule.TriggerCtrl == ctrlPressed) &&
@@ -129,34 +173,72 @@ public sealed class KeyRemapModule : BaseFeatureModule
                         switch (rule.ActionType)
                         {
                             case KeyRemapActionType.DisableKey:
+                                _activeDisabledKeys[vk] = true;
                                 e.SuppressKeyPress = true;
                                 return true;
 
                             case KeyRemapActionType.RemapKey:
-                                if (rule.TargetVirtualKey != 0)
-                                {
-                                    var activeList = new List<int> { rule.TargetVirtualKey };
-                                    _activeSynthesizedMap[vk] = activeList;
-                                    KeyboardInputSender.SendKeyDown(rule.TargetVirtualKey);
-                                }
-                                e.SuppressKeyPress = true;
-                                return true;
-
                             case KeyRemapActionType.RemapKeyCombination:
-                                var sequence = new List<int>();
-                                if (rule.TargetCtrl && !ctrlPressed) sequence.Add(VirtualKeyHelper.VK_CONTROL);
-                                if (rule.TargetAlt && !altPressed) sequence.Add(VirtualKeyHelper.VK_MENU);
-                                if (rule.TargetShift && !shiftPressed) sequence.Add(VirtualKeyHelper.VK_SHIFT);
-                                if (rule.TargetWin && !winPressed) sequence.Add(VirtualKeyHelper.VK_LWIN);
-                                if (rule.TargetVirtualKey != 0) sequence.Add(rule.TargetVirtualKey);
+                                var targetCtrl = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetCtrl;
+                                var targetAlt = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetAlt;
+                                var targetShift = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetShift;
+                                var targetWin = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetWin;
+                                var targetKey = rule.TargetVirtualKey;
 
-                                _activeSynthesizedMap[vk] = sequence;
+                                var remapState = new ActiveRemapState();
 
-                                for (int s = 0; s < sequence.Count; s++)
+                                // 1. Temporarily release physical modifiers that must not be active for target
+                                if (ctrlPressed && !targetCtrl)
                                 {
-                                    KeyboardInputSender.SendKeyDown(sequence[s]);
+                                    remapState.TemporarilyReleasedModifiers.Add(VirtualKeyHelper.VK_CONTROL);
+                                    KeyboardInputSender.SendKeyUp(VirtualKeyHelper.VK_CONTROL);
+                                }
+                                if (altPressed && !targetAlt)
+                                {
+                                    remapState.TemporarilyReleasedModifiers.Add(VirtualKeyHelper.VK_MENU);
+                                    KeyboardInputSender.SendKeyUp(VirtualKeyHelper.VK_MENU);
+                                }
+                                if (shiftPressed && !targetShift)
+                                {
+                                    remapState.TemporarilyReleasedModifiers.Add(VirtualKeyHelper.VK_SHIFT);
+                                    KeyboardInputSender.SendKeyUp(VirtualKeyHelper.VK_SHIFT);
+                                }
+                                if (winPressed && !targetWin)
+                                {
+                                    remapState.TemporarilyReleasedModifiers.Add(VirtualKeyHelper.VK_LWIN);
+                                    KeyboardInputSender.SendKeyUp(VirtualKeyHelper.VK_LWIN);
                                 }
 
+                                // 2. Synthesize target modifiers that are not currently held
+                                if (targetCtrl && !ctrlPressed)
+                                {
+                                    remapState.PressedKeys.Add(VirtualKeyHelper.VK_CONTROL);
+                                    KeyboardInputSender.SendKeyDown(VirtualKeyHelper.VK_CONTROL);
+                                }
+                                if (targetAlt && !altPressed)
+                                {
+                                    remapState.PressedKeys.Add(VirtualKeyHelper.VK_MENU);
+                                    KeyboardInputSender.SendKeyDown(VirtualKeyHelper.VK_MENU);
+                                }
+                                if (targetShift && !shiftPressed)
+                                {
+                                    remapState.PressedKeys.Add(VirtualKeyHelper.VK_SHIFT);
+                                    KeyboardInputSender.SendKeyDown(VirtualKeyHelper.VK_SHIFT);
+                                }
+                                if (targetWin && !winPressed)
+                                {
+                                    remapState.PressedKeys.Add(VirtualKeyHelper.VK_LWIN);
+                                    KeyboardInputSender.SendKeyDown(VirtualKeyHelper.VK_LWIN);
+                                }
+
+                                // 3. Synthesize target primary key
+                                if (targetKey != 0)
+                                {
+                                    remapState.PressedKeys.Add(targetKey);
+                                    KeyboardInputSender.SendKeyDown(targetKey);
+                                }
+
+                                _activeSynthesizedMap[vk] = remapState;
                                 e.SuppressKeyPress = true;
                                 return true;
                         }
@@ -172,8 +254,8 @@ public sealed class KeyRemapModule : BaseFeatureModule
     {
         if (!Settings.EmergencyEscapeEnabled) return false;
 
-        var ctrlDown = (GetKeyState(VirtualKeyHelper.VK_CONTROL) & 0x8000) != 0;
-        var shiftDown = (GetKeyState(VirtualKeyHelper.VK_SHIFT) & 0x8000) != 0;
+        var ctrlDown = IsModifierPhysicallyPressed(VirtualKeyHelper.VK_CONTROL);
+        var shiftDown = IsModifierPhysicallyPressed(VirtualKeyHelper.VK_SHIFT);
         var isEsc = e.VirtualCode == VirtualKeyHelper.VK_ESCAPE;
 
         if (ctrlDown && shiftDown && isEsc)
@@ -202,7 +284,7 @@ public sealed class KeyRemapModule : BaseFeatureModule
                 _emergencyTriggered = false;
             }
         }
-        else if (e.IsKeyUp && (e.VirtualCode == VirtualKeyHelper.VK_CONTROL || e.VirtualCode == VirtualKeyHelper.VK_SHIFT || e.VirtualCode == VirtualKeyHelper.VK_ESCAPE))
+        else if (e.IsKeyUp && (VirtualKeyHelper.IsControlKey(e.VirtualCode) || VirtualKeyHelper.IsShiftKey(e.VirtualCode) || e.VirtualCode == VirtualKeyHelper.VK_ESCAPE))
         {
             Interlocked.Exchange(ref _emergencyStartTimeTicks, 0);
             _emergencyTriggered = false;
@@ -236,12 +318,37 @@ public sealed class KeyRemapModule : BaseFeatureModule
     {
         foreach (var pair in _activeSynthesizedMap)
         {
-            for (int i = pair.Value.Count - 1; i >= 0; i--)
+            for (int i = pair.Value.PressedKeys.Count - 1; i >= 0; i--)
             {
-                KeyboardInputSender.SendKeyUp(pair.Value[i]);
+                KeyboardInputSender.SendKeyUp(pair.Value.PressedKeys[i]);
             }
         }
         _activeSynthesizedMap.Clear();
+        _activeDisabledKeys.Clear();
+    }
+
+    private static bool IsModifierPhysicallyPressed(int modVk)
+    {
+        return modVk switch
+        {
+            VirtualKeyHelper.VK_CONTROL => ((GetAsyncKeyState(VirtualKeyHelper.VK_CONTROL) & 0x8000) != 0) ||
+                                           ((GetKeyState(VirtualKeyHelper.VK_CONTROL) & 0x8000) != 0) ||
+                                           ((GetAsyncKeyState(VirtualKeyHelper.VK_LCONTROL) & 0x8000) != 0) ||
+                                           ((GetAsyncKeyState(VirtualKeyHelper.VK_RCONTROL) & 0x8000) != 0),
+            VirtualKeyHelper.VK_MENU => ((GetAsyncKeyState(VirtualKeyHelper.VK_MENU) & 0x8000) != 0) ||
+                                        ((GetKeyState(VirtualKeyHelper.VK_MENU) & 0x8000) != 0) ||
+                                        ((GetAsyncKeyState(VirtualKeyHelper.VK_LMENU) & 0x8000) != 0) ||
+                                        ((GetAsyncKeyState(VirtualKeyHelper.VK_RMENU) & 0x8000) != 0),
+            VirtualKeyHelper.VK_SHIFT => ((GetAsyncKeyState(VirtualKeyHelper.VK_SHIFT) & 0x8000) != 0) ||
+                                         ((GetKeyState(VirtualKeyHelper.VK_SHIFT) & 0x8000) != 0) ||
+                                         ((GetAsyncKeyState(VirtualKeyHelper.VK_LSHIFT) & 0x8000) != 0) ||
+                                         ((GetAsyncKeyState(VirtualKeyHelper.VK_RSHIFT) & 0x8000) != 0),
+            VirtualKeyHelper.VK_LWIN or VirtualKeyHelper.VK_RWIN => ((GetAsyncKeyState(VirtualKeyHelper.VK_LWIN) & 0x8000) != 0) ||
+                                                                     ((GetKeyState(VirtualKeyHelper.VK_LWIN) & 0x8000) != 0) ||
+                                                                     ((GetAsyncKeyState(VirtualKeyHelper.VK_RWIN) & 0x8000) != 0) ||
+                                                                     ((GetKeyState(VirtualKeyHelper.VK_RWIN) & 0x8000) != 0),
+            _ => ((GetAsyncKeyState(modVk) & 0x8000) != 0) || ((GetKeyState(modVk) & 0x8000) != 0)
+        };
     }
 
     private static bool IsProcessAllowed(KeyRemapRule rule)
@@ -270,6 +377,9 @@ public sealed class KeyRemapModule : BaseFeatureModule
 
     [DllImport("user32.dll")]
     private static extern short GetKeyState(int nVirtKey);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
 
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();

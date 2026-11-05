@@ -48,7 +48,7 @@ public sealed class RuleItemViewModel : ViewModelBase
         {
             return _rule.ActionType switch
             {
-                KeyRemapActionType.DisableKey => "Отключить клавишу",
+                KeyRemapActionType.DisableKey => "Отключить клавишу/сочетание",
                 KeyRemapActionType.RemapKey => $"Заменить на: {VirtualKeyHelper.GetKeyName(_rule.TargetVirtualKey)}",
                 KeyRemapActionType.RemapKeyCombination => $"Заменить на: {VirtualKeyHelper.FormatKeyCombination(_rule.TargetVirtualKey, _rule.TargetCtrl, _rule.TargetAlt, _rule.TargetShift, _rule.TargetWin)}",
                 _ => "Неизвестное действие"
@@ -211,7 +211,7 @@ public sealed class KeyRemapSettingsViewModel : ViewModelBase
     {
         // Check duplicate active triggers
         var activeRules = Rules.Where(r => r.IsEnabled).ToList();
-        var groups = activeRules.GroupBy(r => $"{r.Rule.TriggerVirtualKey}_{r.Rule.TriggerCtrl}_{r.Rule.TriggerAlt}_{r.Rule.TriggerShift}_{r.Rule.TriggerWin}").ToList();
+        var groups = activeRules.GroupBy(r => $"{VirtualKeyHelper.NormalizeVirtualKey(r.Rule.TriggerVirtualKey)}_{r.Rule.TriggerCtrl}_{r.Rule.TriggerAlt}_{r.Rule.TriggerShift}_{r.Rule.TriggerWin}").ToList();
 
         foreach (var ruleVm in Rules)
         {
@@ -220,7 +220,7 @@ public sealed class KeyRemapSettingsViewModel : ViewModelBase
 
             if (ruleVm.IsEnabled)
             {
-                var key = $"{ruleVm.Rule.TriggerVirtualKey}_{ruleVm.Rule.TriggerCtrl}_{ruleVm.Rule.TriggerAlt}_{ruleVm.Rule.TriggerShift}_{ruleVm.Rule.TriggerWin}";
+                var key = $"{VirtualKeyHelper.NormalizeVirtualKey(ruleVm.Rule.TriggerVirtualKey)}_{ruleVm.Rule.TriggerCtrl}_{ruleVm.Rule.TriggerAlt}_{ruleVm.Rule.TriggerShift}_{ruleVm.Rule.TriggerWin}";
                 var matchingGroup = groups.FirstOrDefault(g => g.Key == key);
                 if (matchingGroup != null && matchingGroup.Count() > 1)
                 {

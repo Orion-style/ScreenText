@@ -61,6 +61,58 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
 
     public string TriggerDisplay => VirtualKeyHelper.FormatKeyCombination(_triggerVk, _triggerCtrl, _triggerAlt, _triggerShift, _triggerWin);
 
+    public bool TriggerCtrl
+    {
+        get => _triggerCtrl;
+        set
+        {
+            if (SetProperty(ref _triggerCtrl, value))
+            {
+                OnPropertyChanged(nameof(TriggerDisplay));
+                Validate();
+            }
+        }
+    }
+
+    public bool TriggerAlt
+    {
+        get => _triggerAlt;
+        set
+        {
+            if (SetProperty(ref _triggerAlt, value))
+            {
+                OnPropertyChanged(nameof(TriggerDisplay));
+                Validate();
+            }
+        }
+    }
+
+    public bool TriggerShift
+    {
+        get => _triggerShift;
+        set
+        {
+            if (SetProperty(ref _triggerShift, value))
+            {
+                OnPropertyChanged(nameof(TriggerDisplay));
+                Validate();
+            }
+        }
+    }
+
+    public bool TriggerWin
+    {
+        get => _triggerWin;
+        set
+        {
+            if (SetProperty(ref _triggerWin, value))
+            {
+                OnPropertyChanged(nameof(TriggerDisplay));
+                Validate();
+            }
+        }
+    }
+
     public int ActionTypeIndex
     {
         get => _actionTypeIndex;
@@ -70,6 +122,7 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(IsTargetVisible));
                 OnPropertyChanged(nameof(IsComboModifiersVisible));
+                OnPropertyChanged(nameof(TargetDisplay));
                 Validate();
             }
         }
@@ -80,7 +133,7 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
 
     public string TargetDisplay => ActionTypeIndex switch
     {
-        2 => "Клавиша отключена (подавление)",
+        2 => "Клавиша или комбинация отключена (подавление)",
         1 => VirtualKeyHelper.FormatKeyCombination(_targetVk, _targetCtrl, _targetAlt, _targetShift, _targetWin),
         _ => VirtualKeyHelper.GetKeyName(_targetVk)
     };
@@ -175,6 +228,25 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
         _triggerShift = shift;
         _triggerWin = win;
 
+        OnPropertyChanged(nameof(TriggerCtrl));
+        OnPropertyChanged(nameof(TriggerAlt));
+        OnPropertyChanged(nameof(TriggerShift));
+        OnPropertyChanged(nameof(TriggerWin));
+        OnPropertyChanged(nameof(TriggerDisplay));
+        Validate();
+    }
+
+    public void SetTriggerModifiers(bool ctrl, bool alt, bool shift, bool win)
+    {
+        _triggerCtrl = ctrl;
+        _triggerAlt = alt;
+        _triggerShift = shift;
+        _triggerWin = win;
+
+        OnPropertyChanged(nameof(TriggerCtrl));
+        OnPropertyChanged(nameof(TriggerAlt));
+        OnPropertyChanged(nameof(TriggerShift));
+        OnPropertyChanged(nameof(TriggerWin));
         OnPropertyChanged(nameof(TriggerDisplay));
         Validate();
     }
@@ -182,12 +254,24 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
     public void SetTarget(int vk, bool ctrl, bool alt, bool shift, bool win)
     {
         _targetVk = vk;
-        if (ActionTypeIndex == 1)
+        if (ctrl || alt || shift || win)
         {
+            ActionTypeIndex = 1;
             _targetCtrl = ctrl;
             _targetAlt = alt;
             _targetShift = shift;
             _targetWin = win;
+            OnPropertyChanged(nameof(TargetCtrl));
+            OnPropertyChanged(nameof(TargetAlt));
+            OnPropertyChanged(nameof(TargetShift));
+            OnPropertyChanged(nameof(TargetWin));
+        }
+        else if (ActionTypeIndex == 1)
+        {
+            _targetCtrl = false;
+            _targetAlt = false;
+            _targetShift = false;
+            _targetWin = false;
             OnPropertyChanged(nameof(TargetCtrl));
             OnPropertyChanged(nameof(TargetAlt));
             OnPropertyChanged(nameof(TargetShift));
@@ -205,6 +289,22 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
         Validate();
     }
 
+    public void SetTargetModifiers(bool ctrl, bool alt, bool shift, bool win)
+    {
+        ActionTypeIndex = 1;
+        _targetCtrl = ctrl;
+        _targetAlt = alt;
+        _targetShift = shift;
+        _targetWin = win;
+
+        OnPropertyChanged(nameof(TargetCtrl));
+        OnPropertyChanged(nameof(TargetAlt));
+        OnPropertyChanged(nameof(TargetShift));
+        OnPropertyChanged(nameof(TargetWin));
+        OnPropertyChanged(nameof(TargetDisplay));
+        Validate();
+    }
+
     public bool Validate()
     {
         HasValidationError = false;
@@ -212,7 +312,7 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
 
         if (_triggerVk == 0)
         {
-            ValidationError = "Необходимо нажать и задать исходную клавишу.";
+            ValidationError = "Необходимо нажать и задать исходную клавишу или сочетание.";
             HasValidationError = true;
             return false;
         }

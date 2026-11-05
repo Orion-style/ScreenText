@@ -62,7 +62,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="Правила переназначения" FontWeight="Bold" FontSize="16" />
-                <TextBlock Text="Список активных замен и подавления клавиш" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+                <TextBlock Text="Список активных замен клавиш и комбинаций, а также их подавления" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
             </StackPanel>
             <ui:Button Grid.Column="1" 
                        Content="Добавить правило" 
@@ -82,7 +82,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="140" />
+                                <ColumnDefinition Width="Auto" MinWidth="130" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -90,8 +90,8 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
 
-                            <!-- Исходная клавиша -->
-                            <Border Grid.Column="0" Background="{DynamicResource CardStrokeColorDefaultBrush}" CornerRadius="4" Padding="8,4" HorizontalAlignment="Left">
+                            <!-- Исходная клавиша / комбинация -->
+                            <Border Grid.Column="0" Background="{DynamicResource CardStrokeColorDefaultBrush}" CornerRadius="4" Padding="10,5" HorizontalAlignment="Left" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding TriggerText}" FontWeight="Bold" Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                             </Border>
 
@@ -144,13 +144,9 @@
                 </Style>
             </Border.Style>
             <StackPanel HorizontalAlignment="Center">
-                <ui:SymbolIcon Symbol="Keyboard24" FontSize="36" HorizontalAlignment="Center" Foreground="{DynamicResource TextFillColorTertiaryBrush}" Margin="0,0,0,8" />
-                <TextBlock Text="Правила не настроены" FontWeight="SemiBold" HorizontalAlignment="Center" />
-                <TextBlock Text="Нажмите кнопку «Добавить правило», чтобы назначить замену или отключение клавиши." 
-                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                           HorizontalAlignment="Center" 
-                           TextAlignment="Center" 
-                           Margin="0,4,0,0" />
+                <ui:SymbolIcon Symbol="Keyboard24" FontSize="36" Foreground="{DynamicResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                <TextBlock Text="Нет активных правил переназначения" FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center" />
+                <TextBlock Text="Нажмите кнопку «Добавить правило», чтобы заменить клавишу или сочетание на другое действие" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" Margin="0,4,0,0" />
             </StackPanel>
         </Border>
     </StackPanel>

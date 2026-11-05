@@ -90,11 +90,47 @@ public static class VirtualKeyHelper
         return parts.Count > 0 ? string.Join(" + ", parts) : "Не назначено";
     }
 
+    public static bool IsControlKey(int vk)
+    {
+        return vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL;
+    }
+
+    public static bool IsAltKey(int vk)
+    {
+        return vk is VK_MENU or VK_LMENU or VK_RMENU;
+    }
+
+    public static bool IsShiftKey(int vk)
+    {
+        return vk is VK_SHIFT or VK_LSHIFT or VK_RSHIFT;
+    }
+
+    public static bool IsWinKey(int vk)
+    {
+        return vk is VK_LWIN or VK_RWIN;
+    }
+
     public static bool IsModifierKey(int vk)
     {
-        return vk is VK_CONTROL or VK_LCONTROL or VK_RCONTROL
-                  or VK_MENU or VK_LMENU or VK_RMENU
-                  or VK_SHIFT or VK_LSHIFT or VK_RSHIFT
-                  or VK_LWIN or VK_RWIN;
+        return IsControlKey(vk) || IsAltKey(vk) || IsShiftKey(vk) || IsWinKey(vk);
+    }
+
+    public static bool AreKeysEquivalent(int key1, int key2)
+    {
+        if (key1 == key2) return true;
+        if (IsControlKey(key1) && IsControlKey(key2)) return true;
+        if (IsAltKey(key1) && IsAltKey(key2)) return true;
+        if (IsShiftKey(key1) && IsShiftKey(key2)) return true;
+        if (IsWinKey(key1) && IsWinKey(key2)) return true;
+        return false;
+    }
+
+    public static int NormalizeVirtualKey(int vk)
+    {
+        if (IsControlKey(vk)) return VK_CONTROL;
+        if (IsAltKey(vk)) return VK_MENU;
+        if (IsShiftKey(vk)) return VK_SHIFT;
+        if (IsWinKey(vk)) return VK_LWIN;
+        return vk;
     }
 }
