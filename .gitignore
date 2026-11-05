@@ -5,3 +5,4 @@ publish/
 *.user
 *.suo
 plan.md
+build_output/

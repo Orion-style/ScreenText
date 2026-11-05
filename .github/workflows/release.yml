@@ -1,0 +1,70 @@
+name: Build & Publish Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-installer:
+    name: Build Windows Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup --no-progress
+          echo "C:\Program Files (x86)\Inno Setup 6" >> $env:GITHUB_PATH
+
+      - name: Restore dependencies
+        run: dotnet restore ZenithApp.sln
+
+      - name: Run Unit Tests
+        run: dotnet test ZenithApp.sln -c Release --no-restore --verbosity normal
+
+      - name: Publish self-contained application
+        run: |
+          dotnet publish ZenithApp/ZenithApp.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -o build_output
+
+      - name: Compile Inno Setup Installer
+        run: |
+          iscc installer/ZenithSetup.iss
+
+      - name: Generate SHA256 Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path Release -Filter "*.exe" | ForEach-Object {
+            $hash = (Get-FileHash -Path $_.FullName -Algorithm SHA256).Hash
+            "$hash  $($_.Name)" | Out-File -FilePath "Release/SHA256SUMS.txt" -Encoding utf8
+          }
+          Get-Content Release/SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: Zenith Utility ${{ github.ref_name }}
+          body_path: Release/RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          files: |
+            Release/ZenithSetup-*.exe
+            Release/SHA256SUMS.txt

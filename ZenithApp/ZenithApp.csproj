@@ -10,6 +10,14 @@
     <AssemblyName>ZenithApp</AssemblyName>
     <RootNamespace>ZenithApp</RootNamespace>
     <ApplicationIcon>Resources\app.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>Zenith Utility</Product>
+    <Company>Orion-style</Company>
+    <Authors>Orion-style</Authors>
+    <Description>Modern lightweight Windows productivity utility featuring OCR, Smart Links, QuickLook, SnapZones, and Key Remap.</Description>
+    <Copyright>Copyright © 2026 Orion-style</Copyright>
     
     <!-- Публикация -->
     <PublishSingleFile>true</PublishSingleFile>

@@ -1,161 +1,283 @@
-![WPF UI Banner Dark](https://user-images.githubusercontent.com/13592821/174165081-9c62d188-ecb6-4200-abd8-419afbaf32c2.png#gh-dark-mode-only)
-![WPF UI Banner Light](https://user-images.githubusercontent.com/13592821/174165388-921c4745-90ed-4396-9a4b-9c86478f7447.png#gh-light-mode-only)
+# Zenith Utility (ScreenText)
 
-# WPF UI
+<p align="center">
+  <img src="ZenithApp/Resources/app.png" alt="Zenith Logo" width="128" height="128">
+</p>
 
-[Created with ❤ in Poland by lepo.co](https://lepo.co/) and [wonderful open-source community](https://github.com/lepoco/wpfui/graphs/contributors)  
-WPF UI provides the Fluent experience in your known and loved WPF framework. Intuitive design, themes, navigation and new immersive controls. All natively and effortlessly. Library changes the base elements like `Page`, `ToggleButton` or `List`, and also includes additional controls like `Navigation`, `NumberBox`, `Dialog` or `Snackbar`.
+<p align="center">
+  <b>Modern, modular, and lightweight productivity utility for Windows 10 & 11</b><br>
+  Elevate your daily workflow: instant offline OCR & screen capture, macOS-style Quick Look on Spacebar, Always on Top window pinning, low-latency key remapping, and contextual smart suggestions.
+</p>
 
-[![Discord](https://img.shields.io/discord/1071051348348514375?label=discord)](https://discord.gg/AR9ywDUwGq) [![GitHub license](https://img.shields.io/github/license/lepoco/wpfui)](https://github.com/lepoco/wpfui/blob/master/LICENSE) [![Nuget](https://img.shields.io/nuget/v/WPF-UI)](https://www.nuget.org/packages/WPF-UI/) [![Nuget](https://img.shields.io/nuget/dt/WPF-UI?label=nuget)](https://www.nuget.org/packages/WPF-UI/)
+<p align="center">
+  <b>English</b> •
+  <a href="README.ru.md">Русский</a>
+</p>
 
-![ua](https://user-images.githubusercontent.com/13592821/184498735-d296feb8-0f9b-45df-bc0d-b7f0b6f580ed.png)
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20(x64)-0078D7?logo=windows" alt="Platform">
+  <img src="https://img.shields.io/badge/.NET-8.0%20LTS-512BD4?logo=dotnet" alt=".NET 8">
+  <img src="https://img.shields.io/badge/UI-WPF%20Fluent%20(Mica)-blue" alt="WPF UI">
+  <img src="https://img.shields.io/badge/Release-1.0.0-success" alt="Release">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+</p>
 
-### Deliver humanitarian aid directly to Ukraine.
+---
 
-https://bank.gov.ua/en/about/humanitarian-aid-to-ukraine
+## 📌 Table of Contents
 
-![ua](https://user-images.githubusercontent.com/13592821/184498735-d296feb8-0f9b-45df-bc0d-b7f0b6f580ed.png)
+- [Overview](#-overview)
+- [Key Features](#-key-features)
+  - [1. Smart Screenshot & Offline OCR](#1-smart-screenshot--offline-ocr)
+  - [2. Quick Look File Preview](#2-quick-look-file-preview)
+  - [3. SnapZones / Always on Top](#3-snapzones--always-on-top)
+  - [4. SmartLinks Contextual Helper](#4-smartlinks-contextual-helper)
+  - [5. Key Remap & Hotkey Automation](#5-key-remap--hotkey-automation)
+- [Default Hotkeys Reference](#-default-hotkeys-reference)
+- [Download & Installation](#-download--installation)
+  - [Windows Setup Installer](#windows-setup-installer)
+  - [Portable Edition](#portable-edition)
+  - [System Requirements](#system-requirements)
+- [Architecture & Performance](#-architecture--performance)
+- [Building from Source](#-building-from-source)
+- [Configuration & Storage](#-configuration--storage)
+- [Creating Custom Modules](#-creating-custom-modules)
+- [License & Acknowledgments](#-license--acknowledgments)
 
-## 🛟 Support plans
+---
 
-To ensure you receive the expert guidance you need, we offer a variety of support plans designed to meet the diverse needs of our community. Whether you are looking to modernize your WPF applications or need assistance with our other libraries, our tailored support solutions are here to help. From priority email support to 24/7 dedicated assistance, we provide flexible plans to suit your project requirements.
+## 💡 Overview
 
-[Take a look at the lepo.co support plans](https://lepo.co/support)
+**Zenith Utility** is a sleek, modular desktop utility for Windows designed to bring macOS-like conveniences and power-user tools into a single, cohesive experience. Running quietly in the system tray, Zenith delivers near-zero idle CPU and RAM footprint while processing everything locally on your machine with no external network requests.
 
-## 🤝 Help us keep working on this project
+### Core Philosophy
 
-Support the development of WPF UI and other innovative projects by becoming a sponsor on GitHub! Your monthly or one-time contributions help us continue to deliver high-quality, open-source solutions that empower developers worldwide.
+- ⚡ **Zero Inactive Overhead**: Unused modules are completely unloaded from memory along with their system hooks.
+- 🎨 **Windows 11 Native Aesthetics**: Fluent Design with Mica and Acrylic backdrops, and automatic dark/light theme switching.
+- 🔒 **100% Privacy & Offline**: Built on local Windows OCR APIs — zero cloud transmissions, zero telemetry.
+- 🛡️ **Robust Engineering**: Single-instance mutex with named pipe activation, atomic settings writes, and failsafe keyboard hooks.
 
-[Sponsor WPF UI on GitHub](https://github.com/sponsors/lepoco)
+---
 
-## 🚀 Getting started
+## ✨ Key Features
 
-For a starter guide see our [documentation](https://wpfui.lepo.co/documentation/).
+### 1. Smart Screenshot & Offline OCR
 
-**WPF UI Gallery** is a free application available in the _Microsoft Store_, with which you can test all functionalities.  
-https://apps.microsoft.com/store/detail/wpf-ui/9N9LKV8R9VGM?cid=windows-lp-hero
+Capture any screen region instantly and recognize text or scan QR codes in real time.
+
+- **Default Shortcuts**:
+  - `Ctrl + Shift + S` — Capture selected area directly to clipboard.
+  - `Ctrl + Shift + T` — Capture area and perform instant optical character recognition (OCR).
+- **Native Windows OCR**: High-accuracy offline recognition engine supporting English, Russian, and any language pack installed on your Windows system.
+- **Layout Reconstruction**: Automatically preserves paragraphs, column structure, and indentation.
+- **QR & Barcode Scanner**: Detects and decodes QR codes and barcodes inside captured regions.
+- **Interactive Toasts**: Clean Windows notifications with one-click actions to copy text or open detected URLs.
+- **Optional Auto-Save**: Automatically save captures to a folder of your choice in PNG format.
+
+### 2. Quick Look File Preview
+
+Enjoy fast, macOS-style file previews in Windows Explorer and Desktop with zero loading delay.
+
+- **How to Use**: Select any file in Windows Explorer or Desktop and press <kbd>Space</kbd>. Press <kbd>Space</kbd> or <kbd>Esc</kbd> again to dismiss.
+- **Supported Formats**:
+  - **Images**: `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`, `.ico`, `.tiff`.
+  - **Text & Source Code**: `.txt`, `.cs`, `.js`, `.ts`, `.json`, `.xml`, `.html`, `.css`, `.py`, `.md`, `.yaml`, `.log`, `.sql`, etc. with syntax highlighting and line numbers.
+  - **PDF Documents**: Fast native multi-page PDF rendering without heavy third-party readers.
+  - **Media**: Audio and video (`.mp4`, `.mkv`, `.avi`, `.mp3`, `.wav`) with an integrated player.
+- **Adaptive Centering**: Previews center smoothly on screen scaled proportionally to your active display.
+
+### 3. SnapZones / Always on Top
+
+Keep any active window floating on top of all others with a customizable visual accent border.
+
+- **Default Shortcut**: `Win + Ctrl + T`.
+- **Dynamic Accent Border**: A colored border securely tracks and wraps around the pinned window as you move or resize it.
+- **Auditory Feedback**: Subtle sound cues when toggling pin status.
+- **Exclusion Safeguard**: Automatically protects system windows (`explorer.exe`, `SearchHost`, Taskbar) from accidental pinning.
+
+### 4. SmartLinks Contextual Helper
+
+Floating helper analyzing recognized text or clipboard content for actionable information.
+
+- **Entity Recognition**: Automatically detects URLs, IP addresses, emails, color codes (HEX, RGB, HSL), and QR codes.
+- **Color Preview & Conversion**: Displays a live swatch chip for color codes and converts between formats.
+- **QR Generator**: Generates clean QR codes for any selected text or URL to scan on mobile devices.
+
+### 5. Key Remap & Hotkey Automation
+
+Low-level keyboard hook (`WH_KEYBOARD_LL`) providing system-wide key remapping and hotkey workflows.
+
+- **Flexible Rules**: Remap keys, map key combinations to macros, and handle non-standard layouts.
+- **Emergency Escape (`Ctrl + Shift + Esc` held for 1.5s)**: Instantly halts active remapping in the event of accidental key locks or recursion.
+
+---
+
+## ⌨️ Default Hotkeys Reference
+
+| Action | Shortcut | Customizable | Description |
+| :--- | :---: | :---: | :--- |
+| **Capture Area** | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Yes | Takes screenshot to clipboard |
+| **Capture + OCR** | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>T</kbd> | Yes | Recognizes text & QR codes to clipboard |
+| **Quick Look** | <kbd>Space</kbd> | Yes | Previews selected file in Windows Explorer |
+| **Pin Window (Top)** | <kbd>Win</kbd> + <kbd>Ctrl</kbd> + <kbd>T</kbd> | Yes | Pins window with visual accent border |
+| **Emergency Halt** | <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Esc</kbd> | Yes | Hold 1.5s to suspend key remapping |
+| **Settings Window** | Double-click tray icon | — | Opens the configuration UI |
+
+*All shortcuts can be modified in the Zenith Settings panel.*
+
+---
+
+## 📦 Download & Installation
+
+Pre-built binaries are available in [GitHub Releases](https://github.com/Orion-style/ScreenText/releases) and in the local repository [`Release/`](./Release/) folder.
+
+### Windows Setup Installer
+
+The official Windows installer `ZenithSetup-1.0.0-x64.exe` is powered by Inno Setup:
+
+- 🌐 **Multilingual Wizard**: Complete English and Russian installer UI.
+- 👤 **Non-Admin Installation**: Installs cleanly per-user into `%LocalAppData%\Programs\Zenith Utility` without UAC prompts, or machine-wide into `Program Files` when elevated.
+- 🖥️ **Shortcuts & Autostart**: Optional Desktop icon, Start Menu shortcut, and automatic Windows startup.
+- 🔄 **Smart Process Closure**: Detects running instances and offers to shut them down cleanly before upgrade or uninstall.
+- 🧹 **Clean Removal**: Integrates with Windows "Installed Apps" / "Programs & Features" for spotless uninstallation.
+
+#### Silent Installation Flags (for System Administrators)
 
 ```powershell
-$ winget install 'WPF UI'
+# Unattended silent installation with Desktop icon and Windows startup enabled
+.\ZenithSetup-1.0.0-x64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /TASKS="desktopicon,autostart"
 ```
 
-**WPF UI** is delivered via **NuGet** package manager. You can find the package here:  
-https://www.nuget.org/packages/wpf-ui/
+### Portable Edition
 
-**Visual Studio**  
-The plugin for **Visual Studio 2022** let you easily create new projects using **WPF UI**.  
-https://marketplace.visualstudio.com/items?itemName=lepo.wpf-ui
+A self-contained single-file executable `ZenithApp.exe` is also available for portable use. No installation or registry changes are required: simply run it from any folder or a flash drive.
 
-## 📷 Screenshots
+### System Requirements
 
-![Demo App Sample](https://user-images.githubusercontent.com/13592821/166259110-0fb98120-fe34-4e6d-ab92-9f72ad7113c3.png)
+- **Operating System**: Windows 10 (version 2004 / build 19041 or higher) or Windows 11.
+- **Architecture**: 64-bit (x64 / AMD64).
+- **Runtime**: Self-contained (no external .NET installation required).
 
-![Monaco Editor](https://user-images.githubusercontent.com/13592821/258610583-7d71f69d-45b3-4be6-bcb8-8cf6cd60a2ff.png)
+---
 
-![Store App Sample](https://user-images.githubusercontent.com/13592821/165918914-6948fb42-1ee1-4c36-870e-65bb8ffe3c8a.png)
+## 🏗️ Architecture & Performance
 
-## 🏗️ Works with Visual Studio Designer
+Zenith is organized with clean separation of concerns and modular lifecycle management:
 
-![VS2022 Designer Preview](https://user-images.githubusercontent.com/13592821/165919228-0aa3a36c-fb37-4198-835e-53488845226c.png)
-
-## ❤️ Custom Tray icon and menu in pure WPF
-
-![WPF UI Tray menu in WPF](https://user-images.githubusercontent.com/13592821/166259470-2d48a88e-47ce-4f8f-8f07-c9b110de64a5.png)
-
-## ⚓ Custom Windows 11 SnapLayout available for TitleBar.
-
-![WPF UI Snap Layout for WPF](https://user-images.githubusercontent.com/13592821/166259869-e60d37e4-ded4-46bf-80d9-f92c47266f34.png)
-
-## 📖 Documentation
-
-Documentation can be found at https://wpfui.lepo.co/. We also have a [tutorial](#-getting-started) over there for newcomers.
-
-## 🚧 Development
-
-If you want to propose a new functionality or submit a bugfix, create a [Pull Request](https://github.com/lepoco/wpfui/compare/main...main) for the branch [main](https://github.com/lepoco/wpfui/tree/main).
-
-## 📐 How to use?
-
-First, your application needs to load custom styles, add in the **MyApp\App.xaml** file:
-
-```xml
-<Application
-  ...
-  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-  <Application.Resources>
-    <ResourceDictionary>
-      <ResourceDictionary.MergedDictionaries>
-        <ui:ThemesDictionary Theme="Dark" />
-        <ui:ControlsDictionary />
-      </ResourceDictionary.MergedDictionaries>
-    </ResourceDictionary>
-  </Application.Resources>
-</Application>
+```
+ScreenText\
+├── ZenithApp\                  # Main WPF Application
+│   ├── Core\                   # System-level infrastructure
+│   │   ├── Hotkeys\            # Low-latency Win32 message-only hotkey engine
+│   │   ├── Lifecycle\          # SingleInstanceService (Named Mutex + IPC Pipe)
+│   │   ├── Logging\            # Lightweight file logger with date rotation
+│   │   ├── Modules\            # BaseFeatureModule, ModuleManager
+│   │   ├── Settings\           # Atomic JSON configuration store
+│   │   └── Startup\            # Windows HKCU Run registry service
+│   ├── Modules\                # Standalone feature modules
+│   │   ├── Screenshot\         # Screen capture, Windows OCR, QR engine
+│   │   ├── QuickLook\          # Spacebar file preview & Shell integration
+│   │   ├── SnapZones\          # Window pin engine with accent overlay
+│   │   ├── SmartLinks\         # Contextual link and color parser
+│   │   └── KeyRemap\           # Low-level keyboard hook remapper
+│   ├── Resources\              # Vector icons, dictionaries & assets
+│   └── UI\                     # Views & ViewModels (WPF UI, Fluent Mica)
+│
+├── ZenithApp.Tests\            # Unit and lifecycle tests (xUnit)
+├── installer\                  # Inno Setup configuration scripts
+├── scripts\                    # Automated build and release scripts
+└── Release\                    # Packaged installers and checksums
 ```
 
-If your application does not have **MyApp\App.xaml** file, use `ApplicationThemeManager.Apply(frameworkElement)` to apply/update the theme resource in the `frameworkElement`.
+### Zero-Cost Inactive Modules
+Each feature module extends `BaseFeatureModule`. When disabled in Settings:
+1. Global keyboard and mouse hooks are unregistered.
+2. Overlay windows and cached visual resources are destroyed.
+3. Garbage collection cleans up all unmanaged handles.
 
-```C#
-public partial class MainWindow
-{
-    public MainWindow()
-    {
-        InitializeComponent();
-        ApplicationThemeManager.Apply(this);
-    }
-}
+---
+
+## 🛠️ Building from Source
+
+### Prerequisites
+
+1. [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+2. [Inno Setup 6](https://jrsoftware.org/isdl.php) (for compiling the installer)
+3. Git
+
+### Build Instructions
+
+```powershell
+# 1. Clone the repository
+git clone https://github.com/Orion-style/ScreenText.git
+cd ScreenText
+
+# 2. Build solution and execute tests
+dotnet build ZenithApp.sln -c Release
+dotnet test ZenithApp.sln -c Release
+
+# 3. Publish self-contained executable
+dotnet publish ZenithApp\ZenithApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o build_output
+
+# 4. Compile the Windows Installer
+powershell -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1
 ```
 
-Now you can create fantastic apps, e.g. with one button:
+The resulting setup wizard will be created in `Release\ZenithSetup-1.0.0-x64.exe`.
 
-```xml
-<ui:FluentWindow
-  ...
-  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml">
-  <StackPanel>
-      <ui:TitleBar Title="WPF UI"/>
-      <ui:Card Margin="8">
-          <ui:Button Content="Hello World" Icon="{ui:SymbolIcon Fluent24}" />
-      </ui:Card>
-  </StackPanel>
-</ui:FluentWindow>
-```
+---
 
-## Special thanks
+## ⚙️ Configuration & Storage
 
-Crafting apps for .NET without the creators of tools like ReSharper or XAML Styler would never be such a fantastic adventure.
+Configuration files are stored in standard Windows application folders:
 
-- [🔗 JetBrains ReSharper](https://www.jetbrains.com/resharper/)
-- [🔗 XAML Styler](https://github.com/Xavalon/XamlStyler)
+- **Settings File**: `%AppData%\ZenithApp\settings.json`
+- **Application Logs**: `%AppData%\ZenithApp\Logs\app-YYYYMMDD.log`
 
-JetBrains was kind enough to lend a license for the open-source **dotUltimate** for WPF UI development. Learn more here:
+Writes are performed atomically using safe temporary swap files to safeguard against power interruptions or unexpected process terminations.
 
-- https://www.jetbrains.com/dotnet/
-- https://www.jetbrains.com/opensource/
+---
 
-## Microsoft Property
+## 🧩 Creating Custom Modules
 
-Design of the interface, choice of colors and the appearance of the controls were inspired by projects made by Microsoft for Windows 11.  
-The Wpf.Ui.Gallery app includes icons from _Microsoft WinUI 3 Gallery_ app. They are used here as an example of creating tools for Microsoft systems.
+Zenith makes adding new capabilities simple:
 
-## Segoe Fluent Icons
+1. Create a class inheriting from `BaseFeatureModule`:
+   ```csharp
+   public sealed class MyFeatureModule : BaseFeatureModule
+   {
+       public override string Id => "my_feature";
+       public override string Name => "My Feature Module";
+       public override string Description => "Brief description of the feature.";
 
-**WPF UI** uses Fluent System Icons. Although this font was also created by Microsoft, it does not contain all the icons for Windows 11. If you need the missing icons, add Segoe Fluent Icons to your application.  
-According to the EULA of Segoe Fluent Icons we cannot ship a copy of it with this dll. Segoe Fluent Icons is installed by default on Windows 11, but if you want these icons in an application for Windows 10 and below, you must manually add the font to your application's resources.  
-[https://docs.microsoft.com/en-us/windows/apps/design/style/segoe-fluent-icons-font](https://docs.microsoft.com/en-us/windows/apps/design/style/segoe-fluent-icons-font)  
-[https://docs.microsoft.com/en-us/windows/apps/design/downloads/#fonts](https://docs.microsoft.com/en-us/windows/apps/design/downloads/#fonts)
+       public MyFeatureModule(IAppLogger logger) : base(logger) { }
 
-In the app dictionaries, you can add an alternate path to the font
+       protected override Task OnEnableAsync()
+       {
+           Logger.LogInfo("Module activated!");
+           return Task.CompletedTask;
+       }
 
-```XML
-<FontFamily x:Key="SegoeFluentIcons">pack://application:,,,/;component/Fonts/#Segoe Fluent Icons</FontFamily>
-```
+       protected override Task OnDisableAsync()
+       {
+           Logger.LogInfo("Module deactivated!");
+           return Task.CompletedTask;
+       }
+   }
+   ```
+2. Register the module in `ConfigureServices` within `App.xaml.cs`:
+   ```csharp
+   services.AddSingleton<IFeatureModule, MyFeatureModule>();
+   ```
+3. The new module will instantly appear in the Settings window with full persistence support.
 
-## Code of Conduct
+---
 
-This project has adopted the code of conduct defined by the Contributor Covenant to clarify expected behavior in our community.
+## 📄 License & Acknowledgments
 
-## License
+This project is licensed under the [MIT License](LICENSE).
 
-**WPF UI** is free and open source software licensed under **MIT License**. You can use it in private and commercial projects.  
-Keep in mind that you must include a copy of the license in your project.
+### Third-Party Libraries
+- [WPF-UI](https://github.com/lepoco/wpfui) — Modern Fluent Design UI controls for WPF.
+- [ZXing.Net](https://github.com/micjahn/ZXing.Net) — Multi-format 1D/2D barcode and QR image processing library.
+- [Microsoft.Windows.SDK.NET](https://github.com/microsoft/CsWinRT) — Windows Runtime APIs for OCR and display integration.
