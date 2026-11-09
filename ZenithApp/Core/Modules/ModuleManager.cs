@@ -37,7 +37,8 @@ public sealed class ModuleManager : IDisposable
         foreach (var module in _modules.Values)
         {
             var isDefaultOn = string.Equals(module.Id, "screenshot", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(module.Id, "smart_links", StringComparison.OrdinalIgnoreCase);
+                              string.Equals(module.Id, "smart_links", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(module.Id, "radial_switcher", StringComparison.OrdinalIgnoreCase);
 
             var shouldEnable = _settingsService.Current.IsModuleEnabled(module.Id, defaultValue: isDefaultOn);
             if (shouldEnable)

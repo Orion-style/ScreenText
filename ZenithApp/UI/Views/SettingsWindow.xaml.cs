@@ -48,71 +48,50 @@ public partial class SettingsWindow : FluentWindow
             TxtModuleDesc.Text = moduleVm.Description;
             UpdateModuleSwitchState();
 
+            HideAllConfigContainers();
+
             if (moduleVm.Id == ZenithApp.Modules.Screenshot.ScreenshotModule.ModuleId)
             {
                 ScreenshotConfigContainer.Visibility = Visibility.Visible;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else if (moduleVm.Id == ZenithApp.Modules.SmartLinks.SmartLinksModule.ModuleId)
             {
                 _viewModel.SmartLinksSettings?.RefreshState();
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
                 SmartLinksConfigContainer.Visibility = Visibility.Visible;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else if (moduleVm.Id == ZenithApp.Modules.KeyRemap.KeyRemapModule.ModuleId)
             {
                 _viewModel.KeyRemapSettings?.ValidateConflicts();
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
                 KeyRemapConfigContainer.Visibility = Visibility.Visible;
-                QuickLookConfigContainer.Visibility = Visibility.Collapsed;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else if (moduleVm.Id == ZenithApp.Modules.QuickLook.QuickLookModule.ModuleId)
             {
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
                 QuickLookConfigContainer.Visibility = Visibility.Visible;
-                SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
-                RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else if (moduleVm.Id == ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule.ModuleId)
             {
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                QuickLookConfigContainer.Visibility = Visibility.Collapsed;
-                SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
-                RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
                 RadialSwitcherConfigContainer.Visibility = Visibility.Visible;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else if (moduleVm.Id == ZenithApp.Modules.SnapZones.SnapZonesModule.ModuleId)
             {
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                QuickLookConfigContainer.Visibility = Visibility.Collapsed;
                 SnapZonesConfigContainer.Visibility = Visibility.Visible;
-                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else
             {
-                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
-                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
-                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
-                QuickLookConfigContainer.Visibility = Visibility.Collapsed;
-                SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
-                RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
             }
         }
+    }
+
+    private void HideAllConfigContainers()
+    {
+        ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
+        SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
+        KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
+        QuickLookConfigContainer.Visibility = Visibility.Collapsed;
+        SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
+        RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
+        CardConfigPlaceholder.Visibility = Visibility.Collapsed;
     }
 
     private void OnModuleToggleClicked(object sender, RoutedEventArgs e)

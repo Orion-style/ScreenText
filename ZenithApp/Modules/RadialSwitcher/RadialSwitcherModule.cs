@@ -37,8 +37,8 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
     }
 
     public override string Id => ModuleId;
-    public override string Name => "Круговое меню переключения окон (Radial Switcher)";
-    public override string Description => "Круговое меню быстрого переключения окон и приложений при зажатии клавиши Tab в стиле Genshin Impact.";
+    public override string Name => "Перемещение и переключение окон (Колесо Tab)";
+    public override string Description => "Круговое радиальное меню быстрого переключения и перемещения между окнами при зажатии клавиши Tab в стиле селектора Genshin Impact с настройкой секторов и зон.";
 
     protected override Task OnEnableAsync()
     {
