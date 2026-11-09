@@ -11,7 +11,11 @@ public sealed class AppSettings
 {
     public bool StartWithWindows { get; set; } = false;
     public AppThemeMode Theme { get; set; } = AppThemeMode.System;
-    public Dictionary<string, bool> EnabledModules { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, bool> EnabledModules { get; set; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["screenshot"] = true,
+        ["smart_links"] = true
+    };
     public ZenithApp.Modules.Screenshot.ScreenshotSettings Screenshot { get; set; } = new();
     public ZenithApp.Modules.SmartLinks.SmartLinksSettings SmartLinks { get; set; } = new();
     public ZenithApp.Modules.KeyRemap.KeyRemapSettings KeyRemap { get; set; } = new();
@@ -20,7 +24,19 @@ public sealed class AppSettings
 
     public bool IsModuleEnabled(string moduleId, bool defaultValue = false)
     {
-        return EnabledModules.TryGetValue(moduleId, out var enabled) ? enabled : defaultValue;
+        if (EnabledModules.TryGetValue(moduleId, out var enabled))
+        {
+            return enabled;
+        }
+
+        // По умолчанию базовые модули скриншота и подсказок включены
+        if (string.Equals(moduleId, "screenshot", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(moduleId, "smart_links", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return defaultValue;
     }
 
     public void SetModuleEnabled(string moduleId, bool enabled)

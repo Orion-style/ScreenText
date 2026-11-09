@@ -36,7 +36,10 @@ public sealed class ModuleManager : IDisposable
 
         foreach (var module in _modules.Values)
         {
-            var shouldEnable = _settingsService.Current.IsModuleEnabled(module.Id, defaultValue: false);
+            var isDefaultOn = string.Equals(module.Id, "screenshot", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(module.Id, "smart_links", StringComparison.OrdinalIgnoreCase);
+
+            var shouldEnable = _settingsService.Current.IsModuleEnabled(module.Id, defaultValue: isDefaultOn);
             if (shouldEnable)
             {
                 var success = await module.EnableAsync();
