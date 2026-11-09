@@ -85,8 +85,8 @@ Source: "..\README.ru.md"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 ; Start Menu and Desktop shortcuts
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
+Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "Zenith.Utility"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"; AppUserModelID: "Zenith.Utility"
 
 [Registry]
 ; Optional autorun in HKCU Run registry

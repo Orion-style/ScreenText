@@ -29,6 +29,16 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Регистрация AppUserModelID для нативной интеграции с Центром уведомлений Windows (Action Center)
+        try
+        {
+            SetCurrentProcessExplicitAppUserModelID(NotificationToast.AppUserModelId);
+        }
+        catch
+        {
+            // Не критично при запуске на неподдерживаемых платформах
+        }
+
         // 1. Инициализация DI-контейнера
         var services = new ServiceCollection();
         ConfigureServices(services);
@@ -180,6 +190,9 @@ public partial class App : Application
             // Optional win32 memory compaction
         }
     }
+
+    [System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern int SetCurrentProcessExplicitAppUserModelID([System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] string AppID);
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll")]
     private static extern bool SetProcessWorkingSetSize(IntPtr proc, int min, int max);

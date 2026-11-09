@@ -1,3 +1,5 @@
+using System.IO;
+using System.Security;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -5,6 +7,8 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
 using System.Windows.Shapes;
 using System.Windows.Threading;
+using Windows.Data.Xml.Dom;
+using Windows.UI.Notifications;
 
 namespace ZenithApp.Modules.Screenshot;
 
@@ -17,7 +21,77 @@ public enum ToastNotificationType
 
 public static class NotificationToast
 {
+    public const string AppUserModelId = "Zenith.Utility";
+
     public static void Show(string message, string? title = null, ToastNotificationType type = ToastNotificationType.Success, int durationSeconds = 3)
+    {
+        if (string.IsNullOrWhiteSpace(message)) return;
+
+        // 1. Попытка отправить нативный тост Windows (попадает в системный трей / Центр уведомлений)
+        try
+        {
+            if (TryShowNativeToast(message, title, type, durationSeconds))
+            {
+                return;
+            }
+        }
+        catch
+        {
+            // В случае отсутствия поддержки или сбоя переходим к аккуратному запасному WPF тосту
+        }
+
+        // 2. Резервный показ элегантного компактного всплывающего окна WPF
+        ShowFallbackToast(message, title, type, durationSeconds);
+    }
+
+    private static bool TryShowNativeToast(string message, string? title, ToastNotificationType type, int durationSeconds)
+    {
+        var resolvedTitle = !string.IsNullOrWhiteSpace(title)
+            ? title
+            : (type switch
+            {
+                ToastNotificationType.Error => "Zenith — Ошибка",
+                ToastNotificationType.Info => "Zenith — Информация",
+                _ => "Zenith Utility"
+            });
+
+        var safeTitle = SecurityElement.Escape(resolvedTitle);
+        var safeMessage = SecurityElement.Escape(message);
+
+        // Иконка приложения для отображения в системном уведомлении
+        string iconNode = string.Empty;
+        var iconPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "app.png");
+        if (File.Exists(iconPath))
+        {
+            var uriFormatted = "file:///" + iconPath.Replace('\\', '/');
+            iconNode = $"<image placement=\"appLogoOverride\" hint-crop=\"circle\" src=\"{SecurityElement.Escape(uriFormatted)}\"/>";
+        }
+
+        var xmlString = $@"
+<toast duration=""{(durationSeconds > 5 ? "long" : "short")}"">
+    <visual>
+        <binding template=""ToastGeneric"">
+            <text hint-maxLines=""1"">{safeTitle}</text>
+            <text>{safeMessage}</text>
+            {iconNode}
+        </binding>
+    </visual>
+</toast>";
+
+        var xmlDoc = new XmlDocument();
+        xmlDoc.LoadXml(xmlString);
+
+        var toast = new ToastNotification(xmlDoc)
+        {
+            ExpirationTime = DateTimeOffset.Now.AddSeconds(Math.Max(5, durationSeconds * 2))
+        };
+
+        var notifier = ToastNotificationManager.CreateToastNotifier(AppUserModelId);
+        notifier.Show(toast);
+        return true;
+    }
+
+    private static void ShowFallbackToast(string message, string? title, ToastNotificationType type, int durationSeconds)
     {
         Application.Current?.Dispatcher.Invoke(() =>
         {
@@ -34,16 +108,16 @@ public static class NotificationToast
 
             var outerBorder = new Border
             {
-                Background = new SolidColorBrush(Color.FromArgb(240, 26, 26, 26)),
-                BorderBrush = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)),
+                Background = new SolidColorBrush(Color.FromArgb(235, 30, 30, 34)),
+                BorderBrush = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)),
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(12, 10, 14, 10),
-                Margin = new Thickness(12),
+                Padding = new Thickness(12, 10, 16, 10),
+                Margin = new Thickness(14),
                 Effect = new DropShadowEffect
                 {
                     BlurRadius = 14,
-                    Opacity = 0.45,
+                    Opacity = 0.35,
                     ShadowDepth = 2,
                     Color = Colors.Black
                 }
@@ -53,7 +127,6 @@ public static class NotificationToast
             mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             mainGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-            // Иконка статуса (галочка, крестик или инфо)
             var iconContainer = CreateStatusIcon(type);
             Grid.SetColumn(iconContainer, 0);
             mainGrid.Children.Add(iconContainer);
@@ -61,7 +134,7 @@ public static class NotificationToast
             var textStack = new StackPanel
             {
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 280,
+                MaxWidth = 300,
                 Margin = new Thickness(10, 0, 0, 0)
             };
 
@@ -71,7 +144,7 @@ public static class NotificationToast
                 {
                     Text = title,
                     FontWeight = FontWeights.SemiBold,
-                    FontSize = 12.5,
+                    FontSize = 12,
                     Foreground = Brushes.White,
                     Margin = new Thickness(0, 0, 0, 2),
                     TextTrimming = TextTrimming.CharacterEllipsis
@@ -81,8 +154,8 @@ public static class NotificationToast
             textStack.Children.Add(new TextBlock
             {
                 Text = message,
-                FontSize = 12,
-                Foreground = new SolidColorBrush(Color.FromArgb(215, 255, 255, 255)),
+                FontSize = 11.5,
+                Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
                 TextWrapping = TextWrapping.Wrap,
                 MaxHeight = 60,
                 TextTrimming = TextTrimming.CharacterEllipsis
@@ -97,14 +170,14 @@ public static class NotificationToast
             var primaryArea = SystemParameters.WorkArea;
             window.Loaded += (_, _) =>
             {
-                window.Left = primaryArea.Right - window.ActualWidth - 16;
-                window.Top = primaryArea.Bottom - window.ActualHeight - 16;
+                window.Left = primaryArea.Right - window.ActualWidth - 12;
+                window.Top = primaryArea.Bottom - window.ActualHeight - 12;
 
                 var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(durationSeconds) };
                 timer.Tick += (s, ev) =>
                 {
                     timer.Stop();
-                    var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(250));
+                    var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(200));
                     fadeOut.Completed += (s2, ev2) => window.Close();
                     window.BeginAnimation(UIElement.OpacityProperty, fadeOut);
                 };
@@ -119,8 +192,8 @@ public static class NotificationToast
     {
         var container = new Grid
         {
-            Width = 26,
-            Height = 26,
+            Width = 24,
+            Height = 24,
             VerticalAlignment = VerticalAlignment.Center
         };
 
@@ -134,12 +207,11 @@ public static class NotificationToast
                 circle.StrokeThickness = 1.5;
                 container.Children.Add(circle);
 
-                // Галочка
-                var checkmark = new Path
+                var checkmark = new System.Windows.Shapes.Path
                 {
-                    Data = Geometry.Parse("M 7 13 L 11 17 L 19 9"),
+                    Data = Geometry.Parse("M 7 12 L 10.5 15.5 L 17 8.5"),
                     Stroke = new SolidColorBrush(Color.FromRgb(16, 185, 129)),
-                    StrokeThickness = 2,
+                    StrokeThickness = 1.8,
                     StrokeStartLineCap = PenLineCap.Round,
                     StrokeEndLineCap = PenLineCap.Round,
                     StrokeLineJoin = PenLineJoin.Round,
@@ -155,16 +227,15 @@ public static class NotificationToast
                 circle.StrokeThickness = 1.5;
                 container.Children.Add(circle);
 
-                // Крестик
                 var crossGroup = new GeometryGroup();
-                crossGroup.Children.Add(new LineGeometry(new Point(8, 8), new Point(18, 18)));
-                crossGroup.Children.Add(new LineGeometry(new Point(18, 8), new Point(8, 18)));
+                crossGroup.Children.Add(new LineGeometry(new Point(7, 7), new Point(17, 17)));
+                crossGroup.Children.Add(new LineGeometry(new Point(17, 7), new Point(7, 17)));
 
-                var cross = new Path
+                var cross = new System.Windows.Shapes.Path
                 {
                     Data = crossGroup,
                     Stroke = new SolidColorBrush(Color.FromRgb(239, 68, 68)),
-                    StrokeThickness = 2,
+                    StrokeThickness = 1.8,
                     StrokeStartLineCap = PenLineCap.Round,
                     StrokeEndLineCap = PenLineCap.Round,
                     HorizontalAlignment = HorizontalAlignment.Center,
@@ -185,7 +256,7 @@ public static class NotificationToast
                     Text = "i",
                     FontFamily = new FontFamily("Georgia, Times New Roman, serif"),
                     FontWeight = FontWeights.Bold,
-                    FontSize = 13,
+                    FontSize = 12,
                     Foreground = new SolidColorBrush(Color.FromRgb(59, 130, 246)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
