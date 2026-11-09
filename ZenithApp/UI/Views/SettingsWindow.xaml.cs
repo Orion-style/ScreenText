@@ -79,6 +79,18 @@ public partial class SettingsWindow : FluentWindow
                 KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
                 QuickLookConfigContainer.Visibility = Visibility.Visible;
                 SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
+                RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
+                CardConfigPlaceholder.Visibility = Visibility.Collapsed;
+            }
+            else if (moduleVm.Id == ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule.ModuleId)
+            {
+                ScreenshotConfigContainer.Visibility = Visibility.Collapsed;
+                SmartLinksConfigContainer.Visibility = Visibility.Collapsed;
+                KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
+                QuickLookConfigContainer.Visibility = Visibility.Collapsed;
+                SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
+                RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
+                RadialSwitcherConfigContainer.Visibility = Visibility.Visible;
                 CardConfigPlaceholder.Visibility = Visibility.Collapsed;
             }
             else if (moduleVm.Id == ZenithApp.Modules.SnapZones.SnapZonesModule.ModuleId)
@@ -97,6 +109,7 @@ public partial class SettingsWindow : FluentWindow
                 KeyRemapConfigContainer.Visibility = Visibility.Collapsed;
                 QuickLookConfigContainer.Visibility = Visibility.Collapsed;
                 SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
+                RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
             }
         }

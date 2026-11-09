@@ -25,6 +25,7 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly KeyRemapModule? _keyRemapModule;
     private readonly QuickLookModule? _quickLookModule;
     private readonly SnapZonesModule? _snapZonesModule;
+    private readonly ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? _radialSwitcherModule;
 
     private bool _startWithWindows;
     private int _selectedThemeIndex; // 0 = System, 1 = Light, 2 = Dark
@@ -38,7 +39,8 @@ public sealed class SettingsViewModel : ViewModelBase
         SmartLinksModule? smartLinksModule = null,
         KeyRemapModule? keyRemapModule = null,
         QuickLookModule? quickLookModule = null,
-        SnapZonesModule? snapZonesModule = null)
+        SnapZonesModule? snapZonesModule = null,
+        ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? radialSwitcherModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -48,6 +50,7 @@ public sealed class SettingsViewModel : ViewModelBase
         _keyRemapModule = keyRemapModule;
         _quickLookModule = quickLookModule;
         _snapZonesModule = snapZonesModule;
+        _radialSwitcherModule = radialSwitcherModule;
 
         _startWithWindows = _settingsService.Current.StartWithWindows;
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
@@ -81,6 +84,11 @@ public sealed class SettingsViewModel : ViewModelBase
             SnapZonesSettings = new SnapZonesSettingsViewModel(_snapZonesModule, _settingsService);
         }
 
+        if (_radialSwitcherModule != null)
+        {
+            RadialSwitcherSettings = new ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettingsViewModel(_radialSwitcherModule, _settingsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
     }
 
@@ -89,6 +97,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public KeyRemapSettingsViewModel? KeyRemapSettings { get; }
     public QuickLookSettingsViewModel? QuickLookSettings { get; }
     public SnapZonesSettingsViewModel? SnapZonesSettings { get; }
+    public ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettingsViewModel? RadialSwitcherSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 

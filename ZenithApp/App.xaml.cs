@@ -124,6 +124,8 @@ public partial class App : Application
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<QuickLookModule>());
         services.AddSingleton<SnapZonesModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<SnapZonesModule>());
+        services.AddSingleton<ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule>());
 
         // Module Manager
         services.AddSingleton<ModuleManager>();

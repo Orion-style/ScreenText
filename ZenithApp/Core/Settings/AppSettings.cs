@@ -14,13 +14,15 @@ public sealed class AppSettings
     public Dictionary<string, bool> EnabledModules { get; set; } = new(StringComparer.OrdinalIgnoreCase)
     {
         ["screenshot"] = true,
-        ["smart_links"] = true
+        ["smart_links"] = true,
+        ["radial_switcher"] = true
     };
     public ZenithApp.Modules.Screenshot.ScreenshotSettings Screenshot { get; set; } = new();
     public ZenithApp.Modules.SmartLinks.SmartLinksSettings SmartLinks { get; set; } = new();
     public ZenithApp.Modules.KeyRemap.KeyRemapSettings KeyRemap { get; set; } = new();
     public ZenithApp.Modules.QuickLook.QuickLookSettings QuickLook { get; set; } = new();
     public ZenithApp.Modules.SnapZones.SnapZonesSettings SnapZones { get; set; } = new();
+    public ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettings RadialSwitcher { get; set; } = new();
 
     public bool IsModuleEnabled(string moduleId, bool defaultValue = false)
     {
@@ -29,9 +31,10 @@ public sealed class AppSettings
             return enabled;
         }
 
-        // По умолчанию базовые модули скриншота и подсказок включены
+        // По умолчанию базовые модули включены
         if (string.Equals(moduleId, "screenshot", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(moduleId, "smart_links", StringComparison.OrdinalIgnoreCase))
+            string.Equals(moduleId, "smart_links", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(moduleId, "radial_switcher", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }
