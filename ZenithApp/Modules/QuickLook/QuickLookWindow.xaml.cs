@@ -114,6 +114,9 @@ public partial class QuickLookWindow : Window
                 case QuickLookContentType.Audio:
                     LoadMediaPreview(isVideo: false);
                     break;
+                case QuickLookContentType.Archive:
+                    await LoadArchivePreviewAsync();
+                    break;
                 case QuickLookContentType.Text:
                     await LoadTextPreviewAsync();
                     break;
@@ -509,6 +512,56 @@ public partial class QuickLookWindow : Window
             // Free working set
             GC.Collect();
         }
+    }
+
+    private async Task LoadArchivePreviewAsync()
+    {
+        try
+        {
+            var entries = await Task.Run(() =>
+            {
+                using var archive = System.IO.Compression.ZipFile.OpenRead(_filePath);
+                var list = new List<ArchiveEntryItem>();
+                long totalUncompressed = 0;
+                long totalCompressed = 0;
+
+                foreach (var entry in archive.Entries)
+                {
+                    totalUncompressed += entry.Length;
+                    totalCompressed += entry.CompressedLength;
+
+                    list.Add(new ArchiveEntryItem
+                    {
+                        FullName = entry.FullName,
+                        FormattedSize = FormatFileSize(entry.Length),
+                        FormattedCompressedSize = FormatFileSize(entry.CompressedLength),
+                        FormattedDateTime = entry.LastWriteTime.LocalDateTime.ToString("dd.MM.yyyy HH:mm")
+                    });
+                }
+
+                double ratio = totalUncompressed > 0 ? (1.0 - ((double)totalCompressed / totalUncompressed)) * 100.0 : 0;
+                return (Items: list, TotalCount: list.Count, TotalUncompressed: totalUncompressed, TotalCompressed: totalCompressed, Ratio: ratio);
+            });
+
+            ListArchiveEntries.ItemsSource = entries.Items;
+            TxtArchiveFooterCount.Text = $"Файлов в архиве: {entries.TotalCount} (Исходный: {FormatFileSize(entries.TotalUncompressed)})";
+            TxtArchiveFooterRatio.Text = $"Сжатый: {FormatFileSize(entries.TotalCompressed)} (Экономия: {entries.Ratio:F1}%)";
+
+            ArchiveViewer.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"[QuickLook] Ошибка чтения архива '{_filePath}': {ex.Message}", ex);
+            ShowGenericCard(isFailure: true);
+        }
+    }
+
+    public sealed class ArchiveEntryItem
+    {
+        public string FullName { get; init; } = string.Empty;
+        public string FormattedSize { get; init; } = string.Empty;
+        public string FormattedCompressedSize { get; init; } = string.Empty;
+        public string FormattedDateTime { get; init; } = string.Empty;
     }
 
     private static string FormatFileSize(long bytes)

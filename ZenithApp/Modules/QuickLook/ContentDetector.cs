@@ -9,6 +9,7 @@ public enum QuickLookContentType
     Video,
     Audio,
     Text,
+    Archive,
     GenericCard
 }
 
@@ -32,6 +33,11 @@ public static class ContentDetector
     private static readonly HashSet<string> AudioExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
         ".mp3", ".wav", ".flac", ".m4a", ".ogg", ".wma", ".aac"
+    };
+
+    private static readonly HashSet<string> ArchiveExtensions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".zip", ".nupkg", ".jar", ".apk"
     };
 
     private static readonly HashSet<string> TextExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -75,6 +81,11 @@ public static class ContentDetector
         if (settings.EnableMedia && AudioExtensions.Contains(ext))
         {
             return QuickLookContentType.Audio;
+        }
+
+        if (settings.EnableArchives && ArchiveExtensions.Contains(ext))
+        {
+            return QuickLookContentType.Archive;
         }
 
         if (settings.EnableText && TextExtensions.Contains(ext))

@@ -165,7 +165,33 @@
                     </Border>
                 </Grid>
 
-                <!-- 5. Карточка файла (Generic Card / Не удалось открыть) -->
+                <!-- 5. Просмотр архивов (ZIP) -->
+                <Grid x:Name="ArchiveViewer" Visibility="Collapsed">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <ListView x:Name="ListArchiveEntries" Grid.Row="0" BorderThickness="0" Background="Transparent" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Padding="8">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Имя файла" Width="360" DisplayMemberBinding="{Binding FullName}" />
+                                <GridViewColumn Header="Размер" Width="120" DisplayMemberBinding="{Binding FormattedSize}" />
+                                <GridViewColumn Header="Сжатый" Width="120" DisplayMemberBinding="{Binding FormattedCompressedSize}" />
+                                <GridViewColumn Header="Дата изменения" Width="150" DisplayMemberBinding="{Binding FormattedDateTime}" />
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
+                    <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,6">
+                        <Grid>
+                            <TextBlock x:Name="TxtArchiveFooterCount" FontSize="12" HorizontalAlignment="Left" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <TextBlock x:Name="TxtArchiveFooterRatio" FontSize="12" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- 6. Карточка файла (Generic Card / Не удалось открыть) -->
                 <Grid x:Name="GenericCardViewer" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="32">
                     <StackPanel HorizontalAlignment="Center">
                         <Image x:Name="ImgGenericIcon" Width="96" Height="96" Margin="0,0,0,16" HorizontalAlignment="Center" />

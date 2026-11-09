@@ -18,7 +18,7 @@ public class QuickLookModuleTests
         Assert.Equal(QuickLookContentType.Video, ContentDetector.DetectContentType("movie.mp4", settings));
         Assert.Equal(QuickLookContentType.Audio, ContentDetector.DetectContentType("track.mp3", settings));
         Assert.Equal(QuickLookContentType.Text, ContentDetector.DetectContentType("program.cs", settings));
-        Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("archive.zip", settings));
+        Assert.Equal(QuickLookContentType.Archive, ContentDetector.DetectContentType("archive.zip", settings));
         Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("document.docx", settings));
     }
 
@@ -28,12 +28,14 @@ public class QuickLookModuleTests
         var settings = new QuickLookSettings
         {
             EnableImages = false,
-            EnableText = false
+            EnableText = false,
+            EnableArchives = false
         };
 
         Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("photo.png", settings));
         Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("file.txt", settings));
         Assert.Equal(QuickLookContentType.Pdf, ContentDetector.DetectContentType("doc.pdf", settings));
+        Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("archive.zip", settings));
     }
 
     [Fact]

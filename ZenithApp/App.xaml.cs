@@ -71,12 +71,18 @@ public partial class App : Application
         SettingsViewModel.ApplyTheme(settingsService.Current.Theme);
 
         // 4. Инициализация трея
+        var clipboardOcrService = _serviceProvider.GetRequiredService<IClipboardOcrService>();
+        var historyService = _serviceProvider.GetRequiredService<IOcrHistoryService>();
         _trayIconService = new TrayIconService(
             logger,
             openSettingsAction: () => Dispatcher.Invoke(OpenSettingsWindow),
-            exitAction: () => Dispatcher.Invoke(ExitApplication)
+            exitAction: () => Dispatcher.Invoke(ExitApplication),
+            clipboardOcrService,
+            historyService
         );
         _trayIconService.Initialize();
+
+
 
         // 5. Инициализация модулей (выключенные модули не занимают ресурсы)
         var moduleManager = _serviceProvider.GetRequiredService<ModuleManager>();
@@ -103,6 +109,8 @@ public partial class App : Application
         services.AddSingleton<IAutoLaunchService, AutoLaunchService>();
         services.AddSingleton<IHotkeyService, HotkeyService>();
         services.AddSingleton<ZenithApp.Core.Input.IKeyboardHookService, ZenithApp.Core.Input.KeyboardHookService>();
+        services.AddSingleton<IOcrHistoryService, OcrHistoryService>();
+        services.AddSingleton<IClipboardOcrService, ClipboardOcrService>();
 
         // Feature Modules
         services.AddSingleton<ScreenshotModule>();

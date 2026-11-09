@@ -10,6 +10,11 @@ namespace ZenithApp.Modules.Screenshot;
 
 public static class OcrService
 {
+    private static readonly object _enginesLock = new();
+    private static List<OcrEngine>? _cachedEngines;
+    private static Timer? _idleUnloadTimer;
+    private static readonly TimeSpan IdleUnloadTimeout = TimeSpan.FromMinutes(3);
+
     public static (bool HasRussian, bool HasEnglish) CheckAvailableLanguages()
     {
         var langs = OcrEngine.AvailableRecognizerLanguages;
@@ -27,38 +32,7 @@ public static class OcrService
                                   "Чтобы добавить: откройте «Параметры Windows» -> «Время и язык» -> «Язык» -> выберите язык и установите компонент «Оптическое распознавание символов».");
         }
 
-        var engines = new List<OcrEngine>();
-
-        var ruLang = OcrEngine.AvailableRecognizerLanguages.FirstOrDefault(l => l.LanguageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase));
-        if (ruLang != null)
-        {
-            var ruEngine = OcrEngine.TryCreateFromLanguage(ruLang);
-            if (ruEngine != null) engines.Add(ruEngine);
-        }
-
-        var enLang = OcrEngine.AvailableRecognizerLanguages.FirstOrDefault(l => l.LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase));
-        if (enLang != null)
-        {
-            var enEngine = OcrEngine.TryCreateFromLanguage(enLang);
-            if (enEngine != null) engines.Add(enEngine);
-        }
-
-        var userEngine = OcrEngine.TryCreateFromUserProfileLanguages();
-        if (userEngine != null && engines.All(e => !e.RecognizerLanguage.LanguageTag.Equals(userEngine.RecognizerLanguage.LanguageTag, StringComparison.OrdinalIgnoreCase)))
-        {
-            engines.Add(userEngine);
-        }
-
-        if (engines.Count == 0)
-        {
-            var fallback = OcrEngine.AvailableRecognizerLanguages.FirstOrDefault();
-            if (fallback != null)
-            {
-                var fbEngine = OcrEngine.TryCreateFromLanguage(fallback);
-                if (fbEngine != null) engines.Add(fbEngine);
-            }
-        }
-
+        var engines = GetOrCreateCachedEngines();
         if (engines.Count == 0)
         {
             return (string.Empty, "Не найден подходящий модуль распознавания Windows.Media.Ocr.");
@@ -90,6 +64,69 @@ public static class OcrService
         {
             return (string.Empty, $"Ошибка распознавания: {ex.Message}");
         }
+    }
+
+    private static List<OcrEngine> GetOrCreateCachedEngines()
+    {
+        lock (_enginesLock)
+        {
+            // Перезапускаем таймер освобождения памяти при каждом распознавании
+            _idleUnloadTimer?.Dispose();
+            _idleUnloadTimer = new Timer(_ => UnloadEngines(), null, IdleUnloadTimeout, Timeout.InfiniteTimeSpan);
+
+            if (_cachedEngines != null && _cachedEngines.Count > 0)
+            {
+                return _cachedEngines;
+            }
+
+            var engines = new List<OcrEngine>();
+
+            var ruLang = OcrEngine.AvailableRecognizerLanguages.FirstOrDefault(l => l.LanguageTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase));
+            if (ruLang != null)
+            {
+                var ruEngine = OcrEngine.TryCreateFromLanguage(ruLang);
+                if (ruEngine != null) engines.Add(ruEngine);
+            }
+
+            var enLang = OcrEngine.AvailableRecognizerLanguages.FirstOrDefault(l => l.LanguageTag.StartsWith("en", StringComparison.OrdinalIgnoreCase));
+            if (enLang != null)
+            {
+                var enEngine = OcrEngine.TryCreateFromLanguage(enLang);
+                if (enEngine != null) engines.Add(enEngine);
+            }
+
+            var userEngine = OcrEngine.TryCreateFromUserProfileLanguages();
+            if (userEngine != null && engines.All(e => !e.RecognizerLanguage.LanguageTag.Equals(userEngine.RecognizerLanguage.LanguageTag, StringComparison.OrdinalIgnoreCase)))
+            {
+                engines.Add(userEngine);
+            }
+
+            if (engines.Count == 0)
+            {
+                var fallback = OcrEngine.AvailableRecognizerLanguages.FirstOrDefault();
+                if (fallback != null)
+                {
+                    var fbEngine = OcrEngine.TryCreateFromLanguage(fallback);
+                    if (fbEngine != null) engines.Add(fbEngine);
+                }
+            }
+
+            _cachedEngines = engines;
+            return _cachedEngines;
+        }
+    }
+
+    public static void UnloadEngines()
+    {
+        lock (_enginesLock)
+        {
+            _cachedEngines = null;
+            _idleUnloadTimer?.Dispose();
+            _idleUnloadTimer = null;
+        }
+
+        // Агрессивный сборщик мусора для освобождения нативной памяти моделей
+        GC.Collect(1, GCCollectionMode.Optimized, false);
     }
 
     private static async Task<string> RecognizeBestResultAsync(Bitmap bmp, List<OcrEngine> engines)
@@ -148,21 +185,21 @@ public static class OcrService
         int digitsCount = 0;
         int otherCount = 0;
 
-        foreach (char c in text)
+        foreach (var ch in text)
         {
-            if ((c >= 'а' && c <= 'я') || (c >= 'А' && c <= 'Я') || c == 'ё' || c == 'Ё')
+            if ((ch >= 'а' && ch <= 'я') || (ch >= 'А' && ch <= 'Я') || ch == 'ё' || ch == 'Ё')
             {
                 cyrillicCount++;
             }
-            else if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))
+            else if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z'))
             {
                 latinCount++;
             }
-            else if (char.IsDigit(c))
+            else if (char.IsDigit(ch))
             {
                 digitsCount++;
             }
-            else if (!char.IsWhiteSpace(c))
+            else
             {
                 otherCount++;
             }
@@ -170,16 +207,12 @@ public static class OcrService
 
         bool isRuEngine = langTag.StartsWith("ru", StringComparison.OrdinalIgnoreCase);
 
-        // Ключевой факт:
-        // Если в строке распозналась хоть одна настоящая кириллическая буква, 
-        // это однозначно означает, что на картинке присутствует русский текст.
-        // Английский движок Windows OCR не способен выдать кириллицу вообще — он давит её в транслит (PyccKMi 93b1KOBOi...).
-        // Поэтому, если русский движок нашёл кириллицу:
+        // Если в тексте есть хоть сколько-то кириллических букв:
         if (cyrillicCount > 0)
         {
             if (isRuEngine)
             {
-                // Русский движок выдал осмысленные русские слова (даже если там есть английские слова, как Windows OCR)
+                // Русский движок выдал осмысленные русские слова
                 return 10000.0 + (cyrillicCount * 20.0) + (latinCount * 10.0) + digitsCount;
             }
             else
@@ -188,16 +221,13 @@ public static class OcrService
             }
         }
 
-        // Если кириллицы нет ВООБЩЕ (чисто латинский текст: "what are you doing" / "Hello World"):
-        // Здесь побеждает английский движок, так как он не напридумывает транслитов и знает английский словарь.
+        // Если кириллицы нет ВООБЩЕ (чисто латинский текст)
         if (isRuEngine)
         {
-            // Русский движок на чисто английском тексте получает базовый балл
             return (latinCount * 5.0) + digitsCount;
         }
         else
         {
-            // Английский движок на чисто латинском тексте получает абсолютный приоритет
             return 1000.0 + (latinCount * 10.0) + digitsCount;
         }
     }

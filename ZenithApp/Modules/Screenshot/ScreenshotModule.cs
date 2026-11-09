@@ -20,6 +20,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
     private readonly ISettingsService _settingsService;
     private readonly IHotkeyService _hotkeyService;
     private readonly IEnumerable<ITextRecognizedHandler> _recognizedHandlers;
+    private readonly IOcrHistoryService _historyService;
 
     private bool _isBusy;
 
@@ -27,11 +28,13 @@ public sealed class ScreenshotModule : BaseFeatureModule
         IAppLogger logger,
         ISettingsService settingsService,
         IHotkeyService hotkeyService,
-        IEnumerable<ITextRecognizedHandler> recognizedHandlers) : base(logger)
+        IEnumerable<ITextRecognizedHandler> recognizedHandlers,
+        IOcrHistoryService historyService) : base(logger)
     {
         _settingsService = settingsService;
         _hotkeyService = hotkeyService;
         _recognizedHandlers = recognizedHandlers;
+        _historyService = historyService;
     }
 
     public override string Id => ModuleId;
@@ -218,6 +221,10 @@ public sealed class ScreenshotModule : BaseFeatureModule
 
         // Подготавливаем аргументы события (изображение передается и сразу освобождается)
         var eventArgs = new TextRecognizedEventArgs(text ?? string.Empty, cropped, cropArea);
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            _historyService.Add(text);
+        }
         bool handled = false;
 
         foreach (var handler in _recognizedHandlers)

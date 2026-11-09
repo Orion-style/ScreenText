@@ -11,4 +11,5 @@ public sealed class QuickLookSettings
     public bool EnablePdf { get; set; } = true;
     public bool EnableMedia { get; set; } = true; // Video & Audio
     public bool EnableText { get; set; } = true;
+    public bool EnableArchives { get; set; } = true;
 }
