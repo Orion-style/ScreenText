@@ -11,6 +11,7 @@ using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.Modules.SnapZones;
+using ZenithApp.Modules.StartupManager;
 using ZenithApp.UI.Common;
 
 namespace ZenithApp.UI.ViewModels;
@@ -26,6 +27,8 @@ public sealed class SettingsViewModel : ViewModelBase
     private readonly QuickLookModule? _quickLookModule;
     private readonly SnapZonesModule? _snapZonesModule;
     private readonly ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? _radialSwitcherModule;
+    private readonly StartupManagerModule? _startupManagerModule;
+    private readonly IStartupItemsService? _startupItemsService;
 
     private bool _startWithWindows;
     private int _selectedThemeIndex; // 0 = System, 1 = Light, 2 = Dark
@@ -40,7 +43,9 @@ public sealed class SettingsViewModel : ViewModelBase
         KeyRemapModule? keyRemapModule = null,
         QuickLookModule? quickLookModule = null,
         SnapZonesModule? snapZonesModule = null,
-        ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? radialSwitcherModule = null)
+        ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? radialSwitcherModule = null,
+        StartupManagerModule? startupManagerModule = null,
+        IStartupItemsService? startupItemsService = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -51,6 +56,8 @@ public sealed class SettingsViewModel : ViewModelBase
         _quickLookModule = quickLookModule;
         _snapZonesModule = snapZonesModule;
         _radialSwitcherModule = radialSwitcherModule;
+        _startupManagerModule = startupManagerModule;
+        _startupItemsService = startupItemsService;
 
         _startWithWindows = _settingsService.Current.StartWithWindows;
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
@@ -89,6 +96,11 @@ public sealed class SettingsViewModel : ViewModelBase
             RadialSwitcherSettings = new ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettingsViewModel(_radialSwitcherModule, _settingsService);
         }
 
+        if (_startupManagerModule != null && _startupItemsService != null)
+        {
+            StartupManagerSettings = new StartupManagerViewModel(_startupManagerModule, _startupItemsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
     }
 
@@ -98,6 +110,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public QuickLookSettingsViewModel? QuickLookSettings { get; }
     public SnapZonesSettingsViewModel? SnapZonesSettings { get; }
     public ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettingsViewModel? RadialSwitcherSettings { get; }
+    public StartupManagerViewModel? StartupManagerSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 

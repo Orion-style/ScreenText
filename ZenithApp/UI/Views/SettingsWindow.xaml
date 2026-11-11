@@ -11,6 +11,7 @@
         xmlns:quicklook="clr-namespace:ZenithApp.Modules.QuickLook"
         xmlns:snapzones="clr-namespace:ZenithApp.Modules.SnapZones"
         xmlns:radial="clr-namespace:ZenithApp.Modules.RadialSwitcher"
+        xmlns:startup="clr-namespace:ZenithApp.Modules.StartupManager"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -314,6 +315,13 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <radial:RadialSwitcherSettingsView DataContext="{Binding RadialSwitcherSettings}" />
+                            </ContentControl>
+
+                                                        <!-- Настройки модуля StartupManager -->
+                            <ContentControl x:Name="StartupManagerConfigContainer" 
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                <startup:StartupManagerView DataContext="{Binding StartupManagerSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

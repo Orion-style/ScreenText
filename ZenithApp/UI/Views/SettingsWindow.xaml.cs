@@ -91,6 +91,7 @@ public partial class SettingsWindow : FluentWindow
         QuickLookConfigContainer.Visibility = Visibility.Collapsed;
         SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
         RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
+        StartupManagerConfigContainer.Visibility = Visibility.Collapsed;
         CardConfigPlaceholder.Visibility = Visibility.Collapsed;
     }
 

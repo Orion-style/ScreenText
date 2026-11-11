@@ -11,6 +11,7 @@ using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.Modules.SnapZones;
+using ZenithApp.Modules.StartupManager;
 using ZenithApp.UI.Tray;
 using ZenithApp.UI.ViewModels;
 using ZenithApp.UI.Views;
@@ -126,6 +127,9 @@ public partial class App : Application
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<SnapZonesModule>());
         services.AddSingleton<ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule>());
+        services.AddSingleton<IStartupItemsService, StartupItemsService>();
+        services.AddSingleton<StartupManagerModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<StartupManagerModule>());
 
         // Module Manager
         services.AddSingleton<ModuleManager>();

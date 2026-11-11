@@ -38,7 +38,8 @@ public sealed class ModuleManager : IDisposable
         {
             var isDefaultOn = string.Equals(module.Id, "screenshot", StringComparison.OrdinalIgnoreCase) ||
                               string.Equals(module.Id, "smart_links", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(module.Id, "radial_switcher", StringComparison.OrdinalIgnoreCase);
+                              string.Equals(module.Id, "radial_switcher", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(module.Id, "startup_manager", StringComparison.OrdinalIgnoreCase);
 
             var shouldEnable = _settingsService.Current.IsModuleEnabled(module.Id, defaultValue: isDefaultOn);
             if (shouldEnable)
