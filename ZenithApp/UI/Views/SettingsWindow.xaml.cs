@@ -76,6 +76,11 @@ public partial class SettingsWindow : FluentWindow
             {
                 SnapZonesConfigContainer.Visibility = Visibility.Visible;
             }
+            else if (moduleVm.Id == ZenithApp.Modules.StartupManager.StartupManagerModule.ModuleId)
+            {
+                _viewModel.StartupManagerSettings?.Refresh();
+                StartupManagerConfigContainer.Visibility = Visibility.Visible;
+            }
             else
             {
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
