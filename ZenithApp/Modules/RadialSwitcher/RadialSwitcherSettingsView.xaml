@@ -46,7 +46,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Количество секторов в колесе" 
                                FontWeight="SemiBold" 
                                FontSize="14.5" />
@@ -78,7 +78,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Время зажатия Tab для открытия меню" 
                                    FontWeight="SemiBold" 
                                    FontSize="14.5" />
@@ -111,7 +111,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Автозапуск закрепленного приложения при выборе" 
                                FontWeight="SemiBold" 
                                FontSize="14.5" />

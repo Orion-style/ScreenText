@@ -172,7 +172,7 @@
                     Padding="28,24">
                 <Grid>
                     <!-- Страница 1: Общие -->
-                    <ScrollViewer x:Name="GeneralPage" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer x:Name="GeneralPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="{DynamicResource General_Header}" 
                                        FontSize="22" 
@@ -187,7 +187,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="{DynamicResource General_Startup_Title}" FontWeight="SemiBold" FontSize="15" />
                                         <TextBlock Text="{DynamicResource General_Startup_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -204,7 +204,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="{DynamicResource General_Theme_Title}" FontWeight="SemiBold" FontSize="15" />
                                         <TextBlock Text="{DynamicResource General_Theme_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -226,7 +226,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="{DynamicResource General_Data_Title}" FontWeight="SemiBold" FontSize="15" />
                                         <TextBlock Text="{DynamicResource General_Data_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                     </StackPanel>
@@ -241,8 +241,8 @@
                     </ScrollViewer>
 
                     <!-- Страница 2: Детализация выбранного модуля -->
-                    <ScrollViewer x:Name="ModuleDetailPage" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
-                        <StackPanel x:Name="SelectedModulePanel">
+                    <ScrollViewer x:Name="ModuleDetailPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
+                        <StackPanel x:Name="SelectedModulePanel" Margin="0,0,16,0">
                             <TextBlock x:Name="TxtModuleName" 
                                        FontSize="22" 
                                        FontWeight="Bold" 
@@ -261,7 +261,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                                         <TextBlock Text="{DynamicResource Module_EnableToggle}" FontWeight="SemiBold" FontSize="15" />
                                         <TextBlock x:Name="TxtModuleStatus" 
                                                    Text="{DynamicResource Module_StatusInactive}" 

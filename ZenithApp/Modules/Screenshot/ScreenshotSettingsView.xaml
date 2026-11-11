@@ -15,7 +15,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Горячая клавиша скриншота" FontWeight="SemiBold" FontSize="15" />
                         <TextBlock Text="Нажмите на поле и задайте сочетание (по умолчанию Ctrl+Shift+S)" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
@@ -50,7 +50,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Горячая клавиша скриншота с OCR" FontWeight="SemiBold" FontSize="15" />
                         <TextBlock Text="Копирование распознанного текста в буфер обмена (по умолчанию Ctrl+Shift+T)" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
@@ -85,7 +85,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Сохранять скриншоты в папку" FontWeight="SemiBold" FontSize="15" />
                         <TextBlock Text="Автоматически записывать снимок в формате PNG в выбранный каталог" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 

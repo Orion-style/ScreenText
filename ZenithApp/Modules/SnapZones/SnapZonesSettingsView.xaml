@@ -14,7 +14,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Горячая клавиша закрепления" FontWeight="SemiBold" FontSize="15" />
                     <TextBlock Text="Нажмите клавиши на активном окне, чтобы закрепить его поверх всех окон (или открепить)" 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
@@ -34,7 +34,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Цветная рамка вокруг закреплённого окна" FontWeight="SemiBold" FontSize="15" />
                         <TextBlock Text="Отображает контрастный контур, чтобы визуально отличать закреплённое окно" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
