@@ -12,7 +12,6 @@
         xmlns:snapzones="clr-namespace:ZenithApp.Modules.SnapZones"
         xmlns:radial="clr-namespace:ZenithApp.Modules.RadialSwitcher"
         xmlns:startup="clr-namespace:ZenithApp.Modules.StartupManager"
-        xmlns:common="clr-namespace:ZenithApp.UI.Common"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -173,7 +172,7 @@
                     Padding="28,24">
                 <Grid>
                     <!-- Страница 1: Общие -->
-                    <ScrollViewer x:Name="GeneralPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" common:SmoothScrollHelper.IsSmoothScrollEnabled="True">
+                    <ScrollViewer x:Name="GeneralPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <TextBlock Text="{DynamicResource General_Header}" 
                                        FontSize="22" 
@@ -242,7 +241,7 @@
                     </ScrollViewer>
 
                     <!-- Страница 2: Детализация выбранного модуля -->
-                    <ScrollViewer x:Name="ModuleDetailPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed" common:SmoothScrollHelper.IsSmoothScrollEnabled="True">
+                    <ScrollViewer x:Name="ModuleDetailPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
                         <StackPanel x:Name="SelectedModulePanel" Margin="0,0,16,0">
                             <TextBlock x:Name="TxtModuleName" 
                                        FontSize="22" 
