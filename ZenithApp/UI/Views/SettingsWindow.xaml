@@ -1,4 +1,4 @@
-<ui:FluentWindow x:Class="ZenithApp.UI.Views.SettingsWindow"
+﻿<ui:FluentWindow x:Class="ZenithApp.UI.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -12,6 +12,7 @@
         xmlns:snapzones="clr-namespace:ZenithApp.Modules.SnapZones"
         xmlns:radial="clr-namespace:ZenithApp.Modules.RadialSwitcher"
         xmlns:startup="clr-namespace:ZenithApp.Modules.StartupManager"
+        xmlns:common="clr-namespace:ZenithApp.UI.Common"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -172,7 +173,7 @@
                     Padding="28,24">
                 <Grid>
                     <!-- Страница 1: Общие -->
-                    <ScrollViewer x:Name="GeneralPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer x:Name="GeneralPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" common:SmoothScrollHelper.IsSmoothScrollEnabled="True">
                         <StackPanel>
                             <TextBlock Text="{DynamicResource General_Header}" 
                                        FontSize="22" 
@@ -241,7 +242,7 @@
                     </ScrollViewer>
 
                     <!-- Страница 2: Детализация выбранного модуля -->
-                    <ScrollViewer x:Name="ModuleDetailPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed">
+                    <ScrollViewer x:Name="ModuleDetailPage" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Visibility="Collapsed" common:SmoothScrollHelper.IsSmoothScrollEnabled="True">
                         <StackPanel x:Name="SelectedModulePanel" Margin="0,0,16,0">
                             <TextBlock x:Name="TxtModuleName" 
                                        FontSize="22" 
