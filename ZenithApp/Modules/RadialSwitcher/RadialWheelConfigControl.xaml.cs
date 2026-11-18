@@ -170,7 +170,7 @@ public sealed partial class RadialWheelConfigControl : UserControl
 
             path.MouseLeftButtonDown += (_, _) =>
             {
-                vm.SelectedZone = zone;
+                vm.RequestOpenProgramPicker(zone);
             };
 
             WheelCanvas.Children.Add(path);
@@ -240,7 +240,7 @@ public sealed partial class RadialWheelConfigControl : UserControl
 
             badgeBorder.MouseLeftButtonDown += (_, _) =>
             {
-                vm.SelectedZone = zone;
+                vm.RequestOpenProgramPicker(zone);
             };
 
             Canvas.SetLeft(badgeBorder, badgeCx - 16);

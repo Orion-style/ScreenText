@@ -145,7 +145,7 @@
                                        FontWeight="Bold" 
                                        FontSize="15" />
                         </StackPanel>
-                        <TextBlock Text="Кликните по сектору или символу «+», чтобы закрепить программу. Даже если приложение не запущено, при наведении в колесе Tab его можно быстро запустить. Свободные секторы динамически показывают недавние активные окна (MRU-приоритет)." 
+                        <TextBlock Text="Кликните по символу «+» в секторе, чтобы открыть список программ и закрепить приложение. Даже если приложение не запущено, при наведении в колесе Tab его можно быстро запустить. Свободные секторы динамически показывают недавние открытые окна." 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    FontSize="12.5" 
                                    TextWrapping="Wrap" 
@@ -159,150 +159,16 @@
                                Margin="8,0,0,0" />
                 </Grid>
 
-                <!-- Основная рабочая область: визуальный круг и панель выбранного сектора -->
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Интерактивный круг со слотами -->
-                    <Border Grid.Column="0" 
-                            Background="#121216" 
-                            BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}" 
-                            BorderThickness="1" 
-                            CornerRadius="12" 
-                            Padding="10" 
-                            Margin="0,0,16,0"
-                            HorizontalAlignment="Center" 
-                            VerticalAlignment="Top">
-                        <local:RadialWheelConfigControl Width="270" Height="270" />
-                    </Border>
-
-                    <!-- Панель настройки выбранного сектора -->
-                    <Border Grid.Column="1" 
-                            Background="{DynamicResource SubtleFillColorSecondaryBrush}"
-                            BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}"
-                            BorderThickness="1"
-                            CornerRadius="12"
-                            Padding="16"
-                            VerticalAlignment="Stretch">
-                        <StackPanel>
-                            <!-- Заголовок выбранного сектора -->
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <TextBlock Text="Выбранный сектор" 
-                                               FontSize="11" 
-                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                    <TextBlock Text="{Binding SelectedZone.DirectionName, FallbackValue='Сектор'}" 
-                                               FontWeight="Bold" 
-                                               FontSize="16" 
-                                               Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" 
-                                               Margin="0,2,0,0" />
-                                </StackPanel>
-                                <Border Grid.Column="1" 
-                                        CornerRadius="6" 
-                                        Padding="8,4" 
-                                        VerticalAlignment="Center">
-                                    <Border.Style>
-                                        <Style TargetType="Border">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding SelectedZone.IsPinned}" Value="True">
-                                                    <Setter Property="Background" Value="#30E5C158" />
-                                                    <Setter Property="BorderBrush" Value="#E5C158" />
-                                                    <Setter Property="BorderThickness" Value="1" />
-                                                </DataTrigger>
-                                                <DataTrigger Binding="{Binding SelectedZone.IsPinned}" Value="False">
-                                                    <Setter Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
-                                                    <Setter Property="BorderBrush" Value="{DynamicResource SurfaceStrokeColorDefaultBrush}" />
-                                                    <Setter Property="BorderThickness" Value="1" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Border.Style>
-                                    <TextBlock Text="{Binding SelectedZone.StatusBadgeText, FallbackValue='Свободный сектор'}" 
-                                               FontSize="11.5" 
-                                               FontWeight="SemiBold">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding SelectedZone.IsPinned}" Value="True">
-                                                        <Setter Property="Foreground" Value="#FFE478" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding SelectedZone.IsPinned}" Value="False">
-                                                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Border>
-                            </Grid>
-
-                            <TextBlock Text="{Binding SelectedZone.StatusDescription}" 
-                                       FontSize="12" 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                       TextWrapping="Wrap" 
-                                       Margin="0,0,0,14" />
-
-                            <!-- Кнопка выбора EXE файла -->
-                            <TextBlock Text="Назначить приложение:" 
-                                       FontWeight="SemiBold" 
-                                       FontSize="12" 
-                                       Margin="0,0,0,6" />
-
-                            <Grid Margin="0,0,0,10">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <ui:Button Grid.Column="0" 
-                                           Content="📁 Выбрать файл (.exe)..." 
-                                           Appearance="Primary" 
-                                           HorizontalAlignment="Stretch"
-                                           Command="{Binding SelectedZone.BrowseExeCommand}" />
-                                <ui:Button Grid.Column="1" 
-                                           Content="❌ Открепить" 
-                                           Appearance="Secondary" 
-                                           Command="{Binding SelectedZone.UnpinCommand}" 
-                                           Margin="8,0,0,0" />
-                            </Grid>
-
-                            <!-- Выбор из запущенных программ -->
-                            <TextBlock Text="Или выберите из открытых окон:" 
-                                       FontSize="12" 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                       Margin="0,4,0,4" />
-                            <Grid Margin="0,0,0,12">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <ComboBox Grid.Column="0" 
-                                          ItemsSource="{Binding RunningProcessNames}" 
-                                          SelectedItem="{Binding SelectedZone.SelectedRunningProcess, Mode=TwoWay}"
-                                          HorizontalAlignment="Stretch" />
-                                <ui:Button Grid.Column="1" 
-                                           Content="🔄" 
-                                           ToolTip="Обновить список открытых процессов"
-                                           Command="{Binding RefreshProcessesCommand}" 
-                                           Margin="6,0,0,0" />
-                            </Grid>
-
-                            <!-- Пользовательская метка -->
-                            <TextBlock Text="Название сектора в меню (опционально):" 
-                                       FontSize="12" 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                       Margin="0,0,0,4" />
-                            <ui:TextBox Text="{Binding SelectedZone.CustomLabel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                        PlaceholderText="Оставьте пустым для автоназвания" />
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                <!-- Интерактивный круг со слотами, центрированный без лишних блоков -->
+                <Border Background="#121216" 
+                        BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}" 
+                        BorderThickness="1" 
+                        CornerRadius="12" 
+                        Padding="14" 
+                        HorizontalAlignment="Center" 
+                        VerticalAlignment="Center">
+                    <local:RadialWheelConfigControl Width="270" Height="270" />
+                </Border>
             </StackPanel>
         </ui:Card>
     </StackPanel>

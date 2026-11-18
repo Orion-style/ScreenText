@@ -20,6 +20,13 @@ public sealed class RadialSwitcherSettingsViewModel : ViewModelBase
     public ObservableCollection<string> RunningProcessNames { get; } = new();
 
     public event Action? OnWheelRedrawRequested;
+    public event Action<ZoneEditorItemViewModel>? OpenProgramPickerRequested;
+
+    public void RequestOpenProgramPicker(ZoneEditorItemViewModel zone)
+    {
+        SelectedZone = zone;
+        OpenProgramPickerRequested?.Invoke(zone);
+    }
 
     public ZoneEditorItemViewModel? SelectedZone
     {
