@@ -26,10 +26,17 @@ public sealed class StartupItemsService : IStartupItemsService
     private const string AppPathsSubKey = @"Software\Microsoft\Windows\CurrentVersion\App Paths";
 
     private readonly IAppLogger _logger;
+    private readonly ZenithApp.Core.Startup.IAutoLaunchService? _autoLaunchService;
+    private readonly ZenithApp.Core.Settings.ISettingsService? _settingsService;
 
-    public StartupItemsService(IAppLogger logger)
+    public StartupItemsService(
+        IAppLogger logger,
+        ZenithApp.Core.Startup.IAutoLaunchService? autoLaunchService = null,
+        ZenithApp.Core.Settings.ISettingsService? settingsService = null)
     {
         _logger = logger;
+        _autoLaunchService = autoLaunchService;
+        _settingsService = settingsService;
     }
 
     public IReadOnlyList<StartupEntry> GetStartupEntries()
@@ -409,6 +416,22 @@ public sealed class StartupItemsService : IStartupItemsService
     {
         try
         {
+            if (IsZenithApp(entry))
+            {
+                if (_autoLaunchService != null && _autoLaunchService.IsAutoLaunchEnabled() != enable)
+                {
+                    _autoLaunchService.SetAutoLaunch(enable);
+                }
+                if (_settingsService != null && _settingsService.Current.StartWithWindows != enable)
+                {
+                    _settingsService.Current.StartWithWindows = enable;
+                    _settingsService.Save();
+                }
+                entry.IsEnabled = enable;
+                entry.IsConfiguredInStartup = enable;
+                return true;
+            }
+
             // Если это установленная программа, которая еще не была зарегистрирована в Run
             if (entry.Location == StartupEntryLocation.InstalledProgram || !entry.IsConfiguredInStartup)
             {
@@ -510,6 +533,19 @@ public sealed class StartupItemsService : IStartupItemsService
     {
         try
         {
+            if (IsZenithApp(entry))
+            {
+                _autoLaunchService?.SetAutoLaunch(false);
+                if (_settingsService != null && _settingsService.Current.StartWithWindows)
+                {
+                    _settingsService.Current.StartWithWindows = false;
+                    _settingsService.Save();
+                }
+                entry.IsEnabled = false;
+                entry.IsConfiguredInStartup = false;
+                return true;
+            }
+
             if (entry.Location == StartupEntryLocation.InstalledProgram || !entry.IsConfiguredInStartup)
             {
                 // Для потенциальных программ удаление означает просто выключение/снятие из реестра если было добавлено
@@ -560,6 +596,23 @@ public sealed class StartupItemsService : IStartupItemsService
             _logger.LogError($"Failed to delete startup entry '{entry.Name}'.", ex);
             return false;
         }
+    }
+
+    private static bool IsZenithApp(StartupEntry entry)
+    {
+        if (string.Equals(entry.Name, "ZenithApp", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(entry.Name, "ZenithUtility", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrEmpty(entry.FilePath) &&
+            entry.FilePath.EndsWith("ZenithApp.exe", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     public static string? ExtractExecutablePath(string command)

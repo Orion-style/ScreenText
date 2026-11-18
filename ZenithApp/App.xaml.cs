@@ -159,6 +159,7 @@ public partial class App : Application
             // Закрытие окна настроек не завершает приложение, а полностью выгружает окно из памяти
             _settingsWindow.Closed += (_, _) =>
             {
+                vm.Dispose();
                 lock (_windowLock)
                 {
                     _settingsWindow = null;

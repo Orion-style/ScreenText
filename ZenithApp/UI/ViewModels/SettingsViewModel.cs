@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Windows.Input;
 using Wpf.Ui.Appearance;
 using ZenithApp.Core.Modules;
@@ -16,7 +17,7 @@ using ZenithApp.UI.Common;
 
 namespace ZenithApp.UI.ViewModels;
 
-public sealed class SettingsViewModel : ViewModelBase
+public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly IAutoLaunchService _autoLaunchService;
@@ -59,7 +60,14 @@ public sealed class SettingsViewModel : ViewModelBase
         _startupManagerModule = startupManagerModule;
         _startupItemsService = startupItemsService;
 
-        _startWithWindows = _settingsService.Current.StartWithWindows;
+        _startWithWindows = _autoLaunchService.IsAutoLaunchEnabled();
+        if (_settingsService.Current.StartWithWindows != _startWithWindows)
+        {
+            _settingsService.Current.StartWithWindows = _startWithWindows;
+            _settingsService.Save();
+        }
+
+        _autoLaunchService.AutoLaunchChanged += OnAutoLaunchChanged;
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
 
         Modules = new ObservableCollection<ModuleItemViewModel>(
@@ -126,7 +134,33 @@ public sealed class SettingsViewModel : ViewModelBase
                 _autoLaunchService.SetAutoLaunch(value);
                 _settingsService.Current.StartWithWindows = value;
                 _settingsService.Save();
+                SyncStartupManagerItem(value);
             }
+        }
+    }
+
+    private void OnAutoLaunchChanged(bool enabled)
+    {
+        if (_startWithWindows != enabled)
+        {
+            _startWithWindows = enabled;
+            OnPropertyChanged(nameof(StartWithWindows));
+            SyncStartupManagerItem(enabled);
+        }
+    }
+
+    private void SyncStartupManagerItem(bool enabled)
+    {
+        if (StartupManagerSettings == null) return;
+
+        var zenithItem = StartupManagerSettings.Items.FirstOrDefault(i =>
+            string.Equals(i.Name, "ZenithApp", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(i.Name, "ZenithUtility", StringComparison.OrdinalIgnoreCase) ||
+            (!string.IsNullOrEmpty(i.FilePath) && i.FilePath.EndsWith("ZenithApp.exe", StringComparison.OrdinalIgnoreCase)));
+
+        if (zenithItem != null && zenithItem.IsEnabled != enabled)
+        {
+            zenithItem.IsEnabled = enabled;
         }
     }
 
@@ -176,5 +210,10 @@ public sealed class SettingsViewModel : ViewModelBase
             FileName = folder,
             UseShellExecute = true
         });
+    }
+
+    public void Dispose()
+    {
+        _autoLaunchService.AutoLaunchChanged -= OnAutoLaunchChanged;
     }
 }
