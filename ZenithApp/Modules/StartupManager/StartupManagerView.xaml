@@ -7,6 +7,52 @@
              xmlns:local="clr-namespace:ZenithApp.Modules.StartupManager"
              mc:Ignorable="d" 
              d:DesignHeight="500" d:DesignWidth="650">
+
+    <UserControl.Resources>
+        <!-- Стиль сегментированных вкладок-фильтров в стиле Windows 11 -->
+        <Style x:Key="TabRadioButtonStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="14,6" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="TabBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="TabBorder" Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                <Setter TargetName="TabBorder" Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorDisabledBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -23,7 +69,7 @@
             </Grid.ColumnDefinitions>
 
             <ui:TextBox Grid.Column="0"
-                        PlaceholderText="Поиск по названию, издателю или пути..."
+                        PlaceholderText="Поиск программ..."
                         Text="{Binding SearchFilter, UpdateSourceTrigger=PropertyChanged}"
                         Icon="{ui:SymbolIcon Search24}"
                         ClearButtonEnabled="True"
@@ -38,23 +84,25 @@
         <!-- Фильтры категорий (Вкладки) -->
         <Border Grid.Row="1"
                 Background="{DynamicResource SubtleFillColorSecondaryBrush}"
-                CornerRadius="6"
-                Padding="2"
+                BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Padding="3"
                 Margin="0,0,0,10"
                 HorizontalAlignment="Left">
             <StackPanel Orientation="Horizontal">
                 <RadioButton Content="Все"
                              GroupName="StartupCategoryGroup"
                              IsChecked="{Binding SelectedFilterTab, Converter={x:Static local:StartupTabConverter.Instance}, ConverterParameter=0, Mode=TwoWay}"
-                             Style="{DynamicResource TabRadioButtonStyle}" />
+                             Style="{StaticResource TabRadioButtonStyle}" />
                 <RadioButton Content="В автозагрузке"
                              GroupName="StartupCategoryGroup"
                              IsChecked="{Binding SelectedFilterTab, Converter={x:Static local:StartupTabConverter.Instance}, ConverterParameter=1, Mode=TwoWay}"
-                             Style="{DynamicResource TabRadioButtonStyle}" />
+                             Style="{StaticResource TabRadioButtonStyle}" />
                 <RadioButton Content="Доступные программы"
                              GroupName="StartupCategoryGroup"
                              IsChecked="{Binding SelectedFilterTab, Converter={x:Static local:StartupTabConverter.Instance}, ConverterParameter=2, Mode=TwoWay}"
-                             Style="{DynamicResource TabRadioButtonStyle}" />
+                             Style="{StaticResource TabRadioButtonStyle}" />
             </StackPanel>
         </Border>
 
@@ -162,49 +210,30 @@
                                         </ui:SymbolIcon>
                                     </Grid>
 
-                                    <!-- Описание и детали -->
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding Name}" 
-                                                       FontWeight="SemiBold" 
-                                                       FontSize="14"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <Border CornerRadius="4"
-                                                    Margin="8,0,0,0"
-                                                    Padding="6,1"
-                                                    VerticalAlignment="Center"
-                                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}">
-                                                <Border.Style>
-                                                    <Style TargetType="Border">
-                                                        <Setter Property="Visibility" Value="Collapsed" />
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsInstalledOnly}" Value="True">
-                                                                <Setter Property="Visibility" Value="Visible" />
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </Border.Style>
-                                                <TextBlock Text="Доступно" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                                            </Border>
-                                        </StackPanel>
-
-                                        <WrapPanel Margin="0,2,0,0">
-                                            <TextBlock Text="{Binding Publisher}" 
-                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                                       FontSize="12" />
-                                            <TextBlock Text=" • " 
-                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
-                                                       FontSize="12" />
-                                            <TextBlock Text="{Binding LocationDisplayName}" 
-                                                       Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
-                                                       FontSize="12" />
-                                        </WrapPanel>
-                                        <TextBlock Text="{Binding Command}" 
-                                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" 
-                                                   FontSize="11" 
-                                                   TextTrimming="CharacterEllipsis"
-                                                   ToolTip="{Binding Command}"
-                                                   Margin="0,2,0,0" />
+                                    <!-- Название приложения и статус -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock Text="{Binding Name}" 
+                                                   FontWeight="SemiBold" 
+                                                   FontSize="14"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <Border CornerRadius="4"
+                                                Margin="8,0,0,0"
+                                                Padding="6,1"
+                                                VerticalAlignment="Center"
+                                                Background="{DynamicResource SubtleFillColorTertiaryBrush}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsInstalledOnly}" Value="True">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="Доступно" FontSize="10" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- Кнопка перехода к файлу -->

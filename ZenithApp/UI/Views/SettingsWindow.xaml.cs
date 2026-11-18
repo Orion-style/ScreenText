@@ -18,7 +18,23 @@ public partial class SettingsWindow : FluentWindow
         _viewModel = viewModel;
         DataContext = _viewModel;
 
+        GeneralPage.PreviewMouseWheel += OnScrollViewerPreviewMouseWheel;
+        ModuleDetailPage.PreviewMouseWheel += OnScrollViewerPreviewMouseWheel;
+
         ShowGeneralPage();
+    }
+
+    private void OnScrollViewerPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is ScrollViewer sv && sv.ScrollableHeight > 0)
+        {
+            // Ограничиваем скорость скролла: замедляем шаг (36px на один щелчок вместо прыжка по полстраницы),
+            // обеспечивая плавное и аккуратное прокручивание как для тачпада, так и для колеса мыши
+            double delta = (e.Delta / 120.0) * 36.0;
+            double target = Math.Clamp(sv.VerticalOffset - delta, 0, sv.ScrollableHeight);
+            sv.ScrollToVerticalOffset(target);
+            e.Handled = true;
+        }
     }
 
     private void OnGeneralNavClicked(object sender, MouseButtonEventArgs e)
