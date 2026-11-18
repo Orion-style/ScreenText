@@ -156,6 +156,34 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
             return false;
         }
 
+        // Если нажата клавиша Windows (LWIN/RWIN) при зажатом Tab или открытом колесе:
+        // мгновенно отменяем колесо, чтобы оно не застревало при вызове Пуск или смене столов
+        if (e.VirtualCode == VK_LWIN || e.VirtualCode == VK_RWIN)
+        {
+            bool wasActive = false;
+            lock (_stateLock)
+            {
+                if (_isTabHeld || _isWheelOpen)
+                {
+                    wasActive = true;
+                    _isTabHeld = false;
+                    _isWheelOpen = false;
+                    StopHoldTimer();
+                }
+            }
+
+            if (wasActive)
+            {
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    _currentWheel?.CloseImmediately();
+                    _currentWheel = null;
+                });
+            }
+
+            return false;
+        }
+
         if (e.VirtualCode != VK_TAB)
         {
             return false;

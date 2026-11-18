@@ -120,7 +120,6 @@ public sealed partial class RadialWheelWindow : Window
         {
             if (e.Key == Key.Escape) CloseImmediately();
         };
-        Deactivated += (_, _) => CloseImmediately();
     }
 
     private void BuildSlots(List<WindowInfo> candidateWindows)
@@ -359,14 +358,6 @@ public sealed partial class RadialWheelWindow : Window
             (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0)
         {
             CloseImmediately();
-            return;
-        }
-
-        // 2. Если клавиша Tab физически отпущена (проверка аппаратного состояния через Win32):
-        // Гарантирует закрытие, даже если Windows перехватила KeyUp хук при смене рабочего стола
-        if ((GetAsyncKeyState(VK_TAB) & 0x8000) == 0)
-        {
-            CloseAndActivateSelected();
             return;
         }
 
