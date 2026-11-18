@@ -126,9 +126,13 @@ public sealed partial class RadialWheelWindow : Window
             if (config != null && config.IsPinned && 
                 (!string.IsNullOrWhiteSpace(config.PinnedProcessName) || !string.IsNullOrWhiteSpace(config.PinnedExecutablePath)))
             {
+                var cleanPinProc = !string.IsNullOrWhiteSpace(config.PinnedProcessName)
+                    ? System.IO.Path.GetFileNameWithoutExtension(config.PinnedProcessName)
+                    : string.Empty;
+
                 matchedWindow = availableWindows.FirstOrDefault(w => 
                     (!string.IsNullOrWhiteSpace(config.PinnedExecutablePath) && w.ExePath.Equals(config.PinnedExecutablePath, StringComparison.OrdinalIgnoreCase)) ||
-                    (!string.IsNullOrWhiteSpace(config.PinnedProcessName) && w.ProcessName.Equals(config.PinnedProcessName, StringComparison.OrdinalIgnoreCase)));
+                    (!string.IsNullOrWhiteSpace(cleanPinProc) && (w.ProcessName.Equals(cleanPinProc, StringComparison.OrdinalIgnoreCase) || w.ProcessName.Equals(config.PinnedProcessName, StringComparison.OrdinalIgnoreCase))));
 
                 if (matchedWindow != null)
                 {
@@ -436,54 +440,49 @@ public sealed partial class RadialWheelWindow : Window
 
         int selectedIdx = _selectedZoneIndex;
 
-        // Анимация быстрого закрытия
-        var fadeOut = new DoubleAnimation(1.0, 0.0, TimeSpan.FromMilliseconds(120));
-        fadeOut.Completed += (_, _) =>
+        // Немедленно скрываем окно колеса, чтобы освободить рабочий стол и снять TopMost оверлей
+        Visibility = Visibility.Hidden;
+        Close();
+
+        // Мгновенное переключение фокуса на выбранное окно без задержек анимации
+        if (selectedIdx >= 0 && selectedIdx < _slots.Count)
         {
-            Close();
-
-            // Если был выбран валидный сектор: переключаем фокус или запускаем
-            if (selectedIdx >= 0 && selectedIdx < _slots.Count)
+            var slot = _slots[selectedIdx];
+            if (slot.Window != null && slot.Window.Hwnd != nint.Zero)
             {
-                var slot = _slots[selectedIdx];
-                if (slot.Window != null && slot.Window.Hwnd != nint.Zero)
+                WindowListService.ActivateWindow(slot.Window.Hwnd);
+            }
+            else if (slot.IsPinned && _settings.AutoLaunchPinned)
+            {
+                // Попытка запустить закрепленное приложение, если оно еще не открыто
+                try
                 {
-                    WindowListService.ActivateWindow(slot.Window.Hwnd);
-                }
-                else if (slot.IsPinned && _settings.AutoLaunchPinned)
-                {
-                    // Попытка запустить закрепленное приложение, если оно еще не открыто
-                    try
+                    var exePath = slot.CustomConfig?.PinnedExecutablePath;
+                    if (!string.IsNullOrWhiteSpace(exePath) && System.IO.File.Exists(exePath))
                     {
-                        var exePath = slot.CustomConfig?.PinnedExecutablePath;
-                        if (!string.IsNullOrWhiteSpace(exePath) && System.IO.File.Exists(exePath))
+                        Process.Start(new ProcessStartInfo
                         {
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = exePath,
-                                UseShellExecute = true,
-                                WorkingDirectory = System.IO.Path.GetDirectoryName(exePath)
-                            });
-                        }
-                        else if (!string.IsNullOrWhiteSpace(slot.CustomConfig?.PinnedProcessName))
-                        {
-                            Process.Start(new ProcessStartInfo
-                            {
-                                FileName = slot.CustomConfig.PinnedProcessName,
-                                UseShellExecute = true
-                            });
-                        }
+                            FileName = exePath,
+                            UseShellExecute = true,
+                            WorkingDirectory = System.IO.Path.GetDirectoryName(exePath)
+                        });
                     }
-                    catch { }
+                    else if (!string.IsNullOrWhiteSpace(slot.CustomConfig?.PinnedProcessName))
+                    {
+                        Process.Start(new ProcessStartInfo
+                        {
+                            FileName = slot.CustomConfig.PinnedProcessName,
+                            UseShellExecute = true
+                        });
+                    }
                 }
+                catch { }
             }
-            else if (_activeWindow != null && _activeWindow.Hwnd != nint.Zero)
-            {
-                // Если пользователь отпустил Tab в центре или отменил выбор, возвращаем фокус исходному окну
-                WindowListService.ActivateWindow(_activeWindow.Hwnd);
-            }
-        };
-
-        BeginAnimation(OpacityProperty, fadeOut);
+        }
+        else if (_activeWindow != null && _activeWindow.Hwnd != nint.Zero)
+        {
+            // Если пользователь отпустил Tab в центре или отменил выбор, возвращаем фокус исходному окну
+            WindowListService.ActivateWindow(_activeWindow.Hwnd);
+        }
     }
 }

@@ -52,6 +52,43 @@ public static class WindowListService
     public static extern bool SetForegroundWindow(nint hWnd);
 
     [DllImport("user32.dll")]
+    public static extern void SwitchToThisWindow(nint hWnd, bool fAltTab);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool BringWindowToTop(nint hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindow(nint hWnd);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AllowSetForegroundWindow(int dwProcessId);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+
+    [DllImport("kernel32.dll")]
+    private static extern uint GetCurrentThreadId();
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetWindowPos(nint hWnd, nint hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll")]
+    private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, nuint dwExtraInfo);
+
+    private static readonly nint HWND_NOTOPMOST = new nint(-2);
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_SHOWWINDOW = 0x0040;
+    private const int ASFW_ANY = -1;
+    private const byte VK_MENU = 0x12;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindow(nint hWnd, int nCmdShow);
 
@@ -303,21 +340,71 @@ public static class WindowListService
 
     public static void ActivateWindow(nint hWnd)
     {
-        if (hWnd == nint.Zero) return;
+        if (hWnd == nint.Zero || !IsWindow(hWnd)) return;
 
         try
         {
-            if (IsIconic(hWnd))
-            {
-                ShowWindow(hWnd, SW_RESTORE);
-            }
-            else
-            {
-                ShowWindow(hWnd, SW_SHOW);
-            }
+            nint fgHwnd = GetForegroundWindow();
+            if (fgHwnd == hWnd) return;
 
-            SetForegroundWindow(hWnd);
-            RecordActiveWindow(hWnd);
+            uint currentThreadId = GetCurrentThreadId();
+            uint fgThreadId = fgHwnd != nint.Zero ? GetWindowThreadProcessId(fgHwnd, out _) : 0;
+            uint targetThreadId = GetWindowThreadProcessId(hWnd, out _);
+
+            bool attachedFg = false;
+            bool attachedTarget = false;
+
+            try
+            {
+                // 1. Прикрепляем очереди ввода потоков для легитимного обхода ограничений Foreground Lock
+                if (fgThreadId != 0 && fgThreadId != currentThreadId)
+                {
+                    attachedFg = AttachThreadInput(currentThreadId, fgThreadId, true);
+                }
+                if (targetThreadId != 0 && targetThreadId != currentThreadId && targetThreadId != fgThreadId)
+                {
+                    attachedTarget = AttachThreadInput(currentThreadId, targetThreadId, true);
+                }
+
+                // 2. Разрешаем смену активного окна для текущего и любых процессов
+                AllowSetForegroundWindow(ASFW_ANY);
+
+                // 3. Симулируем отжатие/нажатие клавиши Alt, что принудительно сбрасывает системный ForegroundLockTimeout в Windows
+                keybd_event(VK_MENU, 0, 0, 0);
+                keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+
+                // 4. Восстанавливаем окно, если оно свернуто
+                if (IsIconic(hWnd))
+                {
+                    ShowWindow(hWnd, SW_RESTORE);
+                }
+                else
+                {
+                    ShowWindow(hWnd, SW_SHOW);
+                }
+
+                // 5. Гарантируем, что окно НЕ находится в TopMost Z-полосе (HWND_NOTOPMOST),
+                // чтобы оно не перекрывало полноэкранные приложения и игры
+                SetWindowPos(hWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+                // 6. Нативный вызов диспетчера задач Windows (Alt+Tab API) и передача фокуса
+                SwitchToThisWindow(hWnd, true);
+                BringWindowToTop(hWnd);
+                SetForegroundWindow(hWnd);
+
+                RecordActiveWindow(hWnd);
+            }
+            finally
+            {
+                if (attachedFg)
+                {
+                    AttachThreadInput(currentThreadId, fgThreadId, false);
+                }
+                if (attachedTarget)
+                {
+                    AttachThreadInput(currentThreadId, targetThreadId, false);
+                }
+            }
         }
         catch { }
     }

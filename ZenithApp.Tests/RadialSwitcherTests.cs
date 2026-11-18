@@ -128,4 +128,14 @@ public class RadialSwitcherTests
         var ex = Record.Exception(() => ZenithApp.Modules.KeyRemap.KeyboardInputSender.SendKeyPress(ZenithApp.Modules.KeyRemap.VirtualKeyHelper.VK_TAB));
         Assert.Null(ex);
     }
+
+    [Fact]
+    public void WindowListService_ActivateWindow_InvalidHwnd_DoesNotThrow()
+    {
+        var ex = Record.Exception(() => WindowListService.ActivateWindow(nint.Zero));
+        Assert.Null(ex);
+
+        var ex2 = Record.Exception(() => WindowListService.ActivateWindow(new nint(99999999)));
+        Assert.Null(ex2);
+    }
 }
