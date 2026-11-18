@@ -173,12 +173,12 @@ public sealed partial class RadialWheelWindow : Window
         _sectorElements.Clear();
 
         int n = _slots.Count;
-        double cx = 250;
-        double cy = 250;
-        double r1 = 80;
-        double r2 = 232;
+        double cx = 180;
+        double cy = 180;
+        double r1 = 65;
+        double r2 = 165;
         double sectorAngle = 360.0 / n;
-        double gap = 1.6; // Угловой зазор между секторами в градусах
+        double gap = 1.8; // Угловой зазор между секторами в градусах
 
         for (int i = 0; i < n; i++)
         {
@@ -224,27 +224,19 @@ public sealed partial class RadialWheelWindow : Window
             SectorsCanvas.Children.Add(path);
             _sectorPaths.Add(path);
 
-            // Иконка и текстовая плашка сектора
+            // Иконка сектора без подписи (только иконка программы)
             double rMid = (r1 + r2) / 2.0;
             double iconCenterX = cx + rMid * Math.Sin(radMid);
             double iconCenterY = cy - rMid * Math.Cos(radMid);
 
-            var itemPanel = new StackPanel
-            {
-                Width = 76,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                IsHitTestVisible = false
-            };
-
             var iconBorder = new Border
             {
-                Width = 36,
-                Height = 36,
+                Width = 34,
+                Height = 34,
                 CornerRadius = new CornerRadius(8),
                 Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)),
                 Padding = new Thickness(3),
-                HorizontalAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 0, 0, 3)
+                IsHitTestVisible = false
             };
 
             if (slot.DisplayIcon != null)
@@ -261,33 +253,18 @@ public sealed partial class RadialWheelWindow : Window
                 iconBorder.Child = new TextBlock
                 {
                     Text = slot.IsPinned ? "★" : "—",
-                    FontSize = 14,
+                    FontSize = 13,
                     Foreground = new SolidColorBrush(Color.FromArgb(140, 255, 255, 255)),
                     HorizontalAlignment = HorizontalAlignment.Center,
                     VerticalAlignment = VerticalAlignment.Center
                 };
             }
 
-            itemPanel.Children.Add(iconBorder);
+            Canvas.SetLeft(iconBorder, iconCenterX - 17);
+            Canvas.SetTop(iconBorder, iconCenterY - 17);
 
-            var label = new TextBlock
-            {
-                Text = slot.DisplayTitle,
-                FontSize = 10,
-                FontWeight = FontWeights.Medium,
-                Foreground = Brushes.White,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                TextAlignment = TextAlignment.Center,
-                TextTrimming = TextTrimming.CharacterEllipsis,
-                MaxWidth = 72
-            };
-            itemPanel.Children.Add(label);
-
-            Canvas.SetLeft(itemPanel, iconCenterX - 38);
-            Canvas.SetTop(itemPanel, iconCenterY - 26);
-
-            SectorsCanvas.Children.Add(itemPanel);
-            _sectorElements.Add(itemPanel);
+            SectorsCanvas.Children.Add(iconBorder);
+            _sectorElements.Add(iconBorder);
         }
     }
 
@@ -359,12 +336,14 @@ public sealed partial class RadialWheelWindow : Window
             double localX = mouseDipX - Left;
             double localY = mouseDipY - Top;
 
-            double dx = localX - 250;
-            double dy = localY - 250;
+            double cx = Width / 2.0;
+            double cy = Height / 2.0;
+            double dx = localX - cx;
+            double dy = localY - cy;
             double dist = Math.Sqrt(dx * dx + dy * dy);
 
             // Мертвая зона в центре
-            if (dist < 65)
+            if (dist < 52)
             {
                 HighlightZone(-1);
             }
