@@ -59,6 +59,8 @@
                      BorderThickness="0"
                      Background="Transparent"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.CanContentScroll="False"
+                     PreviewMouseWheel="OnProgramsListPreviewMouseWheel"
                      MouseLeftButtonUp="OnProgramItemSelected">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:ProgramPickerItem}">

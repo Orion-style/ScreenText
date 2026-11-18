@@ -161,6 +161,35 @@ public sealed partial class ProgramPickerDialog : FluentWindow
         ApplyFilter(TxtSearch.Text);
     }
 
+    private ScrollViewer? _programsScrollViewer;
+
+    private void OnProgramsListPreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        _programsScrollViewer ??= FindVisualChild<ScrollViewer>(ProgramsList);
+        if (_programsScrollViewer != null)
+        {
+            // Замедляем шаг прокрутки для плавности (32px за шаг колеса/жест тачпада)
+            double delta = (e.Delta / 120.0) * 32.0;
+            double target = Math.Clamp(_programsScrollViewer.VerticalOffset - delta, 0, _programsScrollViewer.ScrollableHeight);
+            _programsScrollViewer.ScrollToVerticalOffset(target);
+            e.Handled = true;
+        }
+    }
+
+    private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+    {
+        if (parent == null) return null;
+        int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+        for (int i = 0; i < count; i++)
+        {
+            var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+            if (child is T typed) return typed;
+            var sub = FindVisualChild<T>(child);
+            if (sub != null) return sub;
+        }
+        return null;
+    }
+
     private void OnProgramItemSelected(object sender, MouseButtonEventArgs e)
     {
         if (ProgramsList.SelectedItem is ProgramPickerItem selected)
