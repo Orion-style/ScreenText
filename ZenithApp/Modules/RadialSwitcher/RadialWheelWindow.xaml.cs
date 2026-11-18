@@ -78,8 +78,13 @@ public sealed partial class RadialWheelWindow : Window
         public bool IsPinned => CustomConfig?.IsPinned == true;
         public string DisplayTitle => CustomConfig?.CustomLabel 
                                       ?? Window?.Title 
-                                      ?? (IsPinned ? CustomConfig?.PinnedProcessName ?? "Закреплено" : "(Пусто)");
-        public ImageSource? DisplayIcon => Window?.Icon;
+                                      ?? (IsPinned ? CustomConfig?.PinnedProcessName ?? "Закреплено" : "(Свободно)");
+        public ImageSource? DisplayIcon => Window?.Icon 
+                                           ?? (IsPinned && !string.IsNullOrWhiteSpace(CustomConfig?.PinnedExecutablePath) 
+                                               ? WindowListService.GetIconForPath(CustomConfig.PinnedExecutablePath) 
+                                               : (IsPinned && !string.IsNullOrWhiteSpace(CustomConfig?.PinnedProcessName)
+                                                   ? WindowListService.GetIconForProcessName(CustomConfig.PinnedProcessName)
+                                                   : null));
     }
 
     public RadialWheelWindow(
@@ -109,35 +114,25 @@ public sealed partial class RadialWheelWindow : Window
         _settings.EnsureZonesConfigured();
         int count = _settings.ZoneCount;
 
-        var availableWindows = new Queue<WindowInfo>(candidateWindows);
+        var availableWindows = new List<WindowInfo>(candidateWindows);
+        var usedHwnds = new HashSet<nint>();
 
+        // 1. Сначала распределяем закрепленные слоты
         for (int i = 0; i < count; i++)
         {
             var config = _settings.CustomZones.FirstOrDefault(c => c.Index == i);
-
             WindowInfo? matchedWindow = null;
 
-            if (config != null && config.IsPinned && !string.IsNullOrWhiteSpace(config.PinnedProcessName))
+            if (config != null && config.IsPinned && 
+                (!string.IsNullOrWhiteSpace(config.PinnedProcessName) || !string.IsNullOrWhiteSpace(config.PinnedExecutablePath)))
             {
-                // Ищем окно по имени процесса
-                matchedWindow = candidateWindows.FirstOrDefault(w => 
-                    w.ProcessName.Equals(config.PinnedProcessName, StringComparison.OrdinalIgnoreCase));
-            }
-            else
-            {
-                // Динамическое назначение из недавних окон
-                while (availableWindows.Count > 0)
-                {
-                    var cand = availableWindows.Dequeue();
-                    // Пропускаем, если оно уже закреплено за другим слотом
-                    bool isReservedByPinned = _settings.CustomZones.Any(c => c.IsPinned && 
-                        c.PinnedProcessName?.Equals(cand.ProcessName, StringComparison.OrdinalIgnoreCase) == true);
+                matchedWindow = availableWindows.FirstOrDefault(w => 
+                    (!string.IsNullOrWhiteSpace(config.PinnedExecutablePath) && w.ExePath.Equals(config.PinnedExecutablePath, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(config.PinnedProcessName) && w.ProcessName.Equals(config.PinnedProcessName, StringComparison.OrdinalIgnoreCase)));
 
-                    if (!isReservedByPinned)
-                    {
-                        matchedWindow = cand;
-                        break;
-                    }
+                if (matchedWindow != null)
+                {
+                    usedHwnds.Add(matchedWindow.Hwnd);
                 }
             }
 
@@ -150,6 +145,21 @@ public sealed partial class RadialWheelWindow : Window
             };
 
             _slots.Add(slot);
+        }
+
+        // 2. Оставшиеся окна распределяем по незакрепленным слотам в строгом MRU-порядке
+        var unreservedWindows = new Queue<WindowInfo>(
+            availableWindows.Where(w => !usedHwnds.Contains(w.Hwnd)));
+
+        for (int i = 0; i < count; i++)
+        {
+            var slot = _slots[i];
+            if (slot.IsPinned) continue;
+
+            if (unreservedWindows.Count > 0)
+            {
+                slot.Window = unreservedWindows.Dequeue();
+            }
         }
     }
 
@@ -392,6 +402,22 @@ public sealed partial class RadialWheelWindow : Window
 
             ImgCenterHoverApp.Source = slot.DisplayIcon;
             TxtCenterHoverTitle.Text = slot.DisplayTitle;
+
+            if (slot.Window != null)
+            {
+                TxtCenterHoverSub.Text = "Переключить окно";
+                TxtCenterHoverSub.Foreground = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+            }
+            else if (slot.IsPinned)
+            {
+                TxtCenterHoverSub.Text = "Запустить программу";
+                TxtCenterHoverSub.Foreground = new SolidColorBrush(Color.FromRgb(252, 231, 148));
+            }
+            else
+            {
+                TxtCenterHoverSub.Text = "Свободный сектор";
+                TxtCenterHoverSub.Foreground = new SolidColorBrush(Color.FromArgb(160, 255, 255, 255));
+            }
         }
         else
         {
@@ -416,7 +442,7 @@ public sealed partial class RadialWheelWindow : Window
         {
             Close();
 
-            // Если был выбран валидный сектор: переключаем фокус
+            // Если был выбран валидный сектор: переключаем фокус или запускаем
             if (selectedIdx >= 0 && selectedIdx < _slots.Count)
             {
                 var slot = _slots[selectedIdx];
@@ -424,16 +450,29 @@ public sealed partial class RadialWheelWindow : Window
                 {
                     WindowListService.ActivateWindow(slot.Window.Hwnd);
                 }
-                else if (slot.IsPinned && _settings.AutoLaunchPinned && !string.IsNullOrWhiteSpace(slot.CustomConfig?.PinnedProcessName))
+                else if (slot.IsPinned && _settings.AutoLaunchPinned)
                 {
                     // Попытка запустить закрепленное приложение, если оно еще не открыто
                     try
                     {
-                        Process.Start(new ProcessStartInfo
+                        var exePath = slot.CustomConfig?.PinnedExecutablePath;
+                        if (!string.IsNullOrWhiteSpace(exePath) && System.IO.File.Exists(exePath))
                         {
-                            FileName = slot.CustomConfig.PinnedProcessName,
-                            UseShellExecute = true
-                        });
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = exePath,
+                                UseShellExecute = true,
+                                WorkingDirectory = System.IO.Path.GetDirectoryName(exePath)
+                            });
+                        }
+                        else if (!string.IsNullOrWhiteSpace(slot.CustomConfig?.PinnedProcessName))
+                        {
+                            Process.Start(new ProcessStartInfo
+                            {
+                                FileName = slot.CustomConfig.PinnedProcessName,
+                                UseShellExecute = true
+                            });
+                        }
                     }
                     catch { }
                 }

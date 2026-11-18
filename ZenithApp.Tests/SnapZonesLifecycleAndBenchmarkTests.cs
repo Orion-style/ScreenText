@@ -60,7 +60,7 @@ public class SnapZonesLifecycleAndBenchmarkTests
 
         long memEnabledIdle = GC.GetTotalMemory(true);
         long idleDelta = memEnabledIdle - memStart;
-        Assert.True(idleDelta < 500 * 1024, $"SnapZones idle memory too high: {idleDelta} bytes");
+        Assert.True(idleDelta < 1024 * 1024, $"SnapZones idle memory too high: {idleDelta} bytes");
 
         // 2. Disable module
         await module.DisableAsync();

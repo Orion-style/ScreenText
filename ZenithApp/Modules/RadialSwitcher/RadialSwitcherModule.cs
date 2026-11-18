@@ -58,7 +58,10 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
     protected override Task OnEnableAsync()
     {
         _hookSubscription = _keyboardHookService.Subscribe(OnKeyboardInput);
-        Logger.LogInfo("[RadialSwitcher] Модуль активирован. Перехват зажатия Tab включен.");
+
+        Application.Current?.Dispatcher.BeginInvoke(WindowListService.StartTracking);
+
+        Logger.LogInfo("[RadialSwitcher] Модуль активирован. Перехват зажатия Tab и отслеживание MRU активности окон включены.");
         return Task.CompletedTask;
     }
 
@@ -71,6 +74,7 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
 
         Application.Current?.Dispatcher.BeginInvoke(() =>
         {
+            WindowListService.StopTracking();
             _currentWheel?.Close();
             _currentWheel = null;
         });
@@ -225,6 +229,11 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         try
         {
             var fgHwnd = WindowListService.GetForegroundWindow();
+            if (fgHwnd != nint.Zero)
+            {
+                WindowListService.RecordActiveWindow(fgHwnd);
+            }
+
             var activeWin = WindowListService.GetWindowInfo(fgHwnd, fgHwnd);
             var candidateWindows = WindowListService.GetOpenWindows(fgHwnd, maxCount: 16);
 

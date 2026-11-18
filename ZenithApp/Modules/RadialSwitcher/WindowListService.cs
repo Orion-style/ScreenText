@@ -92,6 +92,83 @@ public static class WindowListService
 
     private static readonly ConcurrentDictionary<string, ImageSource> _iconCache = new(StringComparer.OrdinalIgnoreCase);
 
+    // --- WinEvent Hook для отслеживания активации окон (MRU-приоритет) ---
+    private delegate void WinEventDelegate(
+        nint hWinEventHook, uint eventType, nint hWnd, int idObject, int idChild, uint dwEventThread, uint dwmsEventTime);
+
+    [DllImport("user32.dll")]
+    private static extern nint SetWinEventHook(
+        uint eventMin, uint eventMax, nint hmodWinEventProc, WinEventDelegate lpfnWinEventProc, uint idProcess, uint idThread, uint dwFlags);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool UnhookWinEvent(nint hWinEventHook);
+
+    private const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    private const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+    private const int OBJID_WINDOW = 0;
+
+    private static nint _winEventHook = nint.Zero;
+    private static WinEventDelegate? _winEventProc;
+    private static readonly List<nint> _mruHwnds = new();
+    private static readonly object _mruLock = new();
+
+    public static void StartTracking()
+    {
+        if (_winEventHook != nint.Zero) return;
+
+        _winEventProc = (hHook, eventType, hWnd, idObject, idChild, thread, time) =>
+        {
+            if (idObject == OBJID_WINDOW && hWnd != nint.Zero)
+            {
+                RecordActiveWindow(hWnd);
+            }
+        };
+
+        _winEventHook = SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND,
+            EVENT_SYSTEM_FOREGROUND,
+            nint.Zero,
+            _winEventProc,
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT);
+    }
+
+    public static void StopTracking()
+    {
+        if (_winEventHook != nint.Zero)
+        {
+            UnhookWinEvent(_winEventHook);
+            _winEventHook = nint.Zero;
+            _winEventProc = null;
+        }
+    }
+
+    public static void RecordActiveWindow(nint hWnd)
+    {
+        if (hWnd == nint.Zero) return;
+
+        lock (_mruLock)
+        {
+            _mruHwnds.Remove(hWnd);
+            _mruHwnds.Insert(0, hWnd);
+
+            if (_mruHwnds.Count > 100)
+            {
+                _mruHwnds.RemoveRange(100, _mruHwnds.Count - 100);
+            }
+        }
+    }
+
+    public static void ClearMruHistory()
+    {
+        lock (_mruLock)
+        {
+            _mruHwnds.Clear();
+        }
+    }
+
     public static nint GetWindowLongPtr(nint hWnd, int nIndex)
     {
         return IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : GetWindowLong32(hWnd, nIndex);
@@ -151,9 +228,10 @@ public static class WindowListService
         };
     }
 
-    public static List<WindowInfo> GetOpenWindows(nint foregroundHwnd, int maxCount = 12)
+    public static List<WindowInfo> GetOpenWindows(nint foregroundHwnd, int maxCount = 16)
     {
-        var result = new List<WindowInfo>();
+        var candidatesMap = new Dictionary<nint, WindowInfo>();
+        var zOrderHwnds = new List<nint>();
 
         EnumWindows((hWnd, _) =>
         {
@@ -164,15 +242,42 @@ public static class WindowListService
             var info = GetWindowInfo(hWnd, foregroundHwnd);
             if (info != null)
             {
-                result.Add(info);
-                if (result.Count >= maxCount)
-                {
-                    return false; // Достаточно окон
-                }
+                candidatesMap[hWnd] = info;
+                zOrderHwnds.Add(hWnd);
             }
 
             return true;
         }, nint.Zero);
+
+        var result = new List<WindowInfo>();
+        var seen = new HashSet<nint>();
+
+        // 1. Приоритет MRU: окна, с которыми пользователь взаимодействовал недавно
+        lock (_mruLock)
+        {
+            // Очищаем историю от закрытых окон
+            _mruHwnds.RemoveAll(h => !candidatesMap.ContainsKey(h) && h != foregroundHwnd);
+
+            foreach (var hwnd in _mruHwnds)
+            {
+                if (hwnd == foregroundHwnd) continue;
+                if (candidatesMap.TryGetValue(hwnd, out var info) && seen.Add(hwnd))
+                {
+                    result.Add(info);
+                    if (result.Count >= maxCount) break;
+                }
+            }
+        }
+
+        // 2. Дополняем остальными окнами по Z-order, если слоты еще свободны
+        foreach (var hwnd in zOrderHwnds)
+        {
+            if (result.Count >= maxCount) break;
+            if (seen.Add(hwnd) && candidatesMap.TryGetValue(hwnd, out var info))
+            {
+                result.Add(info);
+            }
+        }
 
         return result;
     }
@@ -212,6 +317,7 @@ public static class WindowListService
             }
 
             SetForegroundWindow(hWnd);
+            RecordActiveWindow(hWnd);
         }
         catch { }
     }
@@ -277,31 +383,61 @@ public static class WindowListService
         catch { }
 
         // 2. Иконка из исполняемого файла приложения
-        if (!string.IsNullOrWhiteSpace(exePath))
-        {
-            if (_iconCache.TryGetValue(exePath, out var cached))
-            {
-                return cached;
-            }
+        return GetIconForPath(exePath);
+    }
 
-            try
+    public static ImageSource? GetIconForPath(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return null;
+
+        if (_iconCache.TryGetValue(path, out var cached))
+        {
+            return cached;
+        }
+
+        try
+        {
+            if (File.Exists(path))
             {
-                if (File.Exists(exePath))
+                using var sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(path);
+                if (sysIcon != null)
                 {
-                    using var sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(exePath);
-                    if (sysIcon != null)
+                    var src = CreateBitmapSourceFromHIcon(sysIcon.Handle);
+                    if (src != null)
                     {
-                        var src = CreateBitmapSourceFromHIcon(sysIcon.Handle);
-                        if (src != null)
-                        {
-                            _iconCache[exePath] = src;
-                            return src;
-                        }
+                        _iconCache[path] = src;
+                        return src;
                     }
                 }
             }
-            catch { }
         }
+        catch { }
+
+        return null;
+    }
+
+    public static ImageSource? GetIconForProcessName(string? procName)
+    {
+        if (string.IsNullOrWhiteSpace(procName)) return null;
+
+        try
+        {
+            var procs = Process.GetProcessesByName(procName);
+            foreach (var p in procs)
+            {
+                try
+                {
+                    string path = p.MainModule?.FileName ?? string.Empty;
+                    if (!string.IsNullOrWhiteSpace(path) && File.Exists(path))
+                    {
+                        var icon = GetIconForPath(path);
+                        if (icon != null) return icon;
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
 
         return null;
     }

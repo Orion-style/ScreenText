@@ -62,7 +62,8 @@
                            TextAlignment="Center" 
                            TextTrimming="CharacterEllipsis" 
                            MaxWidth="104" />
-                <TextBlock Text="Отпустите Tab" 
+                <TextBlock x:Name="TxtCenterHoverSub"
+                           Text="Отпустите Tab" 
                            FontSize="9" 
                            FontWeight="SemiBold" 
                            Foreground="#10B981" 
