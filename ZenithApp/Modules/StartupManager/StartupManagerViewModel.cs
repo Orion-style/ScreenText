@@ -12,6 +12,7 @@ public sealed class StartupManagerViewModel : ViewModelBase
     private readonly IStartupItemsService _service;
     private string _searchFilter = string.Empty;
     private bool _isLoading;
+    private int _selectedFilterTab = 0; // 0 = Все, 1 = В автозагрузке, 2 = Установленные программы
 
     public StartupManagerViewModel(StartupManagerModule module, IStartupItemsService service)
     {
@@ -42,6 +43,18 @@ public sealed class StartupManagerViewModel : ViewModelBase
         }
     }
 
+    public int SelectedFilterTab
+    {
+        get => _selectedFilterTab;
+        set
+        {
+            if (SetProperty(ref _selectedFilterTab, value))
+            {
+                ApplyFilter();
+            }
+        }
+    }
+
     public bool IsLoading
     {
         get => _isLoading;
@@ -49,7 +62,9 @@ public sealed class StartupManagerViewModel : ViewModelBase
     }
 
     public int TotalCount => Items.Count;
+    public int StartupCount => Items.Count(i => !i.IsInstalledOnly);
     public int EnabledCount => Items.Count(i => i.IsEnabled);
+    public int AvailableCount => Items.Count(i => i.IsInstalledOnly);
 
     public void Refresh()
     {
@@ -63,9 +78,12 @@ public sealed class StartupManagerViewModel : ViewModelBase
                 var itemVm = new StartupItemViewModel(entry, _service, OnItemDeleted);
                 itemVm.PropertyChanged += (s, e) =>
                 {
-                    if (e.PropertyName == nameof(StartupItemViewModel.IsEnabled))
+                    if (e.PropertyName == nameof(StartupItemViewModel.IsEnabled) ||
+                        e.PropertyName == nameof(StartupItemViewModel.IsInstalledOnly))
                     {
                         OnPropertyChanged(nameof(EnabledCount));
+                        OnPropertyChanged(nameof(StartupCount));
+                        OnPropertyChanged(nameof(AvailableCount));
                     }
                 };
                 Items.Add(itemVm);
@@ -73,7 +91,9 @@ public sealed class StartupManagerViewModel : ViewModelBase
 
             ApplyFilter();
             OnPropertyChanged(nameof(TotalCount));
+            OnPropertyChanged(nameof(StartupCount));
             OnPropertyChanged(nameof(EnabledCount));
+            OnPropertyChanged(nameof(AvailableCount));
         }
         finally
         {
@@ -86,7 +106,9 @@ public sealed class StartupManagerViewModel : ViewModelBase
         Items.Remove(item);
         FilteredItems.Remove(item);
         OnPropertyChanged(nameof(TotalCount));
+        OnPropertyChanged(nameof(StartupCount));
         OnPropertyChanged(nameof(EnabledCount));
+        OnPropertyChanged(nameof(AvailableCount));
     }
 
     private void ApplyFilter()
@@ -96,6 +118,19 @@ public sealed class StartupManagerViewModel : ViewModelBase
 
         foreach (var item in Items)
         {
+            // Фильтрация по вкладкам:
+            // 0: Все
+            // 1: Только находящиеся в автозагрузке (Run / Startup папке или включенные)
+            // 2: Доступные программы (установленные, но не в автозагрузке)
+            if (_selectedFilterTab == 1 && item.IsInstalledOnly)
+            {
+                continue;
+            }
+            if (_selectedFilterTab == 2 && !item.IsInstalledOnly)
+            {
+                continue;
+            }
+
             if (string.IsNullOrEmpty(filter) ||
                 item.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
                 (item.Publisher != null && item.Publisher.Contains(filter, StringComparison.OrdinalIgnoreCase)) ||

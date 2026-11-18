@@ -1,6 +1,7 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
-using System.Windows.Threading;
 using ZenithApp.Core.Input;
 using ZenithApp.Core.Logging;
 using ZenithApp.Core.Modules;
@@ -12,13 +13,27 @@ namespace ZenithApp.Modules.RadialSwitcher;
 public sealed class RadialSwitcherModule : BaseFeatureModule
 {
     public const string ModuleId = "radial_switcher";
+
     private const int VK_TAB = 0x09;
+    private const int VK_SHIFT = 0x10;
+    private const int VK_CONTROL = 0x11;
+    private const int VK_MENU = 0x12; // Alt
+    private const int VK_LWIN = 0x5B;
+    private const int VK_RWIN = 0x5C;
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
+
+    private static bool IsModifierKeyDown(int vKey)
+    {
+        return (GetAsyncKeyState(vKey) & 0x8000) != 0;
+    }
 
     private readonly ISettingsService _settingsService;
     private readonly IKeyboardHookService _keyboardHookService;
 
     private IDisposable? _hookSubscription;
-    private DispatcherTimer? _holdTimer;
+    private System.Threading.Timer? _holdTimer;
     private RadialWheelWindow? _currentWheel;
 
     private bool _isTabHeld;
@@ -52,19 +67,51 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         _hookSubscription?.Dispose();
         _hookSubscription = null;
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        StopHoldTimer();
+
+        Application.Current?.Dispatcher.BeginInvoke(() =>
         {
-            _holdTimer?.Stop();
-            _holdTimer = null;
             _currentWheel?.Close();
             _currentWheel = null;
         });
 
-        _isTabHeld = false;
-        _isWheelOpen = false;
+        lock (_stateLock)
+        {
+            _isTabHeld = false;
+            _isWheelOpen = false;
+        }
 
         Logger.LogInfo("[RadialSwitcher] Модуль отключен.");
         return Task.CompletedTask;
+    }
+
+    private void StartHoldTimer(int delayMs)
+    {
+        lock (_stateLock)
+        {
+            _holdTimer?.Dispose();
+            _holdTimer = new System.Threading.Timer(OnHoldTimerCallback, null, delayMs, Timeout.Infinite);
+        }
+    }
+
+    private void StopHoldTimer()
+    {
+        lock (_stateLock)
+        {
+            _holdTimer?.Dispose();
+            _holdTimer = null;
+        }
+    }
+
+    private void OnHoldTimerCallback(object? state)
+    {
+        lock (_stateLock)
+        {
+            if (!_isTabHeld) return;
+            _isWheelOpen = true;
+        }
+
+        Application.Current?.Dispatcher.BeginInvoke(OpenWheelWindow);
     }
 
     private bool OnKeyboardInput(KeyboardHookEventArgs e)
@@ -80,6 +127,28 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
             return false;
         }
 
+        // Если зажат Alt, Ctrl, Shift или Win — это системная комбинация:
+        // Alt+Tab (переключение окон Windows), Ctrl+Tab (переключение вкладок),
+        // Shift+Tab (обратный Tab), Win+Tab (Task View).
+        // Пропускаем мгновенно без перехвата и без задержки!
+        if (IsModifierKeyDown(VK_MENU) ||
+            IsModifierKeyDown(VK_CONTROL) ||
+            IsModifierKeyDown(VK_SHIFT) ||
+            IsModifierKeyDown(VK_LWIN) ||
+            IsModifierKeyDown(VK_RWIN))
+        {
+            lock (_stateLock)
+            {
+                if (_isTabHeld || _isWheelOpen)
+                {
+                    _isTabHeld = false;
+                    _isWheelOpen = false;
+                    StopHoldTimer();
+                }
+            }
+            return false;
+        }
+
         if (e.IsKeyDown)
         {
             lock (_stateLock)
@@ -89,17 +158,8 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
                     _isTabHeld = true;
                     _isWheelOpen = false;
 
-                    // Запуск таймера определения зажатия
-                    Application.Current?.Dispatcher.Invoke(() =>
-                    {
-                        _holdTimer?.Stop();
-                        _holdTimer = new DispatcherTimer
-                        {
-                            Interval = TimeSpan.FromMilliseconds(Math.Max(120, Settings.HoldDelayMs))
-                        };
-                        _holdTimer.Tick += OnHoldTimerTick;
-                        _holdTimer.Start();
-                    });
+                    int delay = Math.Max(120, Settings.HoldDelayMs);
+                    StartHoldTimer(delay);
 
                     // Временно подавляем Tab до решения (клик или удержание)
                     e.SuppressKeyPress = true;
@@ -128,18 +188,13 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
 
                 _isTabHeld = false;
                 _isWheelOpen = false;
+                StopHoldTimer();
             }
-
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
-                _holdTimer?.Stop();
-                _holdTimer = null;
-            });
 
             if (wasWheelOpen)
             {
                 // Пользователь отпустил Tab после удержания: активируем выбранную зону и закрываем колесо
-                Application.Current?.Dispatcher.Invoke(() =>
+                Application.Current?.Dispatcher.BeginInvoke(() =>
                 {
                     if (_currentWheel != null)
                     {
@@ -154,9 +209,8 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
             else if (wasTabHeld)
             {
                 // Был короткий одиночный клик по Tab (< 200 мс)
-                // Отправляем штатный системный Tab в активное приложение
-                KeyboardInputSender.SendKeyDown(VK_TAB);
-                KeyboardInputSender.SendKeyUp(VK_TAB);
+                // Отправляем штатный атомарный системный Tab (Down + Up) в активное приложение
+                KeyboardInputSender.SendKeyPress(VK_TAB);
 
                 e.SuppressKeyPress = true;
                 return true;
@@ -166,48 +220,31 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         return false;
     }
 
-    private void OnHoldTimerTick(object? sender, EventArgs e)
-    {
-        _holdTimer?.Stop();
-        _holdTimer = null;
-
-        lock (_stateLock)
-        {
-            if (!_isTabHeld) return;
-            _isWheelOpen = true;
-        }
-
-        OpenWheelWindow();
-    }
-
     private void OpenWheelWindow()
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        try
         {
-            try
-            {
-                var fgHwnd = WindowListService.GetForegroundWindow();
-                var activeWin = WindowListService.GetWindowInfo(fgHwnd, fgHwnd);
-                var candidateWindows = WindowListService.GetOpenWindows(fgHwnd, maxCount: 16);
+            var fgHwnd = WindowListService.GetForegroundWindow();
+            var activeWin = WindowListService.GetWindowInfo(fgHwnd, fgHwnd);
+            var candidateWindows = WindowListService.GetOpenWindows(fgHwnd, maxCount: 16);
 
-                _currentWheel?.Close();
-                _currentWheel = new RadialWheelWindow(Settings, activeWin, candidateWindows);
-                _currentWheel.Closed += (_, _) =>
+            _currentWheel?.Close();
+            _currentWheel = new RadialWheelWindow(Settings, activeWin, candidateWindows);
+            _currentWheel.Closed += (_, _) =>
+            {
+                _currentWheel = null;
+                lock (_stateLock)
                 {
-                    _currentWheel = null;
-                    lock (_stateLock)
-                    {
-                        _isWheelOpen = false;
-                    }
-                };
+                    _isWheelOpen = false;
+                }
+            };
 
-                _currentWheel.Show();
-                _currentWheel.Activate();
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError("[RadialSwitcher] Ошибка при отображении радиального меню.", ex);
-            }
-        });
+            // Показываем колесо без кражи фокуса (WS_EX_NOACTIVATE / ShowActivated="False")
+            _currentWheel.Show();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[RadialSwitcher] Ошибка при отображении радиального меню.", ex);
+        }
     }
 }

@@ -24,6 +24,35 @@ public sealed partial class RadialWheelWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out POINT lpPoint);
 
+    private const int GWL_EXSTYLE = -20;
+    private const int WS_EX_NOACTIVATE = 0x08000000;
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtr")]
+    private static extern nint GetWindowLongPtr64(nint hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
+    private static extern int GetWindowLong32(nint hWnd, int nIndex);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr")]
+    private static extern nint SetWindowLongPtr64(nint hWnd, int nIndex, nint dwNewLong);
+
+    [DllImport("user32.dll", EntryPoint = "SetWindowLong")]
+    private static extern int SetWindowLong32(nint hWnd, int nIndex, int dwNewLong);
+
+    private static nint GetWindowLongPtr(nint hWnd, int nIndex) =>
+        IntPtr.Size == 8 ? GetWindowLongPtr64(hWnd, nIndex) : GetWindowLong32(hWnd, nIndex);
+
+    private static nint SetWindowLongPtr(nint hWnd, int nIndex, nint dwNewLong) =>
+        IntPtr.Size == 8 ? SetWindowLongPtr64(hWnd, nIndex, dwNewLong) : SetWindowLong32(hWnd, nIndex, (int)dwNewLong);
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        var helper = new System.Windows.Interop.WindowInteropHelper(this);
+        var exStyle = (long)GetWindowLongPtr(helper.Handle, GWL_EXSTYLE);
+        SetWindowLongPtr(helper.Handle, GWL_EXSTYLE, (nint)(exStyle | WS_EX_NOACTIVATE));
+    }
+
     private readonly RadialSwitcherSettings _settings;
     private readonly WindowInfo? _activeWindow;
     private readonly List<ZoneSlotItem> _slots = new();
@@ -429,6 +458,11 @@ public sealed partial class RadialWheelWindow : Window
                     }
                     catch { }
                 }
+            }
+            else if (_activeWindow != null && _activeWindow.Hwnd != nint.Zero)
+            {
+                // Если пользователь отпустил Tab в центре или отменил выбор, возвращаем фокус исходному окну
+                WindowListService.ActivateWindow(_activeWindow.Hwnd);
             }
         };
 

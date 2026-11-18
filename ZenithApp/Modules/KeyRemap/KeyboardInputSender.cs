@@ -70,6 +70,49 @@ public static class KeyboardInputSender
     public static void SendKeyDown(int virtualKey, bool isExtended = false) => SendKey(virtualKey, true, isExtended);
     public static void SendKeyUp(int virtualKey, bool isExtended = false) => SendKey(virtualKey, false, isExtended);
 
+    public static void SendKeyPress(int virtualKey, bool isExtended = false)
+    {
+        if (virtualKey <= 0) return;
+
+        var scanCode = (ushort)MapVirtualKey((uint)virtualKey, 0);
+        uint baseFlags = (isExtended || IsExtendedVirtualKey(virtualKey)) ? KEYEVENTF_EXTENDEDKEY : 0;
+
+        var inputs = new INPUT[2];
+        inputs[0] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            mkhi = new MOUSEKEYBDHARDWAREINPUT
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = (ushort)virtualKey,
+                    wScan = scanCode,
+                    dwFlags = baseFlags,
+                    time = 0,
+                    dwExtraInfo = ZenithApp.Core.Input.KeyboardHookService.ExtraInfoAppMarker
+                }
+            }
+        };
+
+        inputs[1] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            mkhi = new MOUSEKEYBDHARDWAREINPUT
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = (ushort)virtualKey,
+                    wScan = scanCode,
+                    dwFlags = baseFlags | KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = ZenithApp.Core.Input.KeyboardHookService.ExtraInfoAppMarker
+                }
+            }
+        };
+
+        SendInput(2, inputs, Marshal.SizeOf<INPUT>());
+    }
+
     public static bool IsExtendedVirtualKey(int vk)
     {
         // Arrow keys, Home, End, PageUp, PageDown, Insert, Delete, Right Ctrl, Right Alt, LWin, RWin, Apps, etc.

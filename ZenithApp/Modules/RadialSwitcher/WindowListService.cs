@@ -79,6 +79,17 @@ public static class WindowListService
     [DllImport("gdi32.dll")]
     private static extern bool DeleteObject(nint hObject);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
+
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool QueryFullProcessImageName(nint hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
+
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern bool CloseHandle(nint hObject);
+
+    private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
     private static readonly ConcurrentDictionary<string, ImageSource> _iconCache = new(StringComparer.OrdinalIgnoreCase);
 
     public static nint GetWindowLongPtr(nint hWnd, int nIndex)
@@ -109,15 +120,8 @@ public static class WindowListService
         // Игнорируем сам процесс Zenith
         if (pid == Environment.ProcessId) return null;
 
-        string procName = string.Empty;
-        string exePath = string.Empty;
-        try
-        {
-            using var proc = Process.GetProcessById((int)pid);
-            procName = proc.ProcessName;
-            exePath = proc.MainModule?.FileName ?? string.Empty;
-        }
-        catch { }
+        var (procName, exePath) = GetProcessDetails(pid);
+        if (string.IsNullOrWhiteSpace(procName)) return null;
 
         // Фильтрация системных окон
         if (procName.Equals("explorer", StringComparison.OrdinalIgnoreCase))
@@ -203,18 +207,51 @@ public static class WindowListService
         catch { }
     }
 
+    private static (string procName, string exePath) GetProcessDetails(uint pid)
+    {
+        nint hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+        if (hProcess != nint.Zero)
+        {
+            try
+            {
+                var sb = new StringBuilder(1024);
+                int size = sb.Capacity;
+                if (QueryFullProcessImageName(hProcess, 0, sb, ref size))
+                {
+                    string path = sb.ToString();
+                    string name = Path.GetFileNameWithoutExtension(path);
+                    return (name, path);
+                }
+            }
+            finally
+            {
+                CloseHandle(hProcess);
+            }
+        }
+
+        try
+        {
+            using var proc = Process.GetProcessById((int)pid);
+            return (proc.ProcessName, proc.MainModule?.FileName ?? string.Empty);
+        }
+        catch
+        {
+            return (string.Empty, string.Empty);
+        }
+    }
+
     public static ImageSource? GetWindowOrProcessIcon(nint hWnd, string exePath)
     {
         // 1. Попытка получить WM_GETICON из окна
         try
         {
-            if (SendMessageTimeout(hWnd, WM_GETICON, ICON_BIG, 0, 2, 80, out var hIcon) != nint.Zero && hIcon != nint.Zero)
+            if (SendMessageTimeout(hWnd, WM_GETICON, ICON_BIG, 0, 2, 20, out var hIcon) != nint.Zero && hIcon != nint.Zero)
             {
                 var src = CreateBitmapSourceFromHIcon(hIcon);
                 if (src != null) return src;
             }
 
-            if (SendMessageTimeout(hWnd, WM_GETICON, ICON_SMALL, 0, 2, 80, out hIcon) != nint.Zero && hIcon != nint.Zero)
+            if (SendMessageTimeout(hWnd, WM_GETICON, ICON_SMALL, 0, 2, 20, out hIcon) != nint.Zero && hIcon != nint.Zero)
             {
                 var src = CreateBitmapSourceFromHIcon(hIcon);
                 if (src != null) return src;

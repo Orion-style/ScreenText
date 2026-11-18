@@ -71,4 +71,12 @@ public class RadialSwitcherTests
     {
         Assert.False(WindowListService.IsCandidateWindow(nint.Zero));
     }
+
+    [Fact]
+    public void KeyboardInputSender_SendKeyPress_DoesNotThrow()
+    {
+        // Отправка атомарного нажатия Tab не должна вызывать исключений
+        var ex = Record.Exception(() => ZenithApp.Modules.KeyRemap.KeyboardInputSender.SendKeyPress(ZenithApp.Modules.KeyRemap.VirtualKeyHelper.VK_TAB));
+        Assert.Null(ex);
+    }
 }

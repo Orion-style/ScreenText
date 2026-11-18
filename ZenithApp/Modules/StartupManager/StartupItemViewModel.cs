@@ -30,6 +30,7 @@ public sealed class StartupItemViewModel : ViewModelBase
     public string LocationDisplayName => _entry.LocationDisplayName;
     public string? Publisher => string.IsNullOrWhiteSpace(_entry.Publisher) ? "Неизвестный издатель" : _entry.Publisher;
     public string? FilePath => _entry.FilePath;
+    public bool IsInstalledOnly => _entry.Location == StartupEntryLocation.InstalledProgram && !_entry.IsConfiguredInStartup;
 
     public bool IsEnabled
     {
@@ -41,6 +42,8 @@ public sealed class StartupItemViewModel : ViewModelBase
                 if (_service.SetStartupEntryEnabled(_entry, value))
                 {
                     SetProperty(ref _isEnabled, value);
+                    OnPropertyChanged(nameof(IsInstalledOnly));
+                    OnPropertyChanged(nameof(LocationDisplayName));
                 }
             }
         }
