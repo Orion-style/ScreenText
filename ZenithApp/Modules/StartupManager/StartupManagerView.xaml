@@ -124,11 +124,43 @@
                                     </Grid.ColumnDefinitions>
 
                                     <!-- Иконка приложения -->
-                                    <ui:SymbolIcon Symbol="AppGeneric24"
-                                                   FontSize="22"
-                                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                                   VerticalAlignment="Center"
-                                                   Margin="0,0,12,0" />
+                                    <Grid Width="26" Height="26" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <!-- Реальная иконка программы -->
+                                        <Image Source="{Binding Icon}"
+                                               Width="24"
+                                               Height="24"
+                                               Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality">
+                                            <Image.Style>
+                                                <Style TargetType="Image">
+                                                    <Setter Property="Visibility" Value="Visible" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Image.Style>
+                                        </Image>
+
+                                        <!-- Запасная векторная иконка при отсутствии файла/иконки -->
+                                        <ui:SymbolIcon Symbol="AppGeneric24"
+                                                       FontSize="22"
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center">
+                                            <ui:SymbolIcon.Style>
+                                                <Style TargetType="ui:SymbolIcon">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </ui:SymbolIcon.Style>
+                                        </ui:SymbolIcon>
+                                    </Grid>
 
                                     <!-- Описание и детали -->
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">

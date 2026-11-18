@@ -116,4 +116,31 @@ public class StartupManagerTests
         Assert.Equal(0, vm.TotalCount);
         Assert.Equal(0, vm.EnabledCount);
     }
+
+    [Fact]
+    public void StartupItemViewModel_Icon_ReturnsNullForNonExistentFile()
+    {
+        var service = new FakeStartupItemsService();
+        var entry = new StartupEntry
+        {
+            Id = "1",
+            Name = "NonExistent",
+            Command = "C:\\InvalidPath\\app.exe",
+            Location = StartupEntryLocation.CurrentUserRegistry,
+            IsEnabled = true
+        };
+
+        var vm = new StartupItemViewModel(entry, service);
+        Assert.Null(vm.Icon);
+    }
+
+    [Fact]
+    public void StartupItemsService_ExtractExecutablePath_HandlesQuotesAndArgs()
+    {
+        var quoted = "\"C:\\Program Files\\App\\app.exe\" --minimized";
+        Assert.Equal("C:\\Program Files\\App\\app.exe", StartupItemsService.ExtractExecutablePath(quoted));
+
+        var simple = "C:\\Windows\\notepad.exe";
+        Assert.Equal("C:\\Windows\\notepad.exe", StartupItemsService.ExtractExecutablePath(simple));
+    }
 }

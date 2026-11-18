@@ -562,7 +562,7 @@ public sealed class StartupItemsService : IStartupItemsService
         }
     }
 
-    private static string? ExtractExecutablePath(string command)
+    public static string? ExtractExecutablePath(string command)
     {
         if (string.IsNullOrWhiteSpace(command)) return null;
 
@@ -573,6 +573,21 @@ public sealed class StartupItemsService : IStartupItemsService
             if (closingQuote > 1)
             {
                 return trimmed.Substring(1, closingQuote - 1);
+            }
+        }
+
+        if (File.Exists(trimmed))
+        {
+            return trimmed;
+        }
+
+        var exeIdx = trimmed.IndexOf(".exe", StringComparison.OrdinalIgnoreCase);
+        if (exeIdx > 0)
+        {
+            var candidate = trimmed.Substring(0, exeIdx + 4).Trim('"', ' ');
+            if (File.Exists(candidate))
+            {
+                return candidate;
             }
         }
 

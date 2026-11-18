@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
+using System.Windows.Media;
 using ZenithApp.UI.Common;
 
 namespace ZenithApp.Modules.StartupManager;
@@ -12,6 +13,8 @@ public sealed class StartupItemViewModel : ViewModelBase
     private readonly IStartupItemsService _service;
     private readonly Action<StartupItemViewModel>? _onDeleted;
     private bool _isEnabled;
+    private ImageSource? _icon;
+    private bool _iconLoaded;
 
     public StartupItemViewModel(StartupEntry entry, IStartupItemsService service, Action<StartupItemViewModel>? onDeleted = null)
     {
@@ -23,6 +26,19 @@ public sealed class StartupItemViewModel : ViewModelBase
         ToggleCommand = new RelayCommand(Toggle);
         OpenLocationCommand = new RelayCommand(OpenLocation, () => !string.IsNullOrEmpty(entry.FilePath) && File.Exists(entry.FilePath));
         DeleteCommand = new RelayCommand(Delete);
+    }
+
+    public ImageSource? Icon
+    {
+        get
+        {
+            if (!_iconLoaded)
+            {
+                _iconLoaded = true;
+                _icon = StartupIconService.GetIcon(_entry.FilePath, _entry.Command);
+            }
+            return _icon;
+        }
     }
 
     public string Name => _entry.Name;
