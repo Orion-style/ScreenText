@@ -117,8 +117,17 @@ public static class WindowListService
         GetWindowThreadProcessId(hWnd, out var pid);
         if (pid == 0) return null;
 
-        // Игнорируем сам процесс Zenith
-        if (pid == Environment.ProcessId) return null;
+        // Для самого процесса Zenith разрешаем отображение его главного окна,
+        // но игнорируем служебные оверлеи и само радиальное меню
+        if (pid == Environment.ProcessId)
+        {
+            if (string.IsNullOrWhiteSpace(title) || 
+                title.Contains("RadialWheel", StringComparison.OrdinalIgnoreCase) ||
+                title.Contains("QuickLook", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+        }
 
         var (procName, exePath) = GetProcessDetails(pid);
         if (string.IsNullOrWhiteSpace(procName)) return null;
