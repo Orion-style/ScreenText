@@ -24,6 +24,14 @@ public sealed partial class RadialWheelWindow : Window
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetCursorPos(out POINT lpPoint);
 
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
+
+    private const int VK_TAB = 0x09;
+    private const int VK_ESCAPE = 0x1B;
+    private const int VK_LWIN = 0x5B;
+    private const int VK_RWIN = 0x5C;
+
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_NOACTIVATE = 0x08000000;
 
@@ -107,6 +115,12 @@ public sealed partial class RadialWheelWindow : Window
 
         Loaded += OnLoaded;
         MouseMove += OnWindowMouseMove;
+        MouseRightButtonDown += (_, _) => CloseImmediately();
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape) CloseImmediately();
+        };
+        Deactivated += (_, _) => CloseImmediately();
     }
 
     private void BuildSlots(List<WindowInfo> candidateWindows)
@@ -338,6 +352,24 @@ public sealed partial class RadialWheelWindow : Window
     {
         if (_isClosing) return;
 
+        // 1. Аппаратный сторожевой таймер (Watchdog):
+        // Если нажат Escape или клавиша Win (Start/Virtual Desktops) — немедленно отменяем и скрываем меню
+        if ((GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0 ||
+            (GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
+            (GetAsyncKeyState(VK_RWIN) & 0x8000) != 0)
+        {
+            CloseImmediately();
+            return;
+        }
+
+        // 2. Если клавиша Tab физически отпущена (проверка аппаратного состояния через Win32):
+        // Гарантирует закрытие, даже если Windows перехватила KeyUp хук при смене рабочего стола
+        if ((GetAsyncKeyState(VK_TAB) & 0x8000) == 0)
+        {
+            CloseAndActivateSelected();
+            return;
+        }
+
         if (GetCursorPos(out var pt))
         {
             var source = PresentationSource.FromVisual(this);
@@ -428,6 +460,18 @@ public sealed partial class RadialWheelWindow : Window
             CenterActivePanel.Visibility = Visibility.Visible;
             CenterHoverPanel.Visibility = Visibility.Collapsed;
         }
+    }
+
+    public void CloseImmediately()
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+
+        _cursorTimer?.Stop();
+        _cursorTimer = null;
+
+        Visibility = Visibility.Hidden;
+        Close();
     }
 
     public void CloseAndActivateSelected()

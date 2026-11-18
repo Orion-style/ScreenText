@@ -15,6 +15,7 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
     public const string ModuleId = "radial_switcher";
 
     private const int VK_TAB = 0x09;
+    private const int VK_ESCAPE = 0x1B;
     private const int VK_SHIFT = 0x10;
     private const int VK_CONTROL = 0x11;
     private const int VK_MENU = 0x12; // Alt
@@ -126,6 +127,35 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
             return false;
         }
 
+        // Если нажат Escape при открытом меню или зажатом Tab — мгновенная отмена и закрытие
+        if (e.VirtualCode == VK_ESCAPE)
+        {
+            bool shouldCancel = false;
+            lock (_stateLock)
+            {
+                if (_isTabHeld || _isWheelOpen)
+                {
+                    shouldCancel = true;
+                    _isTabHeld = false;
+                    _isWheelOpen = false;
+                    StopHoldTimer();
+                }
+            }
+
+            if (shouldCancel)
+            {
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    _currentWheel?.CloseImmediately();
+                    _currentWheel = null;
+                });
+                e.SuppressKeyPress = true;
+                return true;
+            }
+
+            return false;
+        }
+
         if (e.VirtualCode != VK_TAB)
         {
             return false;
@@ -134,22 +164,34 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         // Если зажат Alt, Ctrl, Shift или Win — это системная комбинация:
         // Alt+Tab (переключение окон Windows), Ctrl+Tab (переключение вкладок),
         // Shift+Tab (обратный Tab), Win+Tab (Task View).
-        // Пропускаем мгновенно без перехвата и без задержки!
+        // Пропускаем мгновенно без перехвата и без задержки, закрывая радиальное меню если оно было открыто!
         if (IsModifierKeyDown(VK_MENU) ||
             IsModifierKeyDown(VK_CONTROL) ||
             IsModifierKeyDown(VK_SHIFT) ||
             IsModifierKeyDown(VK_LWIN) ||
             IsModifierKeyDown(VK_RWIN))
         {
+            bool wasOpen = false;
             lock (_stateLock)
             {
                 if (_isTabHeld || _isWheelOpen)
                 {
+                    wasOpen = true;
                     _isTabHeld = false;
                     _isWheelOpen = false;
                     StopHoldTimer();
                 }
             }
+
+            if (wasOpen)
+            {
+                Application.Current?.Dispatcher.BeginInvoke(() =>
+                {
+                    _currentWheel?.CloseImmediately();
+                    _currentWheel = null;
+                });
+            }
+
             return false;
         }
 
