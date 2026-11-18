@@ -12,12 +12,17 @@ public sealed partial class ProgramPickerDialog : FluentWindow
     private readonly ZoneEditorItemViewModel _zone;
     private readonly List<ProgramPickerItem> _allPrograms = new();
 
+    private static readonly HashSet<string> _ignoreWords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "uninstall", "удалить", "деинсталлировать", "deinstall", "help", "readme",
+        "documentation", "справка", "website", "конфигурация", "settings", "installer"
+    };
+
     public ProgramPickerDialog(ZoneEditorItemViewModel zone)
     {
         InitializeComponent();
         _zone = zone;
 
-        TxtDirectionHeader.Text = $"Сектор: {zone.DirectionName}";
         BtnUnpin.Visibility = zone.IsPinned ? Visibility.Visible : Visibility.Collapsed;
 
         LoadPrograms();
@@ -26,17 +31,62 @@ public sealed partial class ProgramPickerDialog : FluentWindow
     private void LoadPrograms()
     {
         _allPrograms.Clear();
-        var seenKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // 1. Окна верхнего уровня (открытые приложения)
+        // 1. Установленные программы из меню «Пуск» (общие и пользователя)
+        var startMenuPaths = new List<string>
+        {
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs"),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu), "Programs")
+        };
+
+        foreach (var dir in startMenuPaths)
+        {
+            if (!Directory.Exists(dir)) continue;
+
+            try
+            {
+                var lnkFiles = Directory.GetFiles(dir, "*.lnk", SearchOption.AllDirectories);
+                foreach (var lnk in lnkFiles)
+                {
+                    try
+                    {
+                        string name = Path.GetFileNameWithoutExtension(lnk).Trim();
+                        if (string.IsNullOrWhiteSpace(name)) continue;
+
+                        // Игнорируем деинсталляторы и справочные файлы
+                        if (_ignoreWords.Any(w => name.Contains(w, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            continue;
+                        }
+
+                        if (seenNames.Add(name))
+                        {
+                            var icon = WindowListService.GetIconForPath(lnk);
+                            _allPrograms.Add(new ProgramPickerItem
+                            {
+                                Name = name,
+                                ProcessName = name,
+                                ExePath = lnk,
+                                Icon = icon
+                            });
+                        }
+                    }
+                    catch { }
+                }
+            }
+            catch { }
+        }
+
+        // 2. Открытые окна верхнего уровня
         try
         {
-            var openWindows = WindowListService.GetOpenWindows(nint.Zero, maxCount: 50);
+            var openWindows = WindowListService.GetOpenWindows(nint.Zero, maxCount: 60);
             foreach (var win in openWindows)
             {
                 if (string.IsNullOrWhiteSpace(win.ProcessName)) continue;
-                string key = !string.IsNullOrWhiteSpace(win.ExePath) ? win.ExePath : win.ProcessName;
-                if (seenKeys.Add(key))
+
+                if (seenNames.Add(win.ProcessName))
                 {
                     _allPrograms.Add(new ProgramPickerItem
                     {
@@ -50,24 +100,22 @@ public sealed partial class ProgramPickerDialog : FluentWindow
         }
         catch { }
 
-        // 2. Все остальные запущенные процессы с главным окном
+        // 3. Другие запущенные процессы с главным окном
         try
         {
             var procs = Process.GetProcesses()
-                .Where(p => !string.IsNullOrWhiteSpace(p.MainWindowTitle) && p.Id != Environment.ProcessId)
-                .OrderBy(p => p.ProcessName);
+                .Where(p => !string.IsNullOrWhiteSpace(p.MainWindowTitle) && p.Id != Environment.ProcessId);
 
             foreach (var p in procs)
             {
                 try
                 {
                     string procName = p.ProcessName;
-                    string exePath = string.Empty;
-                    try { exePath = p.MainModule?.FileName ?? string.Empty; } catch { }
-
-                    string key = !string.IsNullOrWhiteSpace(exePath) ? exePath : procName;
-                    if (seenKeys.Add(key))
+                    if (seenNames.Add(procName))
                     {
+                        string exePath = string.Empty;
+                        try { exePath = p.MainModule?.FileName ?? string.Empty; } catch { }
+
                         var icon = !string.IsNullOrWhiteSpace(exePath)
                             ? WindowListService.GetIconForPath(exePath)
                             : WindowListService.GetIconForProcessName(procName);
@@ -86,6 +134,9 @@ public sealed partial class ProgramPickerDialog : FluentWindow
         }
         catch { }
 
+        // Сортировка по алфавиту
+        _allPrograms.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase));
+
         ApplyFilter(string.Empty);
     }
 
@@ -100,8 +151,7 @@ public sealed partial class ProgramPickerDialog : FluentWindow
             var q = query.Trim();
             ProgramsList.ItemsSource = _allPrograms
                 .Where(p => p.Name.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                            p.ProcessName.Contains(q, StringComparison.OrdinalIgnoreCase) ||
-                            p.ExePath.Contains(q, StringComparison.OrdinalIgnoreCase))
+                            p.ProcessName.Contains(q, StringComparison.OrdinalIgnoreCase))
                 .ToList();
         }
     }
@@ -123,8 +173,8 @@ public sealed partial class ProgramPickerDialog : FluentWindow
     {
         var dlg = new Microsoft.Win32.OpenFileDialog
         {
-            Title = $"Выберите приложение для сектора «{_zone.DirectionName}»",
-            Filter = "Исполняемые файлы (*.exe)|*.exe|Все файлы (*.*)|*.*",
+            Title = "Выберите приложение",
+            Filter = "Исполняемые файлы (*.exe;*.lnk)|*.exe;*.lnk|Все файлы (*.*)|*.*",
             CheckFileExists = true
         };
 

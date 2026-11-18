@@ -6,9 +6,9 @@
                  xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
                  xmlns:local="clr-namespace:ZenithApp.Modules.RadialSwitcher"
                  mc:Ignorable="d"
-                 Title="Закрепление программы"
-                 Height="520" Width="440"
-                 MinHeight="460" MinWidth="400"
+                 Title="Выбор программы"
+                 Height="520" Width="420"
+                 MinHeight="440" MinWidth="380"
                  WindowStartupLocation="CenterOwner"
                  WindowBackdropType="Mica"
                  ExtendsContentIntoTitleBar="True"
@@ -25,42 +25,29 @@
 
         <!-- Заголовок окна -->
         <ui:TitleBar Grid.Row="0" 
-                     Title="Закрепление программы" 
+                     Title="Выбор программы" 
                      ShowMaximize="False" 
                      ShowMinimize="False" 
-                     Margin="-18,-10,-18,8" />
+                     Margin="-18,-10,-18,10" />
 
-        <!-- Описание и поле поиска с кнопкой обзора -->
-        <StackPanel Grid.Row="1" Margin="0,0,0,10">
-            <TextBlock x:Name="TxtDirectionHeader"
-                       Text="Выберите программу для сектора" 
-                       FontWeight="SemiBold" 
-                       FontSize="14" 
-                       Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}" 
-                       Margin="0,0,0,4" />
-            <TextBlock Text="Кликните по программе из списка, чтобы закрепить её за этим сектором." 
-                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                       FontSize="12" 
-                       Margin="0,0,0,10" />
+        <!-- Поле поиска и кнопка обзора -->
+        <Grid Grid.Row="1" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <ui:TextBox x:Name="TxtSearch"
+                        Grid.Column="0"
+                        PlaceholderText="Поиск программы..." 
+                        TextChanged="OnSearchTextChanged"
+                        Margin="0,0,8,0" />
+            <ui:Button Grid.Column="1"
+                       Content="📁 Обзор..."
+                       Appearance="Secondary"
+                       Click="OnBrowseExeClicked" />
+        </Grid>
 
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <ui:TextBox x:Name="TxtSearch"
-                            Grid.Column="0"
-                            PlaceholderText="Поиск программы..." 
-                            TextChanged="OnSearchTextChanged"
-                            Margin="0,0,8,0" />
-                <ui:Button Grid.Column="1"
-                           Content="📁 Обзор (.exe)..."
-                           Appearance="Secondary"
-                           Click="OnBrowseExeClicked" />
-            </Grid>
-        </StackPanel>
-
-        <!-- Список доступных программ -->
+        <!-- Список доступных программ (только название и иконка) -->
         <Border Grid.Row="2"
                 Background="{DynamicResource SubtleFillColorTertiaryBrush}"
                 BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}"
@@ -75,40 +62,35 @@
                      MouseLeftButtonUp="OnProgramItemSelected">
                 <ListBox.ItemTemplate>
                     <DataTemplate DataType="{x:Type local:ProgramPickerItem}">
-                        <Grid Margin="2,4" Background="Transparent" Cursor="Hand">
+                        <Grid Margin="4,4" Background="Transparent" Cursor="Hand">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             
                             <Border Grid.Column="0" 
-                                    Width="32" Height="32" 
+                                    Width="30" Height="30" 
                                     CornerRadius="6" 
-                                    Background="#20FFFFFF" 
-                                    Padding="3" 
-                                    Margin="0,0,10,0"
+                                    Background="#18FFFFFF" 
+                                    Padding="2" 
+                                    Margin="0,0,12,0"
                                     VerticalAlignment="Center">
                                 <Image Source="{Binding Icon}" Stretch="Uniform" />
                             </Border>
 
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding Name}" 
-                                           FontWeight="SemiBold" 
-                                           FontSize="13" 
-                                           TextTrimming="CharacterEllipsis" />
-                                <TextBlock Text="{Binding Subtitle}" 
-                                           FontSize="11" 
-                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                           TextTrimming="CharacterEllipsis" 
-                                           Margin="0,1,0,0" />
-                            </StackPanel>
+                            <TextBlock Grid.Column="1" 
+                                       Text="{Binding Name}" 
+                                       FontWeight="SemiBold" 
+                                       FontSize="13.5" 
+                                       VerticalAlignment="Center" 
+                                       TextTrimming="CharacterEllipsis" />
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
         </Border>
 
-        <!-- Подвал с кнопками -->
+        <!-- Подвал -->
         <Grid Grid.Row="3" Margin="0,12,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -118,7 +100,7 @@
 
             <ui:Button x:Name="BtnUnpin"
                        Grid.Column="0"
-                       Content="❌ Открепить сектор"
+                       Content="❌ Открепить"
                        Appearance="Danger"
                        Click="OnUnpinClicked" />
 

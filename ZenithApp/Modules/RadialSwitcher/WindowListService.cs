@@ -397,18 +397,11 @@ public static class WindowListService
 
         try
         {
-            if (File.Exists(path))
+            var icon = StartupManager.StartupIconService.GetIcon(path, null);
+            if (icon != null)
             {
-                using var sysIcon = System.Drawing.Icon.ExtractAssociatedIcon(path);
-                if (sysIcon != null)
-                {
-                    var src = CreateBitmapSourceFromHIcon(sysIcon.Handle);
-                    if (src != null)
-                    {
-                        _iconCache[path] = src;
-                        return src;
-                    }
-                }
+                _iconCache[path] = icon;
+                return icon;
             }
         }
         catch { }
