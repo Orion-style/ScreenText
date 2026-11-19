@@ -33,6 +33,23 @@ public sealed class SingleInstanceService : ISingleInstanceService
             _mutex = new Mutex(true, _mutexName, out _isFirstInstance);
             if (!_isFirstInstance)
             {
+                // Если приложение перезапускается (например, при переключении прав администратора),
+                // даем короткое окно до 300мс на завершение предыдущего экземпляра
+                try
+                {
+                    if (_mutex.WaitOne(300, false))
+                    {
+                        _isFirstInstance = true;
+                    }
+                }
+                catch (AbandonedMutexException)
+                {
+                    _isFirstInstance = true;
+                }
+            }
+
+            if (!_isFirstInstance)
+            {
                 _logger.LogInfo($"Existing mutex '{_mutexName}' detected: application is already running.");
             }
         }

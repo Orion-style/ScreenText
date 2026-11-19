@@ -2,8 +2,11 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using Wpf.Ui.Appearance;
+using ZenithApp.Core.Lifecycle;
 using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
@@ -21,6 +24,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
 {
     private readonly ISettingsService _settingsService;
     private readonly IAutoLaunchService _autoLaunchService;
+    private readonly IElevationService _elevationService;
     private readonly ModuleManager _moduleManager;
     private readonly ScreenshotModule? _screenshotModule;
     private readonly SmartLinksModule? _smartLinksModule;
@@ -32,6 +36,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IStartupItemsService? _startupItemsService;
 
     private bool _startWithWindows;
+    private bool _isAlwaysRunAsAdmin;
     private int _selectedThemeIndex; // 0 = System, 1 = Light, 2 = Dark
     private object? _selectedNavigationItem;
 
@@ -46,10 +51,12 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         SnapZonesModule? snapZonesModule = null,
         ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? radialSwitcherModule = null,
         StartupManagerModule? startupManagerModule = null,
-        IStartupItemsService? startupItemsService = null)
+        IStartupItemsService? startupItemsService = null,
+        IElevationService? elevationService = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
+        _elevationService = elevationService ?? new ElevationService();
         _moduleManager = moduleManager;
         _screenshotModule = screenshotModule;
         _smartLinksModule = smartLinksModule;
@@ -68,6 +75,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
 
         _autoLaunchService.AutoLaunchChanged += OnAutoLaunchChanged;
+        _isAlwaysRunAsAdmin = _elevationService.IsAlwaysRunAsAdminEnabled();
         _selectedThemeIndex = (int)_settingsService.Current.Theme;
 
         Modules = new ObservableCollection<ModuleItemViewModel>(
@@ -110,6 +118,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         }
 
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
+        RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
     }
 
     public ScreenshotSettingsViewModel? ScreenshotSettings { get; }
@@ -123,6 +132,39 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 
     public ICommand OpenSettingsFolderCommand { get; }
+    public ICommand RestartAsAdminCommand { get; }
+
+    public bool IsRunningAsAdmin => _elevationService.IsRunningAsAdministrator();
+
+    public bool IsAlwaysRunAsAdmin
+    {
+        get => _isAlwaysRunAsAdmin;
+        set
+        {
+            if (SetProperty(ref _isAlwaysRunAsAdmin, value))
+            {
+                _elevationService.SetAlwaysRunAsAdmin(value);
+            }
+        }
+    }
+
+    public string AdminStatusText => IsRunningAsAdmin
+        ? (Application.Current?.TryFindResource("General_Admin_StatusElevated") as string ?? "Администратор")
+        : (Application.Current?.TryFindResource("General_Admin_StatusStandard") as string ?? "Обычный пользователь");
+
+    public string AdminDescriptionText => IsRunningAsAdmin
+        ? (Application.Current?.TryFindResource("General_Admin_DescElevated") as string ?? "Приложение запущено с повышенными правами.")
+        : (Application.Current?.TryFindResource("General_Admin_DescStandard") as string ?? "Приложение запущено с обычными правами. Windows UIPI блокирует перехват клавиши Tab над окнами с правами администратора.");
+
+    public Brush AdminBadgeBackground => IsRunningAsAdmin
+        ? new SolidColorBrush(Color.FromArgb(40, 16, 185, 129))
+        : new SolidColorBrush(Color.FromArgb(40, 245, 158, 11));
+
+    public Brush AdminBadgeForeground => IsRunningAsAdmin
+        ? new SolidColorBrush(Color.FromRgb(16, 185, 129))
+        : new SolidColorBrush(Color.FromRgb(245, 158, 11));
+
+    public Visibility RestartAdminButtonVisibility => IsRunningAsAdmin ? Visibility.Collapsed : Visibility.Visible;
 
     public bool StartWithWindows
     {
@@ -210,6 +252,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             FileName = folder,
             UseShellExecute = true
         });
+    }
+
+    private void RestartAsAdmin()
+    {
+        _elevationService.RestartAsAdministrator();
     }
 
     public void Dispose()

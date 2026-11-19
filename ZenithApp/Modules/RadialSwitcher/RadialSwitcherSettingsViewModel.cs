@@ -1,4 +1,6 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.Security.Principal;
+using System.Windows;
 using System.Diagnostics;
 using System.IO;
 using System.Windows.Input;
@@ -18,6 +20,25 @@ public sealed class RadialSwitcherSettingsViewModel : ViewModelBase
 
     public ObservableCollection<ZoneEditorItemViewModel> Zones { get; } = new();
     public ObservableCollection<string> RunningProcessNames { get; } = new();
+
+    public bool IsRunningAsAdmin
+    {
+        get
+        {
+            try
+            {
+                using var identity = WindowsIdentity.GetCurrent();
+                var principal = new WindowsPrincipal(identity);
+                return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+    }
+
+    public Visibility AdminWarningVisibility => IsRunningAsAdmin ? Visibility.Collapsed : Visibility.Visible;
 
     public event Action? OnWheelRedrawRequested;
     public event Action<ZoneEditorItemViewModel>? OpenProgramPickerRequested;

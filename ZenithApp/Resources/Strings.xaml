@@ -13,6 +13,14 @@
     <sys:String x:Key="General_Header">Общие параметры</sys:String>
     <sys:String x:Key="General_Startup_Title">Запуск при старте Windows</sys:String>
     <sys:String x:Key="General_Startup_Desc">Автоматически запускать утилиту в системном трее при входе в систему</sys:String>
+    <sys:String x:Key="General_Admin_Title">Режим администратора</sys:String>
+    <sys:String x:Key="General_Admin_StatusElevated">Администратор</sys:String>
+    <sys:String x:Key="General_Admin_StatusStandard">Обычный пользователь</sys:String>
+    <sys:String x:Key="General_Admin_DescElevated">Приложение запущено с повышенными правами. Доступен перехват клавиш и управление всеми окнами, играми и системными утилитами без ограничений UIPI.</sys:String>
+    <sys:String x:Key="General_Admin_DescStandard">Приложение запущено с обычными правами. Windows UIPI блокирует перехват клавиши Tab и горячих клавиш над окнами с правами администратора (HoYoPlay, игры с античитом, Диспетчер задач).</sys:String>
+    <sys:String x:Key="General_Btn_RestartAsAdmin">Перезапустить от имени администратора</sys:String>
+    <sys:String x:Key="General_AlwaysAdmin_Title">Всегда запускать от имени администратора</sys:String>
+    <sys:String x:Key="General_AlwaysAdmin_Desc">Запрашивать права администратора при каждом запуске приложения через параметры совместимости Windows</sys:String>
     <sys:String x:Key="General_Theme_Title">Тема оформления</sys:String>
     <sys:String x:Key="General_Theme_Desc">Выберите предпочитаемую цветовую схему или системную</sys:String>
     <sys:String x:Key="Theme_System">Как в системе</sys:String>

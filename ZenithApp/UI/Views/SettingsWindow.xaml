@@ -197,6 +197,60 @@
                                 </Grid>
                             </ui:Card>
 
+                            <!-- Режим администратора -->
+                            <ui:Card Padding="16" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- Основной статус и кнопка перезапуска -->
+                                    <Grid Grid.Row="0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="{DynamicResource General_Admin_Title}" FontWeight="SemiBold" FontSize="15" />
+                                                <Border CornerRadius="4" Padding="7,2" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                        Background="{Binding AdminBadgeBackground}">
+                                                    <TextBlock Text="{Binding AdminStatusText}" FontSize="11.5" FontWeight="SemiBold" Foreground="{Binding AdminBadgeForeground}" />
+                                                </Border>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding AdminDescriptionText}" 
+                                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                                       Margin="0,4,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <ui:Button Grid.Column="1" 
+                                                   Content="{DynamicResource General_Btn_RestartAsAdmin}" 
+                                                   Icon="{ui:SymbolIcon ShieldKeyhole24}" 
+                                                   Command="{Binding RestartAsAdminCommand}"
+                                                   Visibility="{Binding RestartAdminButtonVisibility}"
+                                                   VerticalAlignment="Center" />
+                                    </Grid>
+
+                                    <!-- Переключатель: Всегда запускать от имени администратора -->
+                                    <Border Grid.Row="1" Margin="0,12,0,0" Padding="0,12,0,0" 
+                                            BorderThickness="0,1,0,0" BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                                                <TextBlock Text="{DynamicResource General_AlwaysAdmin_Title}" FontWeight="Medium" FontSize="14" />
+                                                <TextBlock Text="{DynamicResource General_AlwaysAdmin_Desc}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12.5" />
+                                            </StackPanel>
+                                            <ui:ToggleSwitch Grid.Column="1" 
+                                                             IsChecked="{Binding IsAlwaysRunAsAdmin, Mode=TwoWay}" 
+                                                             VerticalAlignment="Center" />
+                                        </Grid>
+                                    </Border>
+                                </Grid>
+                            </ui:Card>
+
                             <!-- Выбор темы -->
                             <ui:Card Padding="16" Margin="0,0,0,12">
                                 <Grid>

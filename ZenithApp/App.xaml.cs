@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using ZenithApp.Core.Hotkeys;
 using ZenithApp.Core.Lifecycle;
@@ -108,6 +108,7 @@ public partial class App : Application
         services.AddSingleton<IAppLogger, FileLogger>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddSingleton<IAutoLaunchService, AutoLaunchService>();
+        services.AddSingleton<IElevationService, ElevationService>();
         services.AddSingleton<IHotkeyService, HotkeyService>();
         services.AddSingleton<ZenithApp.Core.Input.IKeyboardHookService, ZenithApp.Core.Input.KeyboardHookService>();
         services.AddSingleton<IOcrHistoryService, OcrHistoryService>();
