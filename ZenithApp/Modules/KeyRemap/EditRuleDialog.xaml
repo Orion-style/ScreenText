@@ -60,6 +60,7 @@
                     <ComboBoxItem Content="Заменить на другую клавишу" />
                     <ComboBoxItem Content="Заменить на сочетание клавиш" />
                     <ComboBoxItem Content="Отключить клавишу или комбинацию (подавить)" />
+                    <ComboBoxItem Content="Сменить язык ввода (Alt + Shift)" />
                 </ComboBox>
 
                 <!-- Целевая клавиша или сочетание (если не отключить) -->

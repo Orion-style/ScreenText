@@ -37,6 +37,28 @@ public partial class KeyRemapSettingsView : UserControl
         }
     }
 
+    private void OnAddLanguageSwitchRuleClicked(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is KeyRemapSettingsViewModel vm)
+        {
+            var newRule = new KeyRemapRule
+            {
+                Name = "Смена языка ввода",
+                TriggerVirtualKey = VirtualKeyHelper.VK_CAPITAL,
+                ActionType = KeyRemapActionType.SwitchLanguage
+            };
+            var dlg = new EditRuleDialog(newRule)
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            if (dlg.ShowDialog() == true && dlg.ResultRule != null)
+            {
+                vm.AddRule(dlg.ResultRule);
+            }
+        }
+    }
+
     private void OnOpenEditDialogRequested(KeyRemapRule rule, Action<KeyRemapRule> onSave)
     {
         var dlg = new EditRuleDialog(rule)

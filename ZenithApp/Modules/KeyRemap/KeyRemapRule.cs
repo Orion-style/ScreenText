@@ -4,7 +4,8 @@ public enum KeyRemapActionType
 {
     RemapKey = 0,             // Single key -> Single key (e.g. CapsLock -> Backspace)
     RemapKeyCombination = 1,  // Key or Combo -> Key Combination (e.g. CapsLock -> Ctrl+C)
-    DisableKey = 2            // Key -> Disabled (suppressed, does nothing)
+    DisableKey = 2,           // Key -> Disabled (suppressed, does nothing)
+    SwitchLanguage = 3        // Key or Combo -> Switch Language (Alt + Shift)
 }
 
 public sealed class KeyRemapRule

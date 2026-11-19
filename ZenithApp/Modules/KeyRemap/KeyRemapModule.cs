@@ -28,6 +28,9 @@ public sealed class KeyRemapModule : BaseFeatureModule
     // Track keys that are currently suppressed/disabled to suppress matching KeyUp events
     private readonly ConcurrentDictionary<int, bool> _activeDisabledKeys = new();
 
+    // Track keys that triggered language switch to suppress repeated activations and KeyUp
+    private readonly ConcurrentDictionary<int, bool> _activeLanguageSwitchKeys = new();
+
     // Emergency escape tracking: Ctrl+Shift+Esc held
     private long _emergencyStartTimeTicks;
     private bool _emergencyTriggered;
@@ -98,6 +101,12 @@ public sealed class KeyRemapModule : BaseFeatureModule
                 return true;
             }
 
+            if (_activeLanguageSwitchKeys.TryRemove(vk, out _))
+            {
+                e.SuppressKeyPress = true;
+                return true;
+            }
+
             if (_activeSynthesizedMap.TryRemove(vk, out var activeState))
             {
                 // Release in reverse order (target key, then synthesized modifiers)
@@ -127,6 +136,11 @@ public sealed class KeyRemapModule : BaseFeatureModule
         var shiftPressed = !VirtualKeyHelper.IsShiftKey(vk) && IsModifierPhysicallyPressed(VirtualKeyHelper.VK_SHIFT);
         var winPressed = !VirtualKeyHelper.IsWinKey(vk) && (IsModifierPhysicallyPressed(VirtualKeyHelper.VK_LWIN) || IsModifierPhysicallyPressed(VirtualKeyHelper.VK_RWIN));
 
+        var currentCtrl = ctrlPressed || VirtualKeyHelper.IsControlKey(vk);
+        var currentAlt = altPressed || VirtualKeyHelper.IsAltKey(vk);
+        var currentShift = shiftPressed || VirtualKeyHelper.IsShiftKey(vk);
+        var currentWin = winPressed || VirtualKeyHelper.IsWinKey(vk);
+
         // Handle KeyDown: find matching enabled rule
         if (e.IsKeyDown)
         {
@@ -142,7 +156,7 @@ public sealed class KeyRemapModule : BaseFeatureModule
                 return true;
             }
 
-            if (_activeDisabledKeys.ContainsKey(vk))
+            if (_activeDisabledKeys.ContainsKey(vk) || _activeLanguageSwitchKeys.ContainsKey(vk))
             {
                 e.SuppressKeyPress = true;
                 return true;
@@ -153,32 +167,61 @@ public sealed class KeyRemapModule : BaseFeatureModule
                 var rule = rules[i];
                 if (!rule.IsEnabled) continue;
 
-                if (VirtualKeyHelper.AreKeysEquivalent(rule.TriggerVirtualKey, vk))
+                bool isMatch = false;
+                if (rule.TriggerVirtualKey != 0)
                 {
-                    // Check modifiers match
-                    var matchMods = (rule.TriggerCtrl == ctrlPressed) &&
-                                     (rule.TriggerAlt == altPressed) &&
-                                     (rule.TriggerShift == shiftPressed) &&
-                                     (rule.TriggerWin == winPressed);
-
-                    if (matchMods)
+                    if (VirtualKeyHelper.AreKeysEquivalent(rule.TriggerVirtualKey, vk))
                     {
-                        // Check process filter if enabled
-                        if (rule.EnableAppFilter && !IsProcessAllowed(rule))
-                        {
-                            continue;
-                        }
+                        // Check modifiers match
+                        isMatch = (rule.TriggerCtrl == ctrlPressed) &&
+                                  (rule.TriggerAlt == altPressed) &&
+                                  (rule.TriggerShift == shiftPressed) &&
+                                  (rule.TriggerWin == winPressed);
+                    }
+                }
+                else if (VirtualKeyHelper.IsModifierKey(vk))
+                {
+                    // Modifier-only trigger combo (e.g. Alt + Shift as trigger)
+                    isMatch = (rule.TriggerCtrl == currentCtrl) &&
+                              (rule.TriggerAlt == currentAlt) &&
+                              (rule.TriggerShift == currentShift) &&
+                              (rule.TriggerWin == currentWin);
+                }
 
-                        // Apply action
-                        switch (rule.ActionType)
-                        {
-                            case KeyRemapActionType.DisableKey:
-                                _activeDisabledKeys[vk] = true;
+                if (isMatch)
+                {
+                    // Check process filter if enabled
+                    if (rule.EnableAppFilter && !IsProcessAllowed(rule))
+                    {
+                        continue;
+                    }
+
+                    // Apply action
+                    switch (rule.ActionType)
+                    {
+                        case KeyRemapActionType.DisableKey:
+                            _activeDisabledKeys[vk] = true;
+                            e.SuppressKeyPress = true;
+                            return true;
+
+                        case KeyRemapActionType.SwitchLanguage:
+                            _activeLanguageSwitchKeys[vk] = true;
+                            KeyboardInputSender.SendAltShiftLanguageSwitch();
+                            e.SuppressKeyPress = true;
+                            return true;
+
+                        case KeyRemapActionType.RemapKey:
+                        case KeyRemapActionType.RemapKeyCombination:
+                            if (rule.ActionType == KeyRemapActionType.RemapKeyCombination &&
+                                rule.TargetVirtualKey == 0 &&
+                                rule.TargetAlt && rule.TargetShift &&
+                                !rule.TargetCtrl && !rule.TargetWin)
+                            {
+                                _activeLanguageSwitchKeys[vk] = true;
+                                KeyboardInputSender.SendAltShiftLanguageSwitch();
                                 e.SuppressKeyPress = true;
                                 return true;
-
-                            case KeyRemapActionType.RemapKey:
-                            case KeyRemapActionType.RemapKeyCombination:
+                            }
                                 var targetCtrl = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetCtrl;
                                 var targetAlt = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetAlt;
                                 var targetShift = (rule.ActionType == KeyRemapActionType.RemapKeyCombination) && rule.TargetShift;
@@ -245,7 +288,6 @@ public sealed class KeyRemapModule : BaseFeatureModule
                     }
                 }
             }
-        }
 
         return false;
     }
@@ -325,10 +367,18 @@ public sealed class KeyRemapModule : BaseFeatureModule
         }
         _activeSynthesizedMap.Clear();
         _activeDisabledKeys.Clear();
+        _activeLanguageSwitchKeys.Clear();
     }
+
+    public static Func<int, bool>? PhysicalModifierChecker { get; set; }
 
     private static bool IsModifierPhysicallyPressed(int modVk)
     {
+        if (PhysicalModifierChecker != null)
+        {
+            return PhysicalModifierChecker(modVk);
+        }
+
         return modVk switch
         {
             VirtualKeyHelper.VK_CONTROL => ((GetAsyncKeyState(VirtualKeyHelper.VK_CONTROL) & 0x8000) != 0) ||

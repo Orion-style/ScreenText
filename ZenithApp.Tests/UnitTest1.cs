@@ -30,6 +30,37 @@ public class TestSettingsService : ISettingsService
     }
 }
 
+public class TestKeyboardHookService : IKeyboardHookService
+{
+    public List<Func<KeyboardHookEventArgs, bool>> Handlers { get; } = new();
+    public bool IsHookActive => Handlers.Count > 0;
+
+    public IDisposable Subscribe(Func<KeyboardHookEventArgs, bool> handler)
+    {
+        Handlers.Add(handler);
+        return new DummyDisposable(() => Handlers.Remove(handler));
+    }
+
+    public bool Raise(KeyboardHookEventArgs args)
+    {
+        bool suppressed = false;
+        foreach (var h in Handlers.ToList())
+        {
+            if (h(args)) suppressed = true;
+        }
+        return suppressed;
+    }
+
+    public void Dispose() => Handlers.Clear();
+
+    private sealed class DummyDisposable : IDisposable
+    {
+        private readonly Action _onDispose;
+        public DummyDisposable(Action onDispose) => _onDispose = onDispose;
+        public void Dispose() => _onDispose();
+    }
+}
+
 public class KeyRemapModuleTests
 {
     [Fact]
@@ -313,5 +344,209 @@ public class KeyRemapModuleTests
         Assert.False(vm.Rules[1].HasConflict);
         Assert.False(vm.Rules[2].HasConflict);
         Assert.True(vm.Rules[3].HasConflict);
+    }
+
+    [Fact]
+    public void KeyRemap_SwitchLanguage_RuleConfiguration_And_Validation()
+    {
+        var rule = new KeyRemapRule
+        {
+            TriggerVirtualKey = VirtualKeyHelper.VK_CAPITAL,
+            ActionType = KeyRemapActionType.SwitchLanguage
+        };
+
+        var vm = new EditRuleDialogViewModel(rule);
+        Assert.Equal(3, vm.ActionTypeIndex);
+        Assert.False(vm.IsTargetVisible);
+        Assert.False(vm.IsComboModifiersVisible);
+        Assert.Equal("Смена языка ввода (Alt + Shift)", vm.TargetDisplay);
+        Assert.True(vm.Validate());
+
+        var result = vm.BuildResult();
+        Assert.Equal(KeyRemapActionType.SwitchLanguage, result.ActionType);
+        Assert.Equal(VirtualKeyHelper.VK_CAPITAL, result.TriggerVirtualKey);
+
+        var logger = new TestLogger();
+        using var hookService = new KeyboardHookService();
+        var settingsService = new TestSettingsService();
+        using var module = new KeyRemapModule(logger, hookService, settingsService);
+        var settingsVm = new KeyRemapSettingsViewModel(module, settingsService);
+        var itemVm = new RuleItemViewModel(result, settingsVm);
+
+        Assert.Equal("Сменить язык ввода (Alt + Shift)", itemVm.ActionSummary);
+    }
+
+    [Fact]
+    public void KeyRemap_ModifierOnlyTrigger_AltShift_ValidatedAndConfigured()
+    {
+        var rule = new KeyRemapRule();
+        var vm = new EditRuleDialogViewModel(rule);
+
+        // Simulate user entering Alt + Shift as trigger combination (vk = 0, alt = true, shift = true)
+        vm.SetTrigger(0, ctrl: false, alt: true, shift: true, win: false);
+
+        Assert.Equal("Alt + Shift", vm.TriggerDisplay);
+
+        // Target: Remap to F12 (0x7B)
+        vm.SetTarget(0x7B, false, false, false, false);
+        Assert.True(vm.Validate());
+
+        var result = vm.BuildResult();
+        Assert.Equal(0, result.TriggerVirtualKey);
+        Assert.True(result.TriggerAlt);
+        Assert.True(result.TriggerShift);
+        Assert.False(result.TriggerCtrl);
+        Assert.Equal(0x7B, result.TargetVirtualKey);
+    }
+
+    [Fact]
+    public async Task KeyRemap_LanguageSwitchAction_Execution_SuppressesKey_And_TriggersSwitch()
+    {
+        var logger = new TestLogger();
+        var hookService = new TestKeyboardHookService();
+        var settingsService = new TestSettingsService();
+
+        // Rule: CapsLock -> Switch language (Alt + Shift)
+        settingsService.Current.KeyRemap.Rules.Add(new KeyRemapRule
+        {
+            TriggerVirtualKey = VirtualKeyHelper.VK_CAPITAL,
+            ActionType = KeyRemapActionType.SwitchLanguage,
+            IsEnabled = true
+        });
+
+        int switchCallCount = 0;
+        KeyboardInputSender.CustomLanguageSwitchAction = () => switchCallCount++;
+
+        try
+        {
+            using var module = new KeyRemapModule(logger, hookService, settingsService);
+            await module.EnableAsync();
+
+            // 1. Initial KeyDown for CapsLock
+            var downArgs = new KeyboardHookEventArgs(VirtualKeyHelper.VK_CAPITAL, 0x3A, true, false, false, false, 0);
+            var handled = hookService.Raise(downArgs);
+
+            Assert.True(handled);
+            Assert.True(downArgs.SuppressKeyPress);
+            Assert.Equal(1, switchCallCount);
+
+            // 2. Key repeat while held down -> should be suppressed without re-triggering switch
+            var repeatArgs = new KeyboardHookEventArgs(VirtualKeyHelper.VK_CAPITAL, 0x3A, true, false, false, false, 0);
+            var repeatHandled = hookService.Raise(repeatArgs);
+
+            Assert.True(repeatHandled);
+            Assert.True(repeatArgs.SuppressKeyPress);
+            Assert.Equal(1, switchCallCount); // Still 1!
+
+            // 3. KeyUp for CapsLock -> suppressed
+            var upArgs = new KeyboardHookEventArgs(VirtualKeyHelper.VK_CAPITAL, 0x3A, false, true, false, false, 0);
+            var upHandled = hookService.Raise(upArgs);
+
+            Assert.True(upHandled);
+            Assert.True(upArgs.SuppressKeyPress);
+
+            // 4. Second press down -> triggers switch again
+            var downArgs2 = new KeyboardHookEventArgs(VirtualKeyHelper.VK_CAPITAL, 0x3A, true, false, false, false, 0);
+            var handled2 = hookService.Raise(downArgs2);
+
+            Assert.True(handled2);
+            Assert.True(downArgs2.SuppressKeyPress);
+            Assert.Equal(2, switchCallCount);
+
+            await module.DisableAsync();
+        }
+        finally
+        {
+            KeyboardInputSender.CustomLanguageSwitchAction = null;
+        }
+    }
+
+    [Fact]
+    public async Task KeyRemap_TargetAltShift_RoutesToLanguageSwitch()
+    {
+        var logger = new TestLogger();
+        var hookService = new TestKeyboardHookService();
+        var settingsService = new TestSettingsService();
+
+        // Rule: F1 (0x70) -> RemapKeyCombination (TargetAlt = true, TargetShift = true, TargetVk = 0)
+        settingsService.Current.KeyRemap.Rules.Add(new KeyRemapRule
+        {
+            TriggerVirtualKey = 0x70, // F1
+            ActionType = KeyRemapActionType.RemapKeyCombination,
+            TargetVirtualKey = 0,
+            TargetAlt = true,
+            TargetShift = true,
+            IsEnabled = true
+        });
+
+        int switchCallCount = 0;
+        KeyboardInputSender.CustomLanguageSwitchAction = () => switchCallCount++;
+
+        try
+        {
+            using var module = new KeyRemapModule(logger, hookService, settingsService);
+            await module.EnableAsync();
+
+            var downArgs = new KeyboardHookEventArgs(0x70, 0x3B, true, false, false, false, 0);
+            var handled = hookService.Raise(downArgs);
+
+            Assert.True(handled);
+            Assert.True(downArgs.SuppressKeyPress);
+            Assert.Equal(1, switchCallCount);
+
+            await module.DisableAsync();
+        }
+        finally
+        {
+            KeyboardInputSender.CustomLanguageSwitchAction = null;
+        }
+    }
+
+    [Fact]
+    public async Task KeyRemap_ModifierOnlyTrigger_AltShift_MatchesAndSuppresses()
+    {
+        var logger = new TestLogger();
+        var hookService = new TestKeyboardHookService();
+        var settingsService = new TestSettingsService();
+
+        // Rule: Trigger is Alt + Shift (TriggerVirtualKey = 0, TriggerAlt = true, TriggerShift = true)
+        // Action: DisableKey
+        settingsService.Current.KeyRemap.Rules.Add(new KeyRemapRule
+        {
+            TriggerVirtualKey = 0,
+            TriggerAlt = true,
+            TriggerShift = true,
+            ActionType = KeyRemapActionType.DisableKey,
+            IsEnabled = true
+        });
+
+        // Mock physical modifier checker: Alt is held down
+        KeyRemapModule.PhysicalModifierChecker = vk => vk == VirtualKeyHelper.VK_MENU || vk == VirtualKeyHelper.VK_LMENU;
+
+        try
+        {
+            using var module = new KeyRemapModule(logger, hookService, settingsService);
+            await module.EnableAsync();
+
+            // When Shift is pressed down while Alt is held:
+            var shiftDownArgs = new KeyboardHookEventArgs(VirtualKeyHelper.VK_SHIFT, 0x2A, true, false, false, false, 0);
+            var handled = hookService.Raise(shiftDownArgs);
+
+            Assert.True(handled);
+            Assert.True(shiftDownArgs.SuppressKeyPress);
+
+            // KeyUp for Shift
+            var shiftUpArgs = new KeyboardHookEventArgs(VirtualKeyHelper.VK_SHIFT, 0x2A, false, true, false, false, 0);
+            var upHandled = hookService.Raise(shiftUpArgs);
+
+            Assert.True(upHandled);
+            Assert.True(shiftUpArgs.SuppressKeyPress);
+
+            await module.DisableAsync();
+        }
+        finally
+        {
+            KeyRemapModule.PhysicalModifierChecker = null;
+        }
     }
 }

@@ -49,7 +49,7 @@ public partial class EditRuleDialog : FluentWindow
             }
             else
             {
-                _viewModel.SetTriggerModifiers(ctrl, alt, shift, win);
+                _viewModel.SetTrigger(0, ctrl, alt, shift, win);
             }
             return;
         }
@@ -89,7 +89,7 @@ public partial class EditRuleDialog : FluentWindow
                 }
                 else
                 {
-                    _viewModel.SetTargetModifiers(ctrl, alt, shift, win);
+                    _viewModel.SetTarget(0, ctrl, alt, shift, win);
                 }
             }
             else

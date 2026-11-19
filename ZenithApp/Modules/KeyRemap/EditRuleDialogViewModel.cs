@@ -128,12 +128,13 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
         }
     }
 
-    public bool IsTargetVisible => ActionTypeIndex != 2; // Not DisableKey
+    public bool IsTargetVisible => ActionTypeIndex != 2 && ActionTypeIndex != 3; // Not DisableKey and not SwitchLanguage
     public bool IsComboModifiersVisible => ActionTypeIndex == 1; // RemapKeyCombination
 
     public string TargetDisplay => ActionTypeIndex switch
     {
         2 => "Клавиша или комбинация отключена (подавление)",
+        3 => "Смена языка ввода (Alt + Shift)",
         1 => VirtualKeyHelper.FormatKeyCombination(_targetVk, _targetCtrl, _targetAlt, _targetShift, _targetWin),
         _ => VirtualKeyHelper.GetKeyName(_targetVk)
     };
@@ -310,7 +311,8 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
         HasValidationError = false;
         ValidationError = string.Empty;
 
-        if (_triggerVk == 0)
+        var hasModifierTrigger = _triggerCtrl || _triggerAlt || _triggerShift || _triggerWin;
+        if (_triggerVk == 0 && !hasModifierTrigger)
         {
             ValidationError = "Необходимо нажать и задать исходную клавишу или сочетание.";
             HasValidationError = true;
@@ -333,7 +335,7 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
             return false;
         }
 
-        if (ActionTypeIndex != 2 && _targetVk == 0 && !_targetCtrl && !_targetAlt && !_targetShift && !_targetWin)
+        if (ActionTypeIndex != 2 && ActionTypeIndex != 3 && _targetVk == 0 && !_targetCtrl && !_targetAlt && !_targetShift && !_targetWin)
         {
             ValidationError = "Необходимо задать целевую клавишу или сочетание.";
             HasValidationError = true;
@@ -351,7 +353,10 @@ public sealed class EditRuleDialogViewModel : ViewModelBase
             .ToList();
 
         var res = _originalRule.Clone();
-        res.Name = string.IsNullOrWhiteSpace(RuleName) ? TriggerDisplay : RuleName;
+        var defaultName = (ActionTypeIndex == 3)
+            ? $"Смена языка ({TriggerDisplay} -> Alt+Shift)"
+            : TriggerDisplay;
+        res.Name = string.IsNullOrWhiteSpace(RuleName) ? defaultName : RuleName;
         res.TriggerVirtualKey = _triggerVk;
         res.TriggerCtrl = _triggerCtrl;
         res.TriggerAlt = _triggerAlt;

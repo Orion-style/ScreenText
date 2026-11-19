@@ -64,11 +64,17 @@
                 <TextBlock Text="Правила переназначения" FontWeight="Bold" FontSize="16" />
                 <TextBlock Text="Список активных замен клавиш и комбинаций, а также их подавления" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
             </StackPanel>
-            <ui:Button Grid.Column="1" 
-                       Content="Добавить правило" 
-                       Icon="{ui:SymbolIcon Add24}" 
-                       Appearance="Primary" 
-                       Click="OnAddRuleClicked" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <ui:Button Content="Смена языка (Alt + Shift)" 
+                           Icon="{ui:SymbolIcon Keyboard24}" 
+                           Appearance="Secondary" 
+                           Margin="0,0,8,0" 
+                           Click="OnAddLanguageSwitchRuleClicked" />
+                <ui:Button Content="Добавить правило" 
+                           Icon="{ui:SymbolIcon Add24}" 
+                           Appearance="Primary" 
+                           Click="OnAddRuleClicked" />
+            </StackPanel>
         </Grid>
 
         <!-- Список правил -->

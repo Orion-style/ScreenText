@@ -39,6 +39,103 @@ public static class KeyboardInputSender
     [DllImport("user32.dll")]
     private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
+
+    public static Action? CustomLanguageSwitchAction { get; set; }
+
+    public static void SendAltShiftLanguageSwitch()
+    {
+        if (CustomLanguageSwitchAction != null)
+        {
+            CustomLanguageSwitchAction.Invoke();
+            return;
+        }
+
+        // Release physical Ctrl or Win if held so they don't corrupt the Alt+Shift layout toggle
+        var ctrlHeld = (GetAsyncKeyState(VirtualKeyHelper.VK_CONTROL) & 0x8000) != 0;
+        var winHeld = ((GetAsyncKeyState(VirtualKeyHelper.VK_LWIN) & 0x8000) != 0) || ((GetAsyncKeyState(VirtualKeyHelper.VK_RWIN) & 0x8000) != 0);
+
+        if (ctrlHeld) SendKeyUp(VirtualKeyHelper.VK_CONTROL);
+        if (winHeld) SendKeyUp(VirtualKeyHelper.VK_LWIN);
+
+        var inputs = new INPUT[4];
+
+        // 1. Left Alt down
+        inputs[0] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            mkhi = new MOUSEKEYBDHARDWAREINPUT
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = (ushort)VirtualKeyHelper.VK_LMENU,
+                    wScan = 0x38,
+                    dwFlags = 0,
+                    time = 0,
+                    dwExtraInfo = ZenithApp.Core.Input.KeyboardHookService.ExtraInfoAppMarker
+                }
+            }
+        };
+
+        // 2. Left Shift down
+        inputs[1] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            mkhi = new MOUSEKEYBDHARDWAREINPUT
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = (ushort)VirtualKeyHelper.VK_LSHIFT,
+                    wScan = 0x2A,
+                    dwFlags = 0,
+                    time = 0,
+                    dwExtraInfo = ZenithApp.Core.Input.KeyboardHookService.ExtraInfoAppMarker
+                }
+            }
+        };
+
+        // 3. Left Shift up
+        inputs[2] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            mkhi = new MOUSEKEYBDHARDWAREINPUT
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = (ushort)VirtualKeyHelper.VK_LSHIFT,
+                    wScan = 0x2A,
+                    dwFlags = KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = ZenithApp.Core.Input.KeyboardHookService.ExtraInfoAppMarker
+                }
+            }
+        };
+
+        // 4. Left Alt up
+        inputs[3] = new INPUT
+        {
+            type = INPUT_KEYBOARD,
+            mkhi = new MOUSEKEYBDHARDWAREINPUT
+            {
+                ki = new KEYBDINPUT
+                {
+                    wVk = (ushort)VirtualKeyHelper.VK_LMENU,
+                    wScan = 0x38,
+                    dwFlags = KEYEVENTF_KEYUP,
+                    time = 0,
+                    dwExtraInfo = ZenithApp.Core.Input.KeyboardHookService.ExtraInfoAppMarker
+                }
+            }
+        };
+
+        SendInput(4, inputs, Marshal.SizeOf<INPUT>());
+
+        // Restore temporarily released modifiers if physically held
+        if (ctrlHeld) SendKeyDown(VirtualKeyHelper.VK_CONTROL);
+        if (winHeld) SendKeyDown(VirtualKeyHelper.VK_LWIN);
+    }
+
     public static void SendKey(int virtualKey, bool isDown, bool isExtended = false)
     {
         if (virtualKey <= 0) return;

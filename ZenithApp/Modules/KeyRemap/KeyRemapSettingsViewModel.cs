@@ -51,6 +51,7 @@ public sealed class RuleItemViewModel : ViewModelBase
                 KeyRemapActionType.DisableKey => "Отключить клавишу/сочетание",
                 KeyRemapActionType.RemapKey => $"Заменить на: {VirtualKeyHelper.GetKeyName(_rule.TargetVirtualKey)}",
                 KeyRemapActionType.RemapKeyCombination => $"Заменить на: {VirtualKeyHelper.FormatKeyCombination(_rule.TargetVirtualKey, _rule.TargetCtrl, _rule.TargetAlt, _rule.TargetShift, _rule.TargetWin)}",
+                KeyRemapActionType.SwitchLanguage => "Сменить язык ввода (Alt + Shift)",
                 _ => "Неизвестное действие"
             };
         }
