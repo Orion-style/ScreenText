@@ -37,7 +37,7 @@
                             <Grid>
                                 <!-- Подсветка выбранной карточки -->
                                 <Border x:Name="SelectedTint"
-                                        Background="{DynamicResource SystemAccentColorLight1Brush}"
+                                        Background="#38BDF8"
                                         Opacity="0" />
 
                                 <Grid Margin="8,10,8,8">
@@ -52,6 +52,8 @@
                                             Width="48" Height="48"
                                             CornerRadius="10"
                                             Background="{DynamicResource SubtleFillColorSecondaryBrush}"
+                                            BorderBrush="Transparent"
+                                            BorderThickness="1.5"
                                             HorizontalAlignment="Center"
                                             Padding="5">
                                         <Grid>
@@ -101,26 +103,6 @@
                                          Fill="#10B981"
                                          ToolTip="Запущено сейчас"
                                          Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" />
-
-                                <!-- Галочка выбранной программы -->
-                                <Border x:Name="CheckBadge"
-                                        Width="20" Height="20"
-                                        CornerRadius="10"
-                                        HorizontalAlignment="Right"
-                                        VerticalAlignment="Top"
-                                        Margin="0,6,6,0"
-                                        Background="{DynamicResource SystemAccentColorLight1Brush}"
-                                        Visibility="Collapsed">
-                                    <Path Data="M 4 8.5 L 7.2 11.5 L 12.5 5.5"
-                                          Stroke="White"
-                                          StrokeThickness="2"
-                                          StrokeStartLineCap="Round"
-                                          StrokeEndLineCap="Round"
-                                          StrokeLineJoin="Round"
-                                          Width="16" Height="16"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center" />
-                                </Border>
                             </Grid>
                         </Border>
 
@@ -130,18 +112,18 @@
                                 <Setter TargetName="RootCard" Property="BorderBrush" Value="{DynamicResource ControlStrokeColorSecondaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="RootCard" Property="BorderBrush" Value="{DynamicResource SystemAccentColorLight1Brush}" />
+                                <Setter TargetName="RootCard" Property="BorderBrush" Value="#38BDF8" />
                                 <Setter TargetName="RootCard" Property="BorderThickness" Value="2" />
-                                <Setter TargetName="SelectedTint" Property="Opacity" Value="0.20" />
-                                <Setter TargetName="IconBadge" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
-                                <Setter TargetName="CheckBadge" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="SelectedTint" Property="Opacity" Value="0.16" />
+                                <Setter TargetName="IconBadge" Property="Background" Value="#2E38BDF8" />
+                                <Setter TargetName="IconBadge" Property="BorderBrush" Value="#38BDF8" />
                             </Trigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsChecked" Value="True" />
                                     <Condition Property="IsMouseOver" Value="True" />
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="SelectedTint" Property="Opacity" Value="0.28" />
+                                <Setter TargetName="SelectedTint" Property="Opacity" Value="0.24" />
                             </MultiTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
