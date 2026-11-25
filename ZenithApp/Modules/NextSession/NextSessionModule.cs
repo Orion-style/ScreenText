@@ -181,7 +181,24 @@ public sealed class NextSessionModule : BaseFeatureModule
 
             if (!force && delaySeconds > 0)
             {
-                await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
+                var outcome = await _launcherService.WaitWithCountdownAsync(
+                    delaySeconds,
+                    programsSnapshot.Count,
+                    messageSnapshot,
+                    cancellationToken);
+
+                if (outcome == NextSessionCountdownOutcome.Cancelled)
+                {
+                    Logger.LogInfo("[NextSession] Startup launch cancelled by user from countdown overlay.");
+                    config.HasPendingPlan = false;
+                    config.PendingMessage = string.Empty;
+                    config.PendingPrograms = new List<NextSessionProgramEntry>();
+                    config.PlannedBootTimestampUtc = null;
+                    config.SystemShutdownObserved = false;
+                    _settingsService.Save();
+                    NotifyPlanStateChanged();
+                    return false;
+                }
             }
 
             int launchedCount = 0;
@@ -279,32 +296,43 @@ public sealed class NextSessionModule : BaseFeatureModule
     {
         if (Application.Current == null) return;
 
-        lock (_windowLock)
+        try
         {
-            if (_plannerWindow != null)
+            lock (_windowLock)
             {
-                if (_plannerWindow.WindowState == WindowState.Minimized)
+                if (_plannerWindow != null)
                 {
-                    _plannerWindow.WindowState = WindowState.Normal;
+                    if (_plannerWindow.WindowState == WindowState.Minimized)
+                    {
+                        _plannerWindow.WindowState = WindowState.Normal;
+                    }
+                    _plannerWindow.Activate();
+                    _plannerWindow.Focus();
+                    return;
                 }
+
+                var vm = new NextSessionWindowViewModel(this, _catalogService);
+                _plannerWindow = new NextSessionWindow(vm);
+                _plannerWindow.Closed += (_, _) =>
+                {
+                    vm.Dispose();
+                    lock (_windowLock)
+                    {
+                        _plannerWindow = null;
+                    }
+                };
+
+                _plannerWindow.Show();
                 _plannerWindow.Activate();
-                _plannerWindow.Focus();
-                return;
             }
-
-            var vm = new NextSessionWindowViewModel(this, _catalogService);
-            _plannerWindow = new NextSessionWindow(vm);
-            _plannerWindow.Closed += (_, _) =>
-            {
-                vm.Dispose();
-                lock (_windowLock)
-                {
-                    _plannerWindow = null;
-                }
-            };
-
-            _plannerWindow.Show();
-            _plannerWindow.Activate();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("[NextSession] Failed to open planner window.", ex);
+            ZenithApp.Modules.Screenshot.NotificationToast.Show(
+                $"Не удалось открыть окно следующего сеанса: {ex.Message}",
+                "Ошибка",
+                ZenithApp.Modules.Screenshot.ToastNotificationType.Error);
         }
     }
 

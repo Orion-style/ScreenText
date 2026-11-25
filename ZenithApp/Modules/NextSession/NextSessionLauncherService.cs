@@ -23,6 +23,7 @@ public interface INextSessionLauncherService
     void ShowSessionNotification(string message, int launchedCount, IReadOnlyList<string> failedPrograms);
     bool LaunchProgram(NextSessionProgramEntry entry);
     bool RequestSystemRestart();
+    Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(int delaySeconds, int programCount, string? messagePreview, CancellationToken cancellationToken);
 }
 
 public sealed class NextSessionLauncherService : INextSessionLauncherService
@@ -32,6 +33,37 @@ public sealed class NextSessionLauncherService : INextSessionLauncherService
     public NextSessionLauncherService(IAppLogger logger)
     {
         _logger = logger;
+    }
+
+    public async Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
+        int delaySeconds,
+        int programCount,
+        string? messagePreview,
+        CancellationToken cancellationToken)
+    {
+        if (delaySeconds <= 0)
+        {
+            return NextSessionCountdownOutcome.Completed;
+        }
+
+        var dispatcher = System.Windows.Application.Current?.Dispatcher;
+        if (dispatcher == null)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
+            return NextSessionCountdownOutcome.Completed;
+        }
+
+        Task<NextSessionCountdownOutcome>? waitTask = null;
+        await dispatcher.InvokeAsync(() =>
+        {
+            var overlay = new NextSessionCountdownOverlay(delaySeconds, programCount, messagePreview);
+            waitTask = overlay.WaitForCompletionAsync(cancellationToken);
+            overlay.Show();
+        });
+
+        return waitTask != null
+            ? await waitTask
+            : NextSessionCountdownOutcome.Completed;
     }
 
     public void ShowSessionNotification(string message, int launchedCount, IReadOnlyList<string> failedPrograms)

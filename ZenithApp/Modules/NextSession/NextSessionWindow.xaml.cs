@@ -1,5 +1,7 @@
+using System.IO;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Wpf.Ui.Controls;
 
@@ -12,6 +14,7 @@ public partial class NextSessionWindow : FluentWindow
     public NextSessionWindow(NextSessionWindowViewModel viewModel)
     {
         InitializeComponent();
+        TryAssignAppIcon();
         _viewModel = viewModel;
         DataContext = _viewModel;
 
@@ -20,6 +23,25 @@ public partial class NextSessionWindow : FluentWindow
             await _viewModel.LoadProgramsAsync();
             TxtMessage.Focus();
         };
+    }
+
+    private void TryAssignAppIcon()
+    {
+        try
+        {
+            var diskPath = Path.Combine(AppContext.BaseDirectory, "Resources", "app.ico");
+            if (File.Exists(diskPath))
+            {
+                Icon = new BitmapImage(new Uri(diskPath, UriKind.Absolute));
+                return;
+            }
+
+            Icon = new BitmapImage(new Uri("pack://application:,,,/ZenithApp;component/Resources/app.ico", UriKind.Absolute));
+        }
+        catch
+        {
+            // Иконка окна опциональна (например, при запуске из тестового хоста)
+        }
     }
 
     private void OnWindowPreviewKeyDown(object sender, KeyEventArgs e)

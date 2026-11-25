@@ -7,7 +7,6 @@
                  xmlns:local="clr-namespace:ZenithApp.Modules.NextSession"
                  mc:Ignorable="d"
                  Title="Настройка следующего сеанса"
-                 Icon="/Resources/app.ico"
                  Height="640" Width="800"
                  MinHeight="520" MinWidth="640"
                  WindowStartupLocation="CenterScreen"
@@ -112,11 +111,15 @@
                                         Margin="0,6,6,0"
                                         Background="{DynamicResource SystemAccentColorLight1Brush}"
                                         Visibility="Collapsed">
-                                    <ui:SymbolIcon Symbol="Checkmark16"
-                                                   FontSize="12"
-                                                   Foreground="White"
-                                                   HorizontalAlignment="Center"
-                                                   VerticalAlignment="Center" />
+                                    <Path Data="M 4 8.5 L 7.2 11.5 L 12.5 5.5"
+                                          Stroke="White"
+                                          StrokeThickness="2"
+                                          StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round"
+                                          StrokeLineJoin="Round"
+                                          Width="16" Height="16"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
                                 </Border>
                             </Grid>
                         </Border>
@@ -230,7 +233,7 @@
 
                 <ui:Button Grid.Column="1"
                            Content="Выбрать открытые"
-                           Icon="{ui:SymbolIcon WindowMultiple24}"
+                           Icon="{ui:SymbolIcon WindowApps24}"
                            Command="{Binding SelectRunningCommand}"
                            ToolTip="Подсветить программы, которые сейчас запущены"
                            Margin="0,0,6,0" />
@@ -332,7 +335,7 @@
 
                 <ui:Button Grid.Column="3"
                            Content="Сохранить и перезагрузить"
-                           Icon="{ui:SymbolIcon ArrowSync24}"
+                           Icon="{ui:SymbolIcon ArrowClockwise24}"
                            IsEnabled="{Binding CanSave}"
                            Margin="0,0,8,0"
                            Click="OnSaveAndRestartClicked" />
@@ -340,7 +343,6 @@
                 <ui:Button Grid.Column="4"
                            Content="Сохранить"
                            Appearance="Primary"
-                           Icon="{ui:SymbolIcon Checkmark24}"
                            IsEnabled="{Binding CanSave}"
                            MinWidth="115"
                            Click="OnSaveClicked" />

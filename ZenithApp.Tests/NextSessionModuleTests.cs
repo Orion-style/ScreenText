@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -38,6 +39,8 @@ public class NextSessionModuleTests
         public HashSet<string> FailingNames { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<(string Message, int LaunchedCount, IReadOnlyList<string> Failed)> Notifications { get; } = new();
         public bool RestartRequested { get; private set; }
+        public NextSessionCountdownOutcome CountdownOutcome { get; set; } = NextSessionCountdownOutcome.Completed;
+        public int CountdownCallCount { get; private set; }
 
         public bool LaunchProgram(NextSessionProgramEntry entry)
         {
@@ -54,6 +57,16 @@ public class NextSessionModuleTests
         {
             RestartRequested = true;
             return true;
+        }
+
+        public Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
+            int delaySeconds,
+            int programCount,
+            string? messagePreview,
+            CancellationToken cancellationToken)
+        {
+            CountdownCallCount++;
+            return Task.FromResult(CountdownOutcome);
         }
     }
 
@@ -254,5 +267,74 @@ public class NextSessionModuleTests
         Assert.Equal("Открыть рабочий проект", module.Settings.PendingMessage);
         Assert.Equal(2, module.Settings.PendingPrograms.Count);
         Assert.Single(module.Settings.CustomPrograms);
+    }
+
+    [Fact]
+    public async Task NextSessionModule_ExecutePendingPlanAsync_CancelledFromCountdown_DoesNotLaunchAndClearsPlan()
+    {
+        var logger = new TestLogger();
+        var settingsService = new TestSettingsService();
+        settingsService.Current.NextSession.StartupDelaySeconds = 5;
+        var hotkeyService = new TestHotkeyService();
+        var catalog = new FakeCatalogService();
+        var launcher = new FakeLauncherService
+        {
+            CountdownOutcome = NextSessionCountdownOutcome.Cancelled
+        };
+
+        using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
+        module.SavePlan(
+            "Отменённая задача",
+            new[] { new NextSessionProgramEntry { Name = "Notepad", ExecutablePath = "notepad.exe" } });
+
+        var executed = await module.ExecutePendingPlanAsync(force: false);
+
+        Assert.False(executed);
+        Assert.Equal(1, launcher.CountdownCallCount);
+        Assert.Empty(launcher.LaunchedEntries);
+        Assert.Empty(launcher.Notifications);
+        Assert.False(module.Settings.HasPendingPlan);
+    }
+
+    [Fact]
+    public void NextSession_XamlViewsAndWindows_InstantiateWithoutParseErrors()
+    {
+        Exception? threadEx = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var logger = new TestLogger();
+                var settingsService = new TestSettingsService();
+                var hotkeyService = new TestHotkeyService();
+                var catalog = new FakeCatalogService();
+                var launcher = new FakeLauncherService();
+
+                using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
+                using var windowVm = new NextSessionWindowViewModel(module, catalog, loadImmediately: true);
+                using var settingsVm = new NextSessionSettingsViewModel(module, settingsService);
+
+                var window = new NextSessionWindow(windowVm);
+                var settingsView = new NextSessionSettingsView { DataContext = settingsVm };
+                var countdown = new NextSessionCountdownOverlay(10, 2, "Проверка");
+
+                Assert.NotNull(window);
+                Assert.NotNull(settingsView);
+                Assert.NotNull(countdown);
+
+                window.Close();
+                countdown.Close();
+            }
+            catch (Exception ex)
+            {
+                threadEx = ex;
+            }
+        });
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+
+        Assert.Null(threadEx);
     }
 }
