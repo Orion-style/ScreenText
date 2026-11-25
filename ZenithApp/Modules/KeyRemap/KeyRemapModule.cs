@@ -34,6 +34,10 @@ public sealed class KeyRemapModule : BaseFeatureModule
     // Emergency escape tracking: Ctrl+Shift+Esc held
     private long _emergencyStartTimeTicks;
     private bool _emergencyTriggered;
+    private long _languageSwitchGeneration;
+
+    internal static Func<nint>? ForegroundLayoutHandleReader { get; set; }
+    internal Action<KeyboardLayoutInfo, bool>? CustomLanguageOsdHandler { get; set; }
 
     public event Action<string>? EmergencyEscapeTriggered;
     public event Action? RulesChanged;
@@ -62,9 +66,11 @@ public sealed class KeyRemapModule : BaseFeatureModule
 
     protected override Task OnDisableAsync()
     {
+        Interlocked.Increment(ref _languageSwitchGeneration);
         _hookSubscription?.Dispose();
         _hookSubscription = null;
         ReleaseAllActiveSynthesizedKeys();
+        LanguageSwitchOsdWindow.CloseCurrent();
         Logger.LogInfo("[KeyRemapModule] Отключен. Хук снят, виртуальные нажатия сброшены.");
         return Task.CompletedTask;
     }
@@ -205,8 +211,7 @@ public sealed class KeyRemapModule : BaseFeatureModule
                             return true;
 
                         case KeyRemapActionType.SwitchLanguage:
-                            _activeLanguageSwitchKeys[vk] = true;
-                            KeyboardInputSender.SendAltShiftLanguageSwitch();
+                            TriggerLanguageSwitch(vk);
                             e.SuppressKeyPress = true;
                             return true;
 
@@ -217,8 +222,7 @@ public sealed class KeyRemapModule : BaseFeatureModule
                                 rule.TargetAlt && rule.TargetShift &&
                                 !rule.TargetCtrl && !rule.TargetWin)
                             {
-                                _activeLanguageSwitchKeys[vk] = true;
-                                KeyboardInputSender.SendAltShiftLanguageSwitch();
+                                TriggerLanguageSwitch(vk);
                                 e.SuppressKeyPress = true;
                                 return true;
                             }
@@ -354,6 +358,86 @@ public sealed class KeyRemapModule : BaseFeatureModule
             EmergencyEscapeTriggered?.Invoke("Аварийный выход: все правила переназначения клавиатуры отключены для вашей безопасности.");
             RulesChanged?.Invoke();
         });
+    }
+
+    private void TriggerLanguageSwitch(int triggerVk)
+    {
+        _activeLanguageSwitchKeys[triggerVk] = true;
+
+        var previousLayout = Settings.ShowLanguageSwitchOsd
+            ? ReadForegroundLayoutHandle()
+            : nint.Zero;
+
+        KeyboardInputSender.SendAltShiftLanguageSwitch();
+
+        if (Settings.ShowLanguageSwitchOsd)
+        {
+            NotifyLanguageSwitchedAsync(previousLayout);
+        }
+    }
+
+    private void NotifyLanguageSwitchedAsync(nint previousLayout)
+    {
+        var customHandler = CustomLanguageOsdHandler;
+        if (customHandler == null && System.Windows.Application.Current == null)
+        {
+            return;
+        }
+
+        var generation = Interlocked.Increment(ref _languageSwitchGeneration);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                nint currentLayout = previousLayout;
+                int[] retryDelaysMs = { 35, 40, 45 };
+
+                for (int i = 0; i < retryDelaysMs.Length; i++)
+                {
+                    await Task.Delay(retryDelaysMs[i]).ConfigureAwait(false);
+
+                    if (Interlocked.Read(ref _languageSwitchGeneration) != generation || !IsEnabled)
+                    {
+                        return;
+                    }
+
+                    currentLayout = ReadForegroundLayoutHandle();
+                    if (currentLayout != nint.Zero && currentLayout != previousLayout)
+                    {
+                        break;
+                    }
+                }
+
+                if (Interlocked.Read(ref _languageSwitchGeneration) != generation || !IsEnabled)
+                {
+                    return;
+                }
+
+                bool layoutChanged = currentLayout != nint.Zero && currentLayout != previousLayout;
+                var info = KeyboardLayoutHelper.GetLayoutInfo(currentLayout);
+
+                if (customHandler != null)
+                {
+                    customHandler(info, layoutChanged);
+                }
+                else
+                {
+                    LanguageSwitchOsdWindow.ShowOrUpdate(info, layoutChanged);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("[KeyRemapModule] Ошибка при показе индикатора смены языка.", ex);
+            }
+        });
+    }
+
+    private static nint ReadForegroundLayoutHandle()
+    {
+        return ForegroundLayoutHandleReader != null
+            ? ForegroundLayoutHandleReader()
+            : KeyboardLayoutHelper.GetForegroundLayoutHandle();
     }
 
     private void ReleaseAllActiveSynthesizedKeys()

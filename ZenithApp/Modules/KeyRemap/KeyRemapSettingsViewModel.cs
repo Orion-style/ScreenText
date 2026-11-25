@@ -92,6 +92,7 @@ public sealed class KeyRemapSettingsViewModel : ViewModelBase
     private readonly ZenithApp.Core.Settings.ISettingsService _settingsService;
 
     private bool _emergencyEscapeEnabled;
+    private bool _showLanguageSwitchOsd;
     private string _emergencyNotification = string.Empty;
     private bool _showEmergencyNotification;
 
@@ -103,6 +104,7 @@ public sealed class KeyRemapSettingsViewModel : ViewModelBase
         _settingsService = settingsService;
 
         _emergencyEscapeEnabled = _module.Settings.EmergencyEscapeEnabled;
+        _showLanguageSwitchOsd = _module.Settings.ShowLanguageSwitchOsd;
 
         Rules = new ObservableCollection<RuleItemViewModel>(
             _module.Settings.Rules.Select(r => new RuleItemViewModel(r, this))
@@ -124,6 +126,19 @@ public sealed class KeyRemapSettingsViewModel : ViewModelBase
             if (SetProperty(ref _emergencyEscapeEnabled, value))
             {
                 _module.Settings.EmergencyEscapeEnabled = value;
+                _settingsService.Save();
+            }
+        }
+    }
+
+    public bool ShowLanguageSwitchOsd
+    {
+        get => _showLanguageSwitchOsd;
+        set
+        {
+            if (SetProperty(ref _showLanguageSwitchOsd, value))
+            {
+                _module.Settings.ShowLanguageSwitchOsd = value;
                 _settingsService.Save();
             }
         }

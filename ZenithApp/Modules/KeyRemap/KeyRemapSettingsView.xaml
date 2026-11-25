@@ -54,6 +54,25 @@
             </Grid>
         </ui:Card>
 
+        <!-- Настройка индикатора смены языка -->
+        <ui:Card Padding="16" Margin="0,0,0,14">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Индикатор смены языка сверху экрана" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                    <TextBlock Text="Показывать компактное окно вверху по центру на 1 секунду при переключении раскладки через заменную клавишу" 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                               Margin="0,4,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1" 
+                                 IsChecked="{Binding ShowLanguageSwitchOsd, Mode=TwoWay}" 
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
         <!-- Заголовок таблицы правил и кнопка создания -->
         <Grid Margin="0,4,0,12">
             <Grid.RowDefinitions>

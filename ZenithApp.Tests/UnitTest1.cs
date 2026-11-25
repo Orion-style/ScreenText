@@ -549,4 +549,138 @@ public class KeyRemapModuleTests
             KeyRemapModule.PhysicalModifierChecker = null;
         }
     }
+
+    [Fact]
+    public void KeyboardLayoutHelper_FormatsEnglishAndRussianLayouts()
+    {
+        var enHkl = new nint(0x04090409);
+        var enInfo = KeyboardLayoutHelper.GetLayoutInfo(enHkl);
+        Assert.Equal(0x0409, enInfo.LanguageId);
+        Assert.Equal("EN", enInfo.ShortCode);
+        Assert.Equal("English", enInfo.DisplayName);
+
+        var ruHkl = new nint(0x04190419);
+        var ruInfo = KeyboardLayoutHelper.GetLayoutInfo(ruHkl);
+        Assert.Equal(0x0419, ruInfo.LanguageId);
+        Assert.Equal("RU", ruInfo.ShortCode);
+        Assert.Equal("Русский", ruInfo.DisplayName);
+
+        var fallbackInfo = KeyboardLayoutHelper.GetLayoutInfo(nint.Zero);
+        Assert.Equal("?", fallbackInfo.ShortCode);
+        Assert.False(string.IsNullOrWhiteSpace(fallbackInfo.DisplayName));
+    }
+
+    [Fact]
+    public async Task KeyRemap_LanguageSwitch_TriggersOsdWithNewLayout_WhenEnabled()
+    {
+        var logger = new TestLogger();
+        var hookService = new TestKeyboardHookService();
+        var settingsService = new TestSettingsService();
+
+        settingsService.Current.KeyRemap.Rules.Add(new KeyRemapRule
+        {
+            TriggerVirtualKey = VirtualKeyHelper.VK_CAPITAL,
+            ActionType = KeyRemapActionType.SwitchLanguage,
+            IsEnabled = true
+        });
+
+        nint currentLayout = new nint(0x04090409); // EN
+        KeyboardLayoutInfo? notifiedInfo = null;
+        bool? notifiedChanged = null;
+        using var osdSignal = new ManualResetEventSlim(false);
+
+        KeyboardInputSender.CustomLanguageSwitchAction = () => currentLayout = new nint(0x04190419); // Switch to RU
+        KeyRemapModule.ForegroundLayoutHandleReader = () => currentLayout;
+
+        try
+        {
+            using var module = new KeyRemapModule(logger, hookService, settingsService)
+            {
+                CustomLanguageOsdHandler = (info, changed) =>
+                {
+                    notifiedInfo = info;
+                    notifiedChanged = changed;
+                    osdSignal.Set();
+                }
+            };
+            await module.EnableAsync();
+
+            var downArgs = new KeyboardHookEventArgs(VirtualKeyHelper.VK_CAPITAL, 0x3A, true, false, false, false, 0);
+            Assert.True(hookService.Raise(downArgs));
+
+            Assert.True(osdSignal.Wait(TimeSpan.FromSeconds(2)), "Language switch OSD handler was not triggered in time.");
+            Assert.NotNull(notifiedInfo);
+            Assert.Equal("RU", notifiedInfo.Value.ShortCode);
+            Assert.Equal("Русский", notifiedInfo.Value.DisplayName);
+            Assert.True(notifiedChanged);
+
+            await module.DisableAsync();
+        }
+        finally
+        {
+            KeyboardInputSender.CustomLanguageSwitchAction = null;
+            KeyRemapModule.ForegroundLayoutHandleReader = null;
+        }
+    }
+
+    [Fact]
+    public async Task KeyRemap_LanguageSwitch_DoesNotTriggerOsd_WhenSettingDisabled()
+    {
+        var logger = new TestLogger();
+        var hookService = new TestKeyboardHookService();
+        var settingsService = new TestSettingsService();
+        settingsService.Current.KeyRemap.ShowLanguageSwitchOsd = false;
+
+        settingsService.Current.KeyRemap.Rules.Add(new KeyRemapRule
+        {
+            TriggerVirtualKey = 0x70, // F1
+            ActionType = KeyRemapActionType.RemapKeyCombination,
+            TargetVirtualKey = 0,
+            TargetAlt = true,
+            TargetShift = true,
+            IsEnabled = true
+        });
+
+        int osdCallCount = 0;
+        KeyboardInputSender.CustomLanguageSwitchAction = () => { };
+        KeyRemapModule.ForegroundLayoutHandleReader = () => new nint(0x04090409);
+
+        try
+        {
+            using var module = new KeyRemapModule(logger, hookService, settingsService)
+            {
+                CustomLanguageOsdHandler = (_, _) => Interlocked.Increment(ref osdCallCount)
+            };
+            await module.EnableAsync();
+
+            var downArgs = new KeyboardHookEventArgs(0x70, 0x3B, true, false, false, false, 0);
+            Assert.True(hookService.Raise(downArgs));
+
+            await Task.Delay(120);
+            Assert.Equal(0, osdCallCount);
+
+            await module.DisableAsync();
+        }
+        finally
+        {
+            KeyboardInputSender.CustomLanguageSwitchAction = null;
+            KeyRemapModule.ForegroundLayoutHandleReader = null;
+        }
+    }
+
+    [Fact]
+    public void KeyRemapSettingsViewModel_ShowLanguageSwitchOsd_DefaultsTrueAndSaves()
+    {
+        var logger = new TestLogger();
+        using var hookService = new KeyboardHookService();
+        var settingsService = new TestSettingsService();
+        using var module = new KeyRemapModule(logger, hookService, settingsService);
+
+        var vm = new KeyRemapSettingsViewModel(module, settingsService);
+        Assert.True(vm.ShowLanguageSwitchOsd);
+
+        vm.ShowLanguageSwitchOsd = false;
+        Assert.False(settingsService.Current.KeyRemap.ShowLanguageSwitchOsd);
+        Assert.True(settingsService.Saved);
+    }
 }
