@@ -1,0 +1,151 @@
+<UserControl x:Class="ZenithApp.Modules.NextSession.NextSessionSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             mc:Ignorable="d"
+             d:DesignHeight="450" d:DesignWidth="600">
+    <StackPanel>
+        <!-- Текущий план и быстрый вызов окна -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="План на следующий сеанс" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding PendingPlanSummary}"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button Content="Тест запуска"
+                               Command="{Binding ExecuteNowCommand}"
+                               IsEnabled="{Binding HasPendingPlan}"
+                               Margin="0,0,8,0" />
+                    <ui:Button Content="Очистить"
+                               Appearance="Danger"
+                               Command="{Binding ClearPlanCommand}"
+                               IsEnabled="{Binding HasPendingPlan}"
+                               Margin="0,0,8,0" />
+                    <ui:Button Content="Открыть окно"
+                               Appearance="Primary"
+                               Icon="{ui:SymbolIcon WindowNew24}"
+                               Command="{Binding OpenPlannerCommand}" />
+                </StackPanel>
+            </Grid>
+        </ui:Card>
+
+        <!-- Горячая клавиша вызова -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Горячая клавиша вызова окна" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                        <TextBlock Text="Нажмите на поле и задайте сочетание клавиш (по умолчанию Ctrl + Alt + N)"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Margin="0,4,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <TextBox x:Name="TxtHotkey"
+                             Grid.Column="1"
+                             MinWidth="190"
+                             MaxWidth="260"
+                             Padding="10,6"
+                             Text="{Binding HotkeyText, Mode=OneWay}"
+                             IsReadOnly="True"
+                             Cursor="Hand"
+                             PreviewKeyDown="OnHotkeyPreviewKeyDown"
+                             VerticalAlignment="Center"
+                             TextAlignment="Center" />
+                </Grid>
+
+                <ui:InfoBar Title="Конфликт горячих клавиш"
+                            Message="{Binding ConflictMessage}"
+                            IsOpen="{Binding HasConflict}"
+                            Severity="Error"
+                            IsClosable="False"
+                            Margin="0,12,0,0" />
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Условие срабатывания -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Запускать только после перезагрузки / включения Windows" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                    <TextBlock Text="Если выключено, план сработает также при обычном перезапуске Zenith Utility."
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1"
+                                 IsChecked="{Binding OnlyAfterSystemReboot, Mode=TwoWay}"
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Срабатывание при выходе из сна -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Срабатывать при выходе ноутбука из сна" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                    <TextBlock Text="Удобно, если вы обычно закрываете крышку вместо полного выключения."
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <ui:ToggleSwitch Grid.Column="1"
+                                 IsChecked="{Binding TriggerOnResumeFromSleep, Mode=TwoWay}"
+                                 VerticalAlignment="Center" />
+            </Grid>
+        </ui:Card>
+
+        <!-- Задержка перед запуском после входа -->
+        <ui:Card Padding="16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Пауза после запуска Windows" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                    <TextBlock Text="Задержка перед стартом выбранных программ, чтобы рабочий стол успел прогрузиться."
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Slider Width="140"
+                            Minimum="0"
+                            Maximum="15"
+                            SmallChange="1"
+                            LargeChange="3"
+                            Value="{Binding StartupDelaySeconds, Mode=TwoWay}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,10,0" />
+                    <TextBlock Text="{Binding StartupDelaySeconds, StringFormat='{}{0} сек'}"
+                               MinWidth="48"
+                               TextAlignment="Right"
+                               VerticalAlignment="Center"
+                               FontWeight="SemiBold" />
+                </StackPanel>
+            </Grid>
+        </ui:Card>
+    </StackPanel>
+</UserControl>

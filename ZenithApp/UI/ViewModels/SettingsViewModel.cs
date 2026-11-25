@@ -11,6 +11,7 @@ using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
 using ZenithApp.Modules.KeyRemap;
+using ZenithApp.Modules.NextSession;
 using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
@@ -34,6 +35,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? _radialSwitcherModule;
     private readonly StartupManagerModule? _startupManagerModule;
     private readonly IStartupItemsService? _startupItemsService;
+    private readonly NextSessionModule? _nextSessionModule;
 
     private bool _startWithWindows;
     private bool _isAlwaysRunAsAdmin;
@@ -52,7 +54,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         ZenithApp.Modules.RadialSwitcher.RadialSwitcherModule? radialSwitcherModule = null,
         StartupManagerModule? startupManagerModule = null,
         IStartupItemsService? startupItemsService = null,
-        IElevationService? elevationService = null)
+        IElevationService? elevationService = null,
+        NextSessionModule? nextSessionModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -66,6 +69,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _radialSwitcherModule = radialSwitcherModule;
         _startupManagerModule = startupManagerModule;
         _startupItemsService = startupItemsService;
+        _nextSessionModule = nextSessionModule;
 
         _startWithWindows = _autoLaunchService.IsAutoLaunchEnabled();
         if (_settingsService.Current.StartWithWindows != _startWithWindows)
@@ -117,6 +121,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             StartupManagerSettings = new StartupManagerViewModel(_startupManagerModule, _startupItemsService);
         }
 
+        if (_nextSessionModule != null)
+        {
+            NextSessionSettings = new NextSessionSettingsViewModel(_nextSessionModule, _settingsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
         RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
     }
@@ -128,6 +137,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public SnapZonesSettingsViewModel? SnapZonesSettings { get; }
     public ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettingsViewModel? RadialSwitcherSettings { get; }
     public StartupManagerViewModel? StartupManagerSettings { get; }
+    public NextSessionSettingsViewModel? NextSessionSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 
@@ -298,5 +308,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public void Dispose()
     {
         _autoLaunchService.AutoLaunchChanged -= OnAutoLaunchChanged;
+        NextSessionSettings?.Dispose();
     }
 }

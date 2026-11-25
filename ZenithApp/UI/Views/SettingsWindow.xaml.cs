@@ -97,6 +97,10 @@ public partial class SettingsWindow : FluentWindow
                 _viewModel.StartupManagerSettings?.Refresh();
                 StartupManagerConfigContainer.Visibility = Visibility.Visible;
             }
+            else if (moduleVm.Id == ZenithApp.Modules.NextSession.NextSessionModule.ModuleId)
+            {
+                NextSessionConfigContainer.Visibility = Visibility.Visible;
+            }
             else
             {
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
@@ -113,6 +117,7 @@ public partial class SettingsWindow : FluentWindow
         SnapZonesConfigContainer.Visibility = Visibility.Collapsed;
         RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
         StartupManagerConfigContainer.Visibility = Visibility.Collapsed;
+        NextSessionConfigContainer.Visibility = Visibility.Collapsed;
         CardConfigPlaceholder.Visibility = Visibility.Collapsed;
     }
 

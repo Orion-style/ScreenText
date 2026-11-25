@@ -16,6 +16,7 @@ public sealed class TrayIconService : IDisposable
     private readonly IClipboardOcrService _clipboardOcrService;
     private readonly IOcrHistoryService _historyService;
     private readonly Action? _resetSavedAreaAction;
+    private readonly Action? _openNextSessionAction;
 
     private NotifyIcon? _notifyIcon;
     private MenuItem? _historySubMenu;
@@ -27,7 +28,8 @@ public sealed class TrayIconService : IDisposable
         Action exitAction,
         IClipboardOcrService clipboardOcrService,
         IOcrHistoryService historyService,
-        Action? resetSavedAreaAction = null)
+        Action? resetSavedAreaAction = null,
+        Action? openNextSessionAction = null)
     {
         _logger = logger;
         _openSettingsAction = openSettingsAction;
@@ -35,6 +37,7 @@ public sealed class TrayIconService : IDisposable
         _clipboardOcrService = clipboardOcrService;
         _historyService = historyService;
         _resetSavedAreaAction = resetSavedAreaAction;
+        _openNextSessionAction = openNextSessionAction;
     }
 
     public void Initialize()
@@ -103,6 +106,16 @@ public sealed class TrayIconService : IDisposable
                 };
                 resetAreaItem.Click += (_, _) => _resetSavedAreaAction.Invoke();
                 contextMenu.Items.Add(resetAreaItem);
+            }
+
+            if (_openNextSessionAction != null)
+            {
+                var nextSessionItem = new MenuItem
+                {
+                    Header = "Следующий сеанс..."
+                };
+                nextSessionItem.Click += (_, _) => _openNextSessionAction.Invoke();
+                contextMenu.Items.Add(nextSessionItem);
             }
 
             contextMenu.Items.Add(new Separator());

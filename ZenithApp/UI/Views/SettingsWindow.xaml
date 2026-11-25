@@ -12,6 +12,7 @@
         xmlns:snapzones="clr-namespace:ZenithApp.Modules.SnapZones"
         xmlns:radial="clr-namespace:ZenithApp.Modules.RadialSwitcher"
         xmlns:startup="clr-namespace:ZenithApp.Modules.StartupManager"
+        xmlns:nextsession="clr-namespace:ZenithApp.Modules.NextSession"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -378,6 +379,13 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <startup:StartupManagerView DataContext="{Binding StartupManagerSettings}" />
+                            </ContentControl>
+
+                            <!-- Настройки модуля NextSession -->
+                            <ContentControl x:Name="NextSessionConfigContainer"
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                <nextsession:NextSessionSettingsView DataContext="{Binding NextSessionSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

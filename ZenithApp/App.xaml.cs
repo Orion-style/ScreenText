@@ -7,6 +7,7 @@ using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
 using ZenithApp.Modules.KeyRemap;
+using ZenithApp.Modules.NextSession;
 using ZenithApp.Modules.QuickLook;
 using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
@@ -78,13 +79,15 @@ public partial class App : Application
         var clipboardOcrService = _serviceProvider.GetRequiredService<IClipboardOcrService>();
         var historyService = _serviceProvider.GetRequiredService<IOcrHistoryService>();
         var screenshotModule = _serviceProvider.GetRequiredService<ScreenshotModule>();
+        var nextSessionModule = _serviceProvider.GetRequiredService<NextSessionModule>();
         _trayIconService = new TrayIconService(
             logger,
             openSettingsAction: () => Dispatcher.Invoke(OpenSettingsWindow),
             exitAction: () => Dispatcher.Invoke(ExitApplication),
             clipboardOcrService,
             historyService,
-            resetSavedAreaAction: () => screenshotModule.ResetSavedArea(notifyUser: true)
+            resetSavedAreaAction: () => screenshotModule.ResetSavedArea(notifyUser: true),
+            openNextSessionAction: () => Dispatcher.Invoke(() => nextSessionModule.OpenPlannerWindow())
         );
         _trayIconService.Initialize();
 
@@ -136,6 +139,11 @@ public partial class App : Application
         services.AddSingleton<IStartupItemsService, StartupItemsService>();
         services.AddSingleton<StartupManagerModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<StartupManagerModule>());
+        services.AddSingleton<INextSessionProgramCatalogService, NextSessionProgramCatalogService>();
+        services.AddSingleton<INextSessionLauncherService, NextSessionLauncherService>();
+        services.AddSingleton<ISystemBootTimeProvider, SystemBootTimeProvider>();
+        services.AddSingleton<NextSessionModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<NextSessionModule>());
 
         // Module Manager
         services.AddSingleton<ModuleManager>();
