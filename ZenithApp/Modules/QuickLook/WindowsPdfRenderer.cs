@@ -5,28 +5,82 @@ using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
 using Windows.Data.Pdf;
 using Windows.Storage;
+using Windows.Storage.Streams;
 
 namespace ZenithApp.Modules.QuickLook;
 
 public sealed class WindowsPdfRenderer
 {
-    public static async Task<BitmapSource?> RenderPageAsync(string filePath, uint pageIndex, uint maxWidth = 1600)
+    public readonly record struct RenderedPdfPage(BitmapSource Bitmap, double LogicalWidth, double LogicalHeight);
+
+    public sealed class PdfSession : IDisposable
+    {
+        private readonly FileStream _fileStream;
+        private readonly IRandomAccessStream _randomAccessStream;
+        private readonly PdfDocument _document;
+
+        private PdfSession(FileStream fileStream, IRandomAccessStream randomAccessStream, PdfDocument document)
+        {
+            _fileStream = fileStream;
+            _randomAccessStream = randomAccessStream;
+            _document = document;
+        }
+
+        public uint PageCount => _document.PageCount;
+
+        public static async Task<PdfSession?> OpenAsync(string filePath)
+        {
+            FileStream? fs = null;
+            IRandomAccessStream? ras = null;
+            try
+            {
+                fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                ras = fs.AsRandomAccessStream();
+                var doc = await PdfDocument.LoadFromStreamAsync(ras);
+                return new PdfSession(fs, ras, doc);
+            }
+            catch
+            {
+                ras?.Dispose();
+                fs?.Dispose();
+                return null;
+            }
+        }
+
+        public Task<RenderedPdfPage?> RenderPageAsync(uint pageIndex, uint maxWidth = 1800, uint maxHeight = 2600)
+        {
+            return RenderPageFromDocumentAsync(_document, pageIndex, maxWidth, maxHeight);
+        }
+
+        public void Dispose()
+        {
+            _randomAccessStream.Dispose();
+            _fileStream.Dispose();
+        }
+    }
+
+    private static async Task<RenderedPdfPage?> RenderPageFromDocumentAsync(
+        PdfDocument pdfDoc,
+        uint pageIndex,
+        uint maxWidth,
+        uint maxHeight)
     {
         try
         {
-            var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
-            var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
             if (pageIndex >= pdfDoc.PageCount) return null;
 
             using var page = pdfDoc.GetPage(pageIndex);
-            using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
-
-            var renderOptions = new PdfPageRenderOptions();
             var pageSize = page.Size;
-            if (pageSize.Width > maxWidth)
+
+            using var stream = new InMemoryRandomAccessStream();
+            var renderOptions = new PdfPageRenderOptions
             {
-                renderOptions.DestinationWidth = maxWidth;
-            }
+                DestinationWidth = QuickLookLayoutHelper.ComputePdfRenderDestinationWidth(
+                    pageSize.Width,
+                    pageSize.Height,
+                    maxWidth,
+                    maxHeight)
+            };
 
             await page.RenderToStreamAsync(stream, renderOptions);
 
@@ -38,7 +92,32 @@ public sealed class WindowsPdfRenderer
             bitmap.EndInit();
             bitmap.Freeze();
 
-            return bitmap;
+            double logicalW = pageSize.Width > 0 ? pageSize.Width : bitmap.PixelWidth;
+            double logicalH = pageSize.Height > 0 ? pageSize.Height : bitmap.PixelHeight;
+            return new RenderedPdfPage(bitmap, logicalW, logicalH);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static async Task<BitmapSource?> RenderPageAsync(string filePath, uint pageIndex, uint maxWidth = 1800)
+    {
+        try
+        {
+            using var session = await PdfSession.OpenAsync(filePath);
+            if (session != null)
+            {
+                var rendered = await session.RenderPageAsync(pageIndex, maxWidth);
+                return rendered?.Bitmap;
+            }
+
+            // Fallback to StorageFile if direct FileStream access fails
+            var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
+            var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
+            var fallbackRendered = await RenderPageFromDocumentAsync(pdfDoc, pageIndex, maxWidth, 2600);
+            return fallbackRendered?.Bitmap;
         }
         catch
         {
@@ -50,6 +129,12 @@ public sealed class WindowsPdfRenderer
     {
         try
         {
+            using var session = await PdfSession.OpenAsync(filePath);
+            if (session != null)
+            {
+                return session.PageCount;
+            }
+
             var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
             var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
             return pdfDoc.PageCount;

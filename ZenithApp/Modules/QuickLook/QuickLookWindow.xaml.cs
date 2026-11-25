@@ -19,9 +19,15 @@ public partial class QuickLookWindow : Window
     private readonly nint _previousForegroundHwnd;
 
     private DispatcherTimer? _mediaTimer;
+    private CancellationTokenSource? _pdfLoadCts;
     private bool _isMediaUserSeeking;
     private bool _isClosing;
     private double _zoomFactor = 1.0;
+    private double _pdfZoomFactor = 1.0;
+    private double _lastPdfViewportWidth;
+    private uint _pdfTotalPages;
+    private uint _pdfLoadedPageCount;
+    private bool _isLoadingPdfBatch;
 
     public QuickLookWindow(string filePath, QuickLookSettings settings, IAppLogger logger, nint previousForegroundHwnd)
     {
@@ -59,23 +65,18 @@ public partial class QuickLookWindow : Window
 
     private void ApplyInitialWindowBounds()
     {
-        var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea();
-        double percent = Math.Clamp(_settings.MaxWindowScreenPercent, 40, 95) / 100.0;
-        double maxW = monitorArea.Width * percent;
-        double maxH = monitorArea.Height * percent;
+        var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea(_previousForegroundHwnd);
+        var bounds = QuickLookLayoutHelper.ComputeTargetWindowBounds(
+            0,
+            0,
+            monitorArea.Width,
+            monitorArea.Height,
+            _settings.MaxWindowScreenPercent);
 
-        MaxWidth = maxW;
-        MaxHeight = maxH;
+        MaxWidth = bounds.MaxWidth;
+        MaxHeight = bounds.MaxHeight;
 
-        // Default comfortable window size
-        double targetW = Math.Min(940, maxW);
-        double targetH = Math.Min(680, maxH);
-
-        Width = targetW;
-        Height = targetH;
-
-        Left = monitorArea.Left + (monitorArea.Width - targetW) / 2.0;
-        Top = monitorArea.Top + (monitorArea.Height - targetH) / 2.0;
+        WindowPlacementHelper.PositionWindowCentered(this, monitorArea, bounds.Width, bounds.Height);
     }
 
     private void AnimateWindowOpen()
@@ -140,19 +141,25 @@ public partial class QuickLookWindow : Window
     {
         try
         {
-            var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea();
-            int maxDim = (int)Math.Max(monitorArea.Width, monitorArea.Height);
+            var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea(_previousForegroundHwnd);
+            int maxDim = Math.Max(monitorArea.PhysicalWidth, monitorArea.PhysicalHeight);
+            if (maxDim <= 0)
+            {
+                maxDim = (int)Math.Max(monitorArea.Width, monitorArea.Height);
+            }
 
             var bitmap = await Task.Run(() => QuickLookImageLoader.LoadImage(_filePath, maxDim));
             if (bitmap != null)
             {
+                _zoomFactor = 1.0;
                 ImgPreview.Source = bitmap;
                 ImageViewer.Visibility = Visibility.Visible;
 
                 TxtHeaderTitle.Text = $"{Title} ({bitmap.PixelWidth} × {bitmap.PixelHeight})";
 
                 // Fit window size to image aspect ratio nicely
-                AdjustWindowDimensions(bitmap.PixelWidth, bitmap.PixelHeight);
+                AdjustWindowDimensions(bitmap.PixelWidth, bitmap.PixelHeight, extraHeight: 76);
+                UpdateImageDisplaySize();
                 return;
             }
 
@@ -170,6 +177,52 @@ public partial class QuickLookWindow : Window
     {
         try
         {
+            _pdfLoadCts?.Cancel();
+            _pdfLoadCts?.Dispose();
+            _pdfLoadCts = new CancellationTokenSource();
+            var ct = _pdfLoadCts.Token;
+
+            _pdfZoomFactor = 1.0;
+            _pdfLoadedPageCount = 0;
+            _pdfTotalPages = 0;
+            _lastPdfViewportWidth = 0;
+
+            using var session = await Task.Run(() => WindowsPdfRenderer.PdfSession.OpenAsync(_filePath), ct);
+            if (session != null)
+            {
+                _pdfTotalPages = session.PageCount;
+                if (_pdfTotalPages == 0)
+                {
+                    ShowGenericCard(isFailure: true);
+                    return;
+                }
+
+                PdfViewer.Visibility = Visibility.Visible;
+
+                var firstPage = await Task.Run(() => session.RenderPageAsync(0), ct);
+                if (firstPage == null || _isClosing || ct.IsCancellationRequested)
+                {
+                    if (!_isClosing && firstPage == null) ShowGenericCard(isFailure: true);
+                    return;
+                }
+
+                AddPdfPageImage(firstPage.Value.Bitmap);
+                _pdfLoadedPageCount = 1;
+                UpdatePdfFooterText();
+
+                AdjustWindowDimensions(firstPage.Value.LogicalWidth, firstPage.Value.LogicalHeight, extraHeight: 102);
+                UpdatePdfPagesDisplaySize();
+
+                uint initialBatchEnd = Math.Min(_pdfTotalPages, 20);
+                if (initialBatchEnd > 1)
+                {
+                    await LoadPdfPageRangeWithSessionAsync(session, 1, initialBatchEnd, ct);
+                }
+
+                return;
+            }
+
+            // Fallback when direct stream open is unavailable
             uint pageCount = await WindowsPdfRenderer.GetPageCountAsync(_filePath);
             if (pageCount == 0)
             {
@@ -177,55 +230,93 @@ public partial class QuickLookWindow : Window
                 return;
             }
 
-            TxtPdfPageInfo.Text = $"Страниц: {pageCount}";
+            _pdfTotalPages = pageCount;
             PdfViewer.Visibility = Visibility.Visible;
 
-            // Render first page immediately
-            var firstPage = await WindowsPdfRenderer.RenderPageAsync(_filePath, 0);
-            if (firstPage != null)
+            var fallbackFirstPage = await WindowsPdfRenderer.RenderPageAsync(_filePath, 0);
+            if (fallbackFirstPage == null || _isClosing || ct.IsCancellationRequested)
             {
-                var img = new Image
-                {
-                    Source = firstPage,
-                    Margin = new Thickness(0, 0, 0, 16),
-                    Stretch = Stretch.Uniform,
-                    HorizontalAlignment = HorizontalAlignment.Center
-                };
-                PdfPagesPanel.Children.Add(img);
-
-                AdjustWindowDimensions(firstPage.PixelWidth, firstPage.PixelHeight);
+                if (!_isClosing && fallbackFirstPage == null) ShowGenericCard(isFailure: true);
+                return;
             }
 
-            // Lazy load remaining pages (up to 20 for preview bounds)
-            uint maxPagesToRender = Math.Min(pageCount, 25);
-            for (uint i = 1; i < maxPagesToRender; i++)
+            AddPdfPageImage(fallbackFirstPage);
+            _pdfLoadedPageCount = 1;
+            UpdatePdfFooterText();
+
+            AdjustWindowDimensions(fallbackFirstPage.PixelWidth, fallbackFirstPage.PixelHeight, extraHeight: 102);
+            UpdatePdfPagesDisplaySize();
+
+            uint maxFallbackPages = Math.Min(pageCount, 20);
+            for (uint i = 1; i < maxFallbackPages; i++)
             {
-                uint idx = i;
-                _ = Task.Run(async () =>
+                if (_isClosing || ct.IsCancellationRequested) break;
+                var pageBmp = await WindowsPdfRenderer.RenderPageAsync(_filePath, i);
+                if (pageBmp != null && !_isClosing && !ct.IsCancellationRequested)
                 {
-                    var pageBmp = await WindowsPdfRenderer.RenderPageAsync(_filePath, idx);
-                    if (pageBmp != null)
-                    {
-                        Dispatcher.Invoke(() =>
-                        {
-                            if (_isClosing) return;
-                            var pageImg = new Image
-                            {
-                                Source = pageBmp,
-                                Margin = new Thickness(0, 0, 0, 16),
-                                Stretch = Stretch.Uniform,
-                                HorizontalAlignment = HorizontalAlignment.Center
-                            };
-                            PdfPagesPanel.Children.Add(pageImg);
-                        });
-                    }
-                });
+                    AddPdfPageImage(pageBmp);
+                    _pdfLoadedPageCount++;
+                    UpdatePdfFooterText();
+                }
             }
         }
-        catch
+        catch (OperationCanceledException)
         {
+            // Window closed during loading
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"[QuickLook] Ошибка предпросмотра PDF '{_filePath}': {ex.Message}", ex);
             ShowGenericCard(isFailure: true);
         }
+    }
+
+    private async Task LoadPdfPageRangeWithSessionAsync(
+        WindowsPdfRenderer.PdfSession session,
+        uint startIndex,
+        uint endExclusive,
+        CancellationToken ct)
+    {
+        for (uint i = startIndex; i < endExclusive; i++)
+        {
+            if (_isClosing || ct.IsCancellationRequested) break;
+
+            uint idx = i;
+            var rendered = await Task.Run(() => session.RenderPageAsync(idx), ct);
+            if (rendered != null && !_isClosing && !ct.IsCancellationRequested)
+            {
+                AddPdfPageImage(rendered.Value.Bitmap);
+                _pdfLoadedPageCount++;
+                UpdatePdfFooterText();
+            }
+        }
+    }
+
+    private void AddPdfPageImage(BitmapSource pageBmp)
+    {
+        var pageImg = new Image
+        {
+            Source = pageBmp,
+            Margin = new Thickness(0, 0, 0, 16),
+            Stretch = Stretch.Uniform,
+            HorizontalAlignment = HorizontalAlignment.Center
+        };
+        RenderOptions.SetBitmapScalingMode(pageImg, BitmapScalingMode.HighQuality);
+        ApplyPdfPageImageSize(pageImg);
+        PdfPagesPanel.Children.Add(pageImg);
+    }
+
+    private void UpdatePdfFooterText()
+    {
+        if (_pdfTotalPages == 0)
+        {
+            TxtPdfPageInfo.Text = string.Empty;
+            return;
+        }
+
+        TxtPdfPageInfo.Text = _pdfLoadedPageCount < _pdfTotalPages
+            ? $"Показано страниц: {_pdfLoadedPageCount} из {_pdfTotalPages}"
+            : $"Страниц: {_pdfTotalPages}";
     }
 
     private void LoadMediaPreview(bool isVideo)
@@ -316,29 +407,24 @@ public partial class QuickLookWindow : Window
         TxtGenericStatus.Visibility = isFailure ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    private void AdjustWindowDimensions(double contentWidth, double contentHeight)
+    private void AdjustWindowDimensions(double contentWidth, double contentHeight, double extraHeight = 76)
     {
         if (contentWidth <= 0 || contentHeight <= 0) return;
 
-        var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea();
-        double percent = Math.Clamp(_settings.MaxWindowScreenPercent, 40, 95) / 100.0;
-        double maxW = monitorArea.Width * percent;
-        double maxH = monitorArea.Height * percent;
+        var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea(_previousForegroundHwnd);
+        var bounds = QuickLookLayoutHelper.ComputeTargetWindowBounds(
+            contentWidth,
+            contentHeight,
+            monitorArea.Width,
+            monitorArea.Height,
+            _settings.MaxWindowScreenPercent,
+            extraWidth: 34,
+            extraHeight: extraHeight);
 
-        // Header height + padding allowance
-        double extraHeight = 70;
-        double targetW = contentWidth + 32;
-        double targetH = contentHeight + extraHeight;
+        MaxWidth = bounds.MaxWidth;
+        MaxHeight = bounds.MaxHeight;
 
-        double scale = Math.Min(1.0, Math.Min(maxW / targetW, maxH / targetH));
-        targetW = Math.Clamp(targetW * scale, Math.Min(520, maxW), maxW);
-        targetH = Math.Clamp(targetH * scale, Math.Min(380, maxH), maxH);
-
-        Width = targetW;
-        Height = targetH;
-
-        Left = monitorArea.Left + (monitorArea.Width - targetW) / 2.0;
-        Top = monitorArea.Top + (monitorArea.Height - targetH) / 2.0;
+        WindowPlacementHelper.PositionWindowCentered(this, monitorArea, bounds.Width, bounds.Height);
     }
 
     private void OnHeaderMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -346,6 +432,21 @@ public partial class QuickLookWindow : Window
         if (e.ButtonState == MouseButtonState.Pressed)
         {
             DragMove();
+        }
+    }
+
+    private void OnImageViewerSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateImageDisplaySize();
+    }
+
+    private void OnImageMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+        {
+            e.Handled = true;
+            _zoomFactor = 1.0;
+            UpdateImageDisplaySize();
         }
     }
 
@@ -362,8 +463,144 @@ public partial class QuickLookWindow : Window
             {
                 _zoomFactor = Math.Max(0.2, _zoomFactor / 1.15);
             }
-            ImgScaleTransform.ScaleX = _zoomFactor;
-            ImgScaleTransform.ScaleY = _zoomFactor;
+            UpdateImageDisplaySize();
+        }
+    }
+
+    private void UpdateImageDisplaySize()
+    {
+        if (ImgPreview.Source is not BitmapSource bitmap) return;
+
+        double availW = ImageViewer.ActualWidth;
+        double availH = ImageViewer.ActualHeight;
+        if (availW <= 0 || availH <= 0) return;
+
+        var size = QuickLookLayoutHelper.ComputeImageDisplaySize(
+            bitmap.PixelWidth,
+            bitmap.PixelHeight,
+            availW,
+            availH,
+            _zoomFactor);
+
+        if (size.Width <= 0 || size.Height <= 0) return;
+
+        ImgPreview.Width = size.Width;
+        ImgPreview.Height = size.Height;
+
+        var visibility = size.NeedsScroll ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+        ImageViewer.HorizontalScrollBarVisibility = visibility;
+        ImageViewer.VerticalScrollBarVisibility = visibility;
+    }
+
+    private void OnPdfScrollViewerSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdatePdfPagesDisplaySize();
+    }
+
+    private async void OnPdfScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        double currentVp = PdfScrollViewer.ViewportWidth;
+        if (currentVp > 0 && Math.Abs(_lastPdfViewportWidth - currentVp) > 2.0)
+        {
+            UpdatePdfPagesDisplaySize();
+        }
+
+        if (_isClosing || _isLoadingPdfBatch || _pdfLoadedPageCount >= _pdfTotalPages || _pdfLoadCts == null)
+        {
+            return;
+        }
+
+        if (PdfScrollViewer.ExtentHeight > 0 &&
+            PdfScrollViewer.VerticalOffset + PdfScrollViewer.ViewportHeight >= PdfScrollViewer.ExtentHeight - 500)
+        {
+            _isLoadingPdfBatch = true;
+            try
+            {
+                var ct = _pdfLoadCts.Token;
+                using var session = await Task.Run(() => WindowsPdfRenderer.PdfSession.OpenAsync(_filePath), ct);
+                if (session != null && !_isClosing && !ct.IsCancellationRequested)
+                {
+                    uint start = _pdfLoadedPageCount;
+                    uint end = Math.Min(_pdfTotalPages, start + 15);
+                    await LoadPdfPageRangeWithSessionAsync(session, start, end, ct);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // Window closed
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"[QuickLook] Не удалось догрузить страницы PDF '{_filePath}': {ex.Message}");
+            }
+            finally
+            {
+                _isLoadingPdfBatch = false;
+            }
+        }
+    }
+
+    private void OnPdfMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            e.Handled = true;
+            if (e.Delta > 0)
+            {
+                _pdfZoomFactor = Math.Min(3.0, _pdfZoomFactor * 1.15);
+            }
+            else
+            {
+                _pdfZoomFactor = Math.Max(0.5, _pdfZoomFactor / 1.15);
+            }
+            UpdatePdfPagesDisplaySize();
+        }
+    }
+
+    private double GetPdfAvailablePageWidth()
+    {
+        double vp = PdfScrollViewer.ViewportWidth > 0
+            ? PdfScrollViewer.ViewportWidth
+            : PdfScrollViewer.ActualWidth - SystemParameters.VerticalScrollBarWidth;
+        return Math.Max(80, vp - 24);
+    }
+
+    private void UpdatePdfPagesDisplaySize()
+    {
+        double availW = GetPdfAvailablePageWidth();
+        if (availW <= 0) return;
+
+        _lastPdfViewportWidth = PdfScrollViewer.ViewportWidth;
+
+        bool needsHorizScroll = _pdfZoomFactor > 1.001;
+        PdfScrollViewer.HorizontalScrollBarVisibility = needsHorizScroll ? ScrollBarVisibility.Auto : ScrollBarVisibility.Disabled;
+
+        foreach (var child in PdfPagesPanel.Children)
+        {
+            if (child is Image pageImg)
+            {
+                ApplyPdfPageImageSize(pageImg, availW);
+            }
+        }
+    }
+
+    private void ApplyPdfPageImageSize(Image pageImg, double? availableWidthOverride = null)
+    {
+        if (pageImg.Source is not BitmapSource bmp) return;
+
+        double availW = availableWidthOverride ?? GetPdfAvailablePageWidth();
+        if (availW <= 0) return;
+
+        var size = QuickLookLayoutHelper.ComputePdfPageDisplaySize(
+            bmp.PixelWidth,
+            bmp.PixelHeight,
+            availW,
+            _pdfZoomFactor);
+
+        if (size.Width > 0 && size.Height > 0)
+        {
+            pageImg.Width = size.Width;
+            pageImg.Height = size.Height;
         }
     }
 
@@ -471,6 +708,20 @@ public partial class QuickLookWindow : Window
             e.Handled = true;
             OpenFileInDefaultApp();
         }
+        else if ((e.Key == Key.D0 || e.Key == Key.NumPad0) && Keyboard.Modifiers.HasFlag(ModifierKeys.Control))
+        {
+            e.Handled = true;
+            if (ImageViewer.Visibility == Visibility.Visible)
+            {
+                _zoomFactor = 1.0;
+                UpdateImageDisplaySize();
+            }
+            else if (PdfViewer.Visibility == Visibility.Visible)
+            {
+                _pdfZoomFactor = 1.0;
+                UpdatePdfPagesDisplaySize();
+            }
+        }
     }
 
     public void CloseWindowCleanly()
@@ -480,6 +731,10 @@ public partial class QuickLookWindow : Window
 
         try
         {
+            _pdfLoadCts?.Cancel();
+            _pdfLoadCts?.Dispose();
+            _pdfLoadCts = null;
+
             if (_mediaTimer != null)
             {
                 _mediaTimer.Stop();

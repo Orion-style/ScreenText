@@ -71,13 +71,21 @@
             <Grid Grid.Row="1" x:Name="ContentHost" ClipToBounds="True">
                 
                 <!-- 1. Изображение -->
-                <ScrollViewer x:Name="ImageViewer" Visibility="Collapsed" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                    <Grid MouseWheel="OnImageMouseWheel">
-                        <Image x:Name="ImgPreview" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Image.LayoutTransform>
-                                <ScaleTransform x:Name="ImgScaleTransform" ScaleX="1" ScaleY="1" />
-                            </Image.LayoutTransform>
-                        </Image>
+                <ScrollViewer x:Name="ImageViewer"
+                              Visibility="Collapsed"
+                              HorizontalScrollBarVisibility="Disabled"
+                              VerticalScrollBarVisibility="Disabled"
+                              SizeChanged="OnImageViewerSizeChanged"
+                              PreviewMouseWheel="OnImageMouseWheel">
+                    <Grid HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Background="Transparent"
+                          MouseLeftButtonDown="OnImageMouseLeftButtonDown">
+                        <Image x:Name="ImgPreview"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center" />
                     </Grid>
                 </ScrollViewer>
 
@@ -88,7 +96,13 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ScrollViewer x:Name="PdfScrollViewer"
+                                  Grid.Row="0"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled"
+                                  SizeChanged="OnPdfScrollViewerSizeChanged"
+                                  ScrollChanged="OnPdfScrollChanged"
+                                  PreviewMouseWheel="OnPdfMouseWheel">
                         <StackPanel x:Name="PdfPagesPanel" HorizontalAlignment="Center" Margin="12" />
                     </ScrollViewer>
 
