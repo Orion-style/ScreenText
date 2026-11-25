@@ -23,7 +23,6 @@ public sealed class SelectionOverlayWindow : Window
     private readonly System.Windows.Shapes.Path _dimOverlayPath;
     private readonly System.Windows.Shapes.Rectangle _savedRect;
     private readonly System.Windows.Shapes.Rectangle _selectionRect;
-    private readonly Border _savedActionsPanel;
     private readonly Border _hintBanner;
     private readonly TextBlock _hintTextBlock;
 
@@ -101,10 +100,6 @@ public sealed class SelectionOverlayWindow : Window
             IsHitTestVisible = false
         };
         _canvas.Children.Add(_selectionRect);
-
-        // Компактная панель действий у сохранённой области
-        _savedActionsPanel = CreateSavedActionsPanel();
-        _canvas.Children.Add(_savedActionsPanel);
 
         // Круглая лупа с пиксельной сеткой (без координат и текста)
         if (_settings.MagnifierEnabled)
@@ -188,50 +183,6 @@ public sealed class SelectionOverlayWindow : Window
         return new System.Drawing.Rectangle(newX, newY, startArea.Width, startArea.Height);
     }
 
-    private Border CreateSavedActionsPanel()
-    {
-        var captureBtn = new Button
-        {
-            Content = "Снять (Enter)",
-            Padding = new Thickness(10, 4, 10, 4),
-            Margin = new Thickness(0, 0, 6, 0),
-            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215)),
-            Foreground = System.Windows.Media.Brushes.White,
-            BorderThickness = new Thickness(0),
-            FontSize = 12,
-            FontWeight = FontWeights.SemiBold,
-            Cursor = Cursors.Hand
-        };
-        captureBtn.Click += (_, _) => ConfirmSavedArea();
-
-        var resetBtn = new Button
-        {
-            Content = "Сбросить (Del)",
-            Padding = new Thickness(10, 4, 10, 4),
-            Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 50, 50, 56)),
-            Foreground = System.Windows.Media.Brushes.White,
-            BorderThickness = new Thickness(0),
-            FontSize = 12,
-            Cursor = Cursors.Hand
-        };
-        resetBtn.Click += (_, _) => ClearActiveSavedArea();
-
-        var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(captureBtn);
-        row.Children.Add(resetBtn);
-
-        return new Border
-        {
-            Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 22, 22, 26)),
-            BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(90, 255, 255, 255)),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(8),
-            Padding = new Thickness(6),
-            Visibility = Visibility.Collapsed,
-            Child = row
-        };
-    }
-
     private void UpdateHintBannerText()
     {
         _hintTextBlock.Text = _activeSavedAreaPx.HasValue
@@ -259,7 +210,7 @@ public sealed class SelectionOverlayWindow : Window
 
         if (_activeSavedAreaPx.HasValue)
         {
-            UpdateSavedRectVisuals(showActionsPanel: true);
+            UpdateSavedRectVisuals();
         }
         else
         {
@@ -269,12 +220,11 @@ public sealed class SelectionOverlayWindow : Window
         Focus();
     }
 
-    private void UpdateSavedRectVisuals(bool showActionsPanel)
+    private void UpdateSavedRectVisuals()
     {
         if (!_activeSavedAreaPx.HasValue)
         {
             _savedRect.Visibility = Visibility.Collapsed;
-            _savedActionsPanel.Visibility = Visibility.Collapsed;
             UpdateDimCutout(null);
             return;
         }
@@ -292,39 +242,6 @@ public sealed class SelectionOverlayWindow : Window
         _savedRect.Visibility = Visibility.Visible;
 
         UpdateDimCutout(new Rect(leftDip, topDip, widthDip, heightDip));
-
-        if (showActionsPanel)
-        {
-            PositionSavedActionsPanel(leftDip, topDip, widthDip, heightDip);
-            _savedActionsPanel.Visibility = Visibility.Visible;
-        }
-        else
-        {
-            _savedActionsPanel.Visibility = Visibility.Collapsed;
-        }
-    }
-
-    private void PositionSavedActionsPanel(double rectLeft, double rectTop, double rectWidth, double rectHeight)
-    {
-        _savedActionsPanel.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-        double panelW = _savedActionsPanel.DesiredSize.Width > 0 ? _savedActionsPanel.DesiredSize.Width : 210;
-        double panelH = _savedActionsPanel.DesiredSize.Height > 0 ? _savedActionsPanel.DesiredSize.Height : 36;
-
-        const double gap = 8;
-        double left = Math.Clamp(rectLeft + rectWidth - panelW, 8, Math.Max(8, Width - panelW - 8));
-
-        double top = rectTop + rectHeight + gap;
-        if (top + panelH > Height - 8)
-        {
-            top = rectTop - panelH - gap;
-        }
-        if (top < 8)
-        {
-            top = Math.Max(8, rectTop + rectHeight - panelH - gap);
-        }
-
-        Canvas.SetLeft(_savedActionsPanel, left);
-        Canvas.SetTop(_savedActionsPanel, top);
     }
 
     private void UpdateDimCutout(Rect? cutoutDip)
@@ -373,7 +290,7 @@ public sealed class SelectionOverlayWindow : Window
             int dx = e.Key == Key.Left ? -step : e.Key == Key.Right ? step : 0;
             int dy = e.Key == Key.Up ? -step : e.Key == Key.Down ? step : 0;
             _activeSavedAreaPx = MoveAreaPreservingSize(_activeSavedAreaPx.Value, dx, dy, _screenCapture.Width, _screenCapture.Height);
-            UpdateSavedRectVisuals(showActionsPanel: true);
+            UpdateSavedRectVisuals();
             e.Handled = true;
             return;
         }
@@ -421,7 +338,7 @@ public sealed class SelectionOverlayWindow : Window
         if (_magnifier == null || _isMagnifierHiddenByUser || _isMovingSavedRect) return;
 
         var currentPoint = Mouse.GetPosition(_canvas);
-        if (!_isSelecting && (IsPointInsideSavedRect(currentPoint) || IsPointOverActionsPanel(currentPoint)))
+        if (!_isSelecting && IsPointInsideSavedRect(currentPoint))
         {
             _magnifier.Visibility = Visibility.Collapsed;
             return;
@@ -446,26 +363,6 @@ public sealed class SelectionOverlayWindow : Window
                pointDip.Y >= top && pointDip.Y <= top + _savedRect.Height;
     }
 
-    private bool IsPointOverActionsPanel(System.Windows.Point pointDip)
-    {
-        if (_savedActionsPanel.Visibility != Visibility.Visible) return false;
-
-        double left = Canvas.GetLeft(_savedActionsPanel);
-        double top = Canvas.GetTop(_savedActionsPanel);
-        return pointDip.X >= left && pointDip.X <= left + _savedActionsPanel.ActualWidth &&
-               pointDip.Y >= top && pointDip.Y <= top + _savedActionsPanel.ActualHeight;
-    }
-
-    private static bool IsDescendantOf(DependencyObject? source, DependencyObject ancestor)
-    {
-        while (source != null)
-        {
-            if (ReferenceEquals(source, ancestor)) return true;
-            source = VisualTreeHelper.GetParent(source);
-        }
-        return false;
-    }
-
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (e.RightButton == MouseButtonState.Pressed)
@@ -475,11 +372,6 @@ public sealed class SelectionOverlayWindow : Window
         }
 
         if (e.LeftButton != MouseButtonState.Pressed) return;
-
-        if (e.OriginalSource is DependencyObject sourceObj && IsDescendantOf(sourceObj, _savedActionsPanel))
-        {
-            return;
-        }
 
         var currentPoint = e.GetPosition(_canvas);
 
@@ -494,7 +386,6 @@ public sealed class SelectionOverlayWindow : Window
             _isMovingSavedRect = true;
             _moveStartCursorDip = currentPoint;
             _moveStartRectPx = _activeSavedAreaPx.Value;
-            _savedActionsPanel.Visibility = Visibility.Collapsed;
             _hintBanner.Visibility = Visibility.Collapsed;
             if (_magnifier != null)
             {
@@ -507,7 +398,6 @@ public sealed class SelectionOverlayWindow : Window
 
         // Начинаем выделение новой области
         _savedRect.Visibility = Visibility.Collapsed;
-        _savedActionsPanel.Visibility = Visibility.Collapsed;
         _hintBanner.Visibility = Visibility.Collapsed;
 
         _isSelecting = true;
@@ -531,7 +421,7 @@ public sealed class SelectionOverlayWindow : Window
             int deltaPxX = (int)Math.Round((currentPoint.X - _moveStartCursorDip.X) * _dpiScaleX);
             int deltaPxY = (int)Math.Round((currentPoint.Y - _moveStartCursorDip.Y) * _dpiScaleY);
             _activeSavedAreaPx = MoveAreaPreservingSize(_moveStartRectPx, deltaPxX, deltaPxY, _screenCapture.Width, _screenCapture.Height);
-            UpdateSavedRectVisuals(showActionsPanel: false);
+            UpdateSavedRectVisuals();
             return;
         }
 
@@ -563,16 +453,6 @@ public sealed class SelectionOverlayWindow : Window
         }
 
         // Режим наведения без зажатой кнопки
-        if (IsPointOverActionsPanel(currentPoint))
-        {
-            Cursor = Cursors.Arrow;
-            if (_magnifier != null)
-            {
-                _magnifier.Visibility = Visibility.Collapsed;
-            }
-            return;
-        }
-
         if (IsPointInsideSavedRect(currentPoint))
         {
             Cursor = Cursors.SizeAll;
@@ -600,7 +480,7 @@ public sealed class SelectionOverlayWindow : Window
         {
             _isMovingSavedRect = false;
             ReleaseMouseCapture();
-            UpdateSavedRectVisuals(showActionsPanel: true);
+            UpdateSavedRectVisuals();
             _hintBanner.Visibility = Visibility.Visible;
             return;
         }
@@ -636,7 +516,7 @@ public sealed class SelectionOverlayWindow : Window
         _selectionRect.Visibility = Visibility.Collapsed;
         if (_activeSavedAreaPx.HasValue)
         {
-            UpdateSavedRectVisuals(showActionsPanel: true);
+            UpdateSavedRectVisuals();
             _hintBanner.Visibility = Visibility.Visible;
         }
         else
@@ -661,7 +541,7 @@ public sealed class SelectionOverlayWindow : Window
     private void ClearActiveSavedArea()
     {
         _activeSavedAreaPx = null;
-        UpdateSavedRectVisuals(showActionsPanel: false);
+        UpdateSavedRectVisuals();
         UpdateHintBannerText();
         _hintBanner.Visibility = Visibility.Visible;
         Cursor = Cursors.Cross;
