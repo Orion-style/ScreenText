@@ -81,7 +81,7 @@
             </StackPanel>
         </ui:Card>
 
-        <!-- Двухшаговый режим: 1-й вызов — выбор области, 2-й — мгновенный снимок этой области -->
+        <!-- Сохранение последней выбранной области -->
         <ui:Card Padding="16" Margin="0,0,0,12">
             <StackPanel>
                 <Grid>
@@ -90,59 +90,21 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="Двухшаговый режим (Выбор → Мгновенный снимок)" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
-                        <TextBlock Text="При первом вызове задаётся область, а при втором вызове снимок этой же области сохраняется мгновенно без повторного выделения" 
+                        <TextBlock Text="Запоминать форму и позицию области" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                        <TextBlock Text="После первого скриншота сохранённая область при следующих вызовах появляется на том же месте и с теми же пропорциями. Её можно двигать без изменения размера, подтвердить (Enter / двойной клик) или выделить новую." 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    Margin="0,4,0,0" TextWrapping="Wrap" />
                     </StackPanel>
                     <ui:ToggleSwitch Grid.Column="1" 
-                                     IsChecked="{Binding TwoStepCaptureEnabled, Mode=TwoWay}" 
+                                     IsChecked="{Binding RememberLastArea, Mode=TwoWay}" 
                                      VerticalAlignment="Center" />
                 </Grid>
 
-                <!-- Параметры двухшагового режима -->
-                <StackPanel Margin="0,16,0,0" Visibility="{Binding TwoStepCaptureEnabled, Converter={StaticResource BooleanToVisibilityConverter}}">
-                    <Separator Margin="0,0,0,12" Opacity="0.3" />
-
-                    <!-- Сохранять снимок на первом шаге -->
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                            <TextBlock Text="Сохранять снимок уже при первом вызове (выборе)" FontWeight="Medium" FontSize="13" TextWrapping="Wrap" />
-                            <TextBlock Text="Если включено: снимок сохранится сразу при выделении + область запомнится. Если выключено: первый вызов только намечает рамку" 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                       Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12" />
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" 
-                                         IsChecked="{Binding CaptureOnFirstCall, Mode=TwoWay}" 
-                                         VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- Сбрасывать область после второго вызова (циклический режим) -->
-                    <Grid Margin="0,0,0,12">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                            <TextBlock Text="Автосброс после второго вызова (режим цикла)" FontWeight="Medium" FontSize="13" TextWrapping="Wrap" />
-                            <TextBlock Text="1-й вызов: выбор → 2-й: снимок → 3-й: снова выбор. Если выключено: область остаётся для повторных снимков подряд" 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                       Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12" />
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" 
-                                         IsChecked="{Binding TwoStepResetAfterCapture, Mode=TwoWay}" 
-                                         VerticalAlignment="Center" />
-                    </Grid>
-
-                    <!-- Статус сохранённой области и кнопка сброса -->
+                <!-- Статус сохранённой области и кнопка сброса -->
+                <StackPanel Margin="0,16,0,0" Visibility="{Binding RememberLastArea, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <Border Background="{DynamicResource SubtleFillColorSecondaryBrush}" 
                             CornerRadius="6" 
-                            Padding="12,10" 
-                            Margin="0,4,0,0">
+                            Padding="12,10">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -153,7 +115,7 @@
                                            FontWeight="Medium" 
                                            FontSize="13" 
                                            TextWrapping="Wrap" />
-                                <TextBlock Text="Подсказка: зажмите клавишу Alt при нажатии хоткея, чтобы принудительно выбрать новую область." 
+                                <TextBlock Text="Подсказка: зажмите Alt при нажатии хоткея или нажмите Del в окне выделения, чтобы сбросить рамку." 
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                            FontSize="11" 
                                            TextWrapping="Wrap"
@@ -170,7 +132,7 @@
             </StackPanel>
         </ui:Card>
 
-        <!-- Лупа и сетка пикселей (ShareX) -->
+        <!-- Круглая пиксельная сетка (лупа) -->
         <ui:Card Padding="16" Margin="0,0,0,12">
             <StackPanel>
                 <Grid>
@@ -179,8 +141,8 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="Сетка пикселей и лупа (стиль ShareX)" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
-                        <TextBlock Text="Отображение увеличенной пиксельной сетки рядом с курсором для точного выделения. Масштаб можно регулировать колёсиком мыши или клавишами +/-." 
+                        <TextBlock Text="Круглая сетка пикселей (лупа)" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                        <TextBlock Text="Отображение чистой круглой сетки пикселей рядом с курсором для точного выделения. Масштаб можно регулировать колёсиком мыши или клавишами +/-." 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    Margin="0,4,0,0" TextWrapping="Wrap" />
                     </StackPanel>
@@ -213,7 +175,7 @@
                     </Grid>
 
                     <!-- Размер сетки (количество пикселей) -->
-                    <Grid Margin="0,0,0,12">
+                    <Grid Margin="0,0,0,4">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -229,23 +191,6 @@
                                     Value="{Binding MagnifierGridSize, Mode=TwoWay}" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <TextBlock Text="{Binding MagnifierGridSize, StringFormat='{}{0}×{0}'}" MinWidth="50" TextAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" />
                         </StackPanel>
-                    </Grid>
-
-                    <!-- Отображение информации о цвете и координатах -->
-                    <Grid Margin="0,0,0,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                            <TextBlock Text="Информация о цвете (HEX / RGB) и координаты" FontWeight="Medium" FontSize="13" TextWrapping="Wrap" />
-                            <TextBlock Text="Показывать текущий цвет под курсором и точные координаты X, Y. Клавиша 'C' копирует цвет в буфер обмена." 
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
-                                       Margin="0,2,0,0" TextWrapping="Wrap" FontSize="12" />
-                        </StackPanel>
-                        <ui:ToggleSwitch Grid.Column="1" 
-                                         IsChecked="{Binding MagnifierShowColorInfo, Mode=TwoWay}" 
-                                         VerticalAlignment="Center" />
                     </Grid>
                 </StackPanel>
             </StackPanel>

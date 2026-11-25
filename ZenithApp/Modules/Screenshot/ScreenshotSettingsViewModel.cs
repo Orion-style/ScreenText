@@ -16,13 +16,10 @@ public sealed class ScreenshotSettingsViewModel : ViewModelBase, IDisposable
     private string _ocrHotkeyText = string.Empty;
     private bool _saveToFile;
     private string _saveFolderPath = string.Empty;
-    private bool _twoStepCaptureEnabled;
-    private bool _captureOnFirstCall;
-    private bool _twoStepResetAfterCapture;
+    private bool _rememberLastArea;
     private bool _magnifierEnabled;
     private int _magnifierZoom;
     private int _magnifierGridSize;
-    private bool _magnifierShowColorInfo;
     private string? _screenshotConflictMessage;
     private string? _ocrConflictMessage;
 
@@ -81,42 +78,20 @@ public sealed class ScreenshotSettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public bool TwoStepCaptureEnabled
+    public bool RememberLastArea
     {
-        get => _twoStepCaptureEnabled;
+        get => _rememberLastArea;
         set
         {
-            if (SetProperty(ref _twoStepCaptureEnabled, value))
+            if (SetProperty(ref _rememberLastArea, value))
             {
-                _settingsService.Current.Screenshot.TwoStepCaptureEnabled = value;
+                _settingsService.Current.Screenshot.RememberLastArea = value;
                 _settingsService.Save();
+                if (!value)
+                {
+                    _module.ResetSavedArea(notifyUser: false);
+                }
                 UpdateSavedAreaStatus();
-            }
-        }
-    }
-
-    public bool CaptureOnFirstCall
-    {
-        get => _captureOnFirstCall;
-        set
-        {
-            if (SetProperty(ref _captureOnFirstCall, value))
-            {
-                _settingsService.Current.Screenshot.CaptureOnFirstCall = value;
-                _settingsService.Save();
-            }
-        }
-    }
-
-    public bool TwoStepResetAfterCapture
-    {
-        get => _twoStepResetAfterCapture;
-        set
-        {
-            if (SetProperty(ref _twoStepResetAfterCapture, value))
-            {
-                _settingsService.Current.Screenshot.TwoStepResetAfterCapture = value;
-                _settingsService.Save();
             }
         }
     }
@@ -162,19 +137,6 @@ public sealed class ScreenshotSettingsViewModel : ViewModelBase, IDisposable
         }
     }
 
-    public bool MagnifierShowColorInfo
-    {
-        get => _magnifierShowColorInfo;
-        set
-        {
-            if (SetProperty(ref _magnifierShowColorInfo, value))
-            {
-                _settingsService.Current.Screenshot.MagnifierShowColorInfo = value;
-                _settingsService.Save();
-            }
-        }
-    }
-
     public bool HasSavedArea => _module.HasSavedArea;
 
     public string SavedAreaStatusText
@@ -183,11 +145,11 @@ public sealed class ScreenshotSettingsViewModel : ViewModelBase, IDisposable
         {
             if (!_module.HasSavedArea || _module.SavedCropArea == null)
             {
-                return "Текущее состояние: Область не сохранена (при следующем вызове откроется выбор).";
+                return "Текущее состояние: Область не сохранена (при следующем вызове откроется свободный выбор).";
             }
 
             var area = _module.SavedCropArea.Value;
-            return $"Текущее состояние: Зафиксирована область {area.Width}×{area.Height} (X={area.X}, Y={area.Y}).";
+            return $"Текущее состояние: Сохранена область {area.Width}×{area.Height} (X={area.X}, Y={area.Y}).";
         }
     }
 
@@ -213,13 +175,10 @@ public sealed class ScreenshotSettingsViewModel : ViewModelBase, IDisposable
         OcrHotkeyText = FormatHotkey(config.OcrModifiers, config.OcrKey);
         SaveToFile = config.SaveToFileEnabled;
         SaveFolderPath = config.SaveFolderPath;
-        TwoStepCaptureEnabled = config.TwoStepCaptureEnabled;
-        CaptureOnFirstCall = config.CaptureOnFirstCall;
-        TwoStepResetAfterCapture = config.TwoStepResetAfterCapture;
+        RememberLastArea = config.RememberLastArea;
         MagnifierEnabled = config.MagnifierEnabled;
         MagnifierZoom = config.MagnifierZoom;
         MagnifierGridSize = config.MagnifierGridSize;
-        MagnifierShowColorInfo = config.MagnifierShowColorInfo;
     }
 
     public void UpdateScreenshotHotkey(KeyModifiers modifiers, Key key)

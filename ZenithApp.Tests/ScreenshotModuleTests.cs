@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Text.Json;
+using System.Windows;
 using System.Windows.Input;
 using Xunit;
 using ZenithApp.Core.Hotkeys;
@@ -46,50 +47,26 @@ public class ScreenshotModuleTests
     {
         var settings = new ScreenshotSettings();
 
-        // По умолчанию для удобства пользователя двухшаговый режим включен:
-        // 1-й вызов — выбор области, 2-й вызов — мгновенный снимок
-        Assert.True(settings.TwoStepCaptureEnabled);
-        Assert.True(settings.CaptureOnFirstCall);
-        Assert.True(settings.TwoStepResetAfterCapture);
+        // По умолчанию запоминание последней области включено
+        Assert.True(settings.RememberLastArea);
         Assert.Equal(KeyModifiers.Control | KeyModifiers.Shift, settings.ScreenshotModifiers);
         Assert.Equal(Key.S, settings.ScreenshotKey);
 
-        // По умолчанию лупа с сеткой пикселей включена
+        // По умолчанию круглая лупа с сеткой пикселей включена
         Assert.True(settings.MagnifierEnabled);
         Assert.Equal(8, settings.MagnifierZoom);
         Assert.Equal(11, settings.MagnifierGridSize);
-        Assert.True(settings.MagnifierShowColorInfo);
     }
 
     [Fact]
-    public void ScreenshotSettings_JsonSerialization_PreservesMagnifierSettings()
+    public void ScreenshotSettings_JsonSerialization_PreservesMagnifierAndAreaSettings()
     {
         var original = new ScreenshotSettings
         {
+            RememberLastArea = false,
             MagnifierEnabled = false,
             MagnifierZoom = 14,
             MagnifierGridSize = 15,
-            MagnifierShowColorInfo = false
-        };
-
-        var json = JsonSerializer.Serialize(original);
-        var deserialized = JsonSerializer.Deserialize<ScreenshotSettings>(json);
-
-        Assert.NotNull(deserialized);
-        Assert.False(deserialized!.MagnifierEnabled);
-        Assert.Equal(14, deserialized.MagnifierZoom);
-        Assert.Equal(15, deserialized.MagnifierGridSize);
-        Assert.False(deserialized.MagnifierShowColorInfo);
-    }
-
-    [Fact]
-    public void ScreenshotSettings_JsonSerialization_PreservesAllTwoStepSettings()
-    {
-        var original = new ScreenshotSettings
-        {
-            TwoStepCaptureEnabled = true,
-            CaptureOnFirstCall = false,
-            TwoStepResetAfterCapture = false,
             SaveToFileEnabled = true,
             SaveFolderPath = @"C:\Screenshots"
         };
@@ -98,9 +75,10 @@ public class ScreenshotModuleTests
         var deserialized = JsonSerializer.Deserialize<ScreenshotSettings>(json);
 
         Assert.NotNull(deserialized);
-        Assert.True(deserialized!.TwoStepCaptureEnabled);
-        Assert.False(deserialized.CaptureOnFirstCall);
-        Assert.False(deserialized.TwoStepResetAfterCapture);
+        Assert.False(deserialized!.RememberLastArea);
+        Assert.False(deserialized.MagnifierEnabled);
+        Assert.Equal(14, deserialized.MagnifierZoom);
+        Assert.Equal(15, deserialized.MagnifierGridSize);
         Assert.True(deserialized.SaveToFileEnabled);
         Assert.Equal(@"C:\Screenshots", deserialized.SaveFolderPath);
     }
@@ -122,7 +100,7 @@ public class ScreenshotModuleTests
         int eventFiredCount = 0;
         module.SavedAreaChanged += () => eventFiredCount++;
 
-        // 1. Установка сохраненной области (как после 1-го вызова)
+        // 1. Установка сохранённой области
         var targetArea = new Rectangle(100, 150, 400, 300);
         module.SetSavedArea(targetArea);
 
@@ -130,7 +108,7 @@ public class ScreenshotModuleTests
         Assert.Equal(targetArea, module.SavedCropArea);
         Assert.Equal(1, eventFiredCount);
 
-        // 2. Сброс сохраненной области
+        // 2. Сброс сохранённой области
         module.ResetSavedArea(notifyUser: false);
 
         Assert.False(module.HasSavedArea);
@@ -139,7 +117,7 @@ public class ScreenshotModuleTests
     }
 
     [Fact]
-    public void ScreenshotSettingsViewModel_TwoStepProperties_SyncAndPersist()
+    public void ScreenshotSettingsViewModel_RememberAreaProperties_SyncAndPersist()
     {
         var logger = new TestLogger();
         var settingsService = new TestSettingsService();
@@ -150,21 +128,9 @@ public class ScreenshotModuleTests
         using var module = new ScreenshotModule(logger, settingsService, hotkeyService, handlers, historyService);
         using var vm = new ScreenshotSettingsViewModel(module, settingsService);
 
-        // Проверяем начальные значения из settings
-        Assert.True(vm.TwoStepCaptureEnabled);
-        Assert.True(vm.CaptureOnFirstCall);
-        Assert.True(vm.TwoStepResetAfterCapture);
+        Assert.True(vm.RememberLastArea);
         Assert.False(vm.HasSavedArea);
         Assert.Contains("Область не сохранена", vm.SavedAreaStatusText);
-
-        // Изменяем CaptureOnFirstCall
-        vm.CaptureOnFirstCall = false;
-        Assert.False(settingsService.Current.Screenshot.CaptureOnFirstCall);
-        Assert.True(settingsService.Saved);
-
-        // Изменяем TwoStepResetAfterCapture
-        vm.TwoStepResetAfterCapture = false;
-        Assert.False(settingsService.Current.Screenshot.TwoStepResetAfterCapture);
 
         // Устанавливаем область в модуле и проверяем обновление статуса в VM
         module.SetSavedArea(new Rectangle(50, 60, 320, 240));
@@ -175,6 +141,55 @@ public class ScreenshotModuleTests
         vm.ResetSavedAreaCommand.Execute(null);
         Assert.False(vm.HasSavedArea);
         Assert.False(module.HasSavedArea);
+
+        // Отключение запоминания сбрасывает область и сохраняет настройку
+        module.SetSavedArea(new Rectangle(10, 20, 200, 100));
+        vm.RememberLastArea = false;
+        Assert.False(settingsService.Current.Screenshot.RememberLastArea);
+        Assert.True(settingsService.Saved);
+        Assert.False(module.HasSavedArea);
+    }
+
+    [Fact]
+    public void SelectionOverlayWindow_MoveAreaPreservingSize_NeverChangesProportions()
+    {
+        var original = new Rectangle(100, 120, 350, 220);
+
+        // Обычное перемещение
+        var moved = SelectionOverlayWindow.MoveAreaPreservingSize(original, 150, -40, 1920, 1080);
+        Assert.Equal(250, moved.X);
+        Assert.Equal(80, moved.Y);
+        Assert.Equal(350, moved.Width);
+        Assert.Equal(220, moved.Height);
+
+        // Попытка уйти за левый/верхний край
+        var clampedTopLeft = SelectionOverlayWindow.MoveAreaPreservingSize(original, -500, -500, 1920, 1080);
+        Assert.Equal(0, clampedTopLeft.X);
+        Assert.Equal(0, clampedTopLeft.Y);
+        Assert.Equal(350, clampedTopLeft.Width);
+        Assert.Equal(220, clampedTopLeft.Height);
+
+        // Попытка уйти за правый/нижний край — ширина и высота остаются неизменными
+        var clampedBottomRight = SelectionOverlayWindow.MoveAreaPreservingSize(original, 5000, 5000, 1920, 1080);
+        Assert.Equal(1920 - 350, clampedBottomRight.X);
+        Assert.Equal(1080 - 220, clampedBottomRight.Y);
+        Assert.Equal(350, clampedBottomRight.Width);
+        Assert.Equal(220, clampedBottomRight.Height);
+    }
+
+    [Fact]
+    public void SelectionOverlayWindow_ClampSavedAreaToBounds_HandlesEdgeCases()
+    {
+        Assert.Null(SelectionOverlayWindow.ClampSavedAreaToBounds(null, 1920, 1080));
+        Assert.Null(SelectionOverlayWindow.ClampSavedAreaToBounds(new Rectangle(0, 0, 2, 200), 1920, 1080));
+        Assert.Null(SelectionOverlayWindow.ClampSavedAreaToBounds(new Rectangle(0, 0, 2500, 500), 1920, 1080));
+
+        var clamped = SelectionOverlayWindow.ClampSavedAreaToBounds(new Rectangle(1800, 950, 300, 200), 1920, 1080);
+        Assert.NotNull(clamped);
+        Assert.Equal(1620, clamped!.Value.X);
+        Assert.Equal(880, clamped.Value.Y);
+        Assert.Equal(300, clamped.Value.Width);
+        Assert.Equal(200, clamped.Value.Height);
     }
 
     [Fact]
@@ -214,7 +229,6 @@ public class ScreenshotModuleTests
         Assert.True(vm.MagnifierEnabled);
         Assert.Equal(8, vm.MagnifierZoom);
         Assert.Equal(11, vm.MagnifierGridSize);
-        Assert.True(vm.MagnifierShowColorInfo);
 
         // Изменение MagnifierEnabled
         vm.MagnifierEnabled = false;
@@ -240,21 +254,21 @@ public class ScreenshotModuleTests
         vm.MagnifierGridSize = 12; // Четное число округляется до 13
         Assert.Equal(13, vm.MagnifierGridSize);
         Assert.Equal(13, settingsService.Current.Screenshot.MagnifierGridSize);
-
-        // Изменение ShowColorInfo
-        vm.MagnifierShowColorInfo = false;
-        Assert.False(settingsService.Current.Screenshot.MagnifierShowColorInfo);
     }
 
     [Fact]
-    public void ScreenshotMagnifier_ZoomAndGridClamping_WorksCorrectly()
+    public void ScreenshotMagnifier_ZoomAndGridClamping_AndCircularGeometry_WorkCorrectly()
     {
         var thread = new Thread(() =>
         {
-            var magnifier = new ScreenshotMagnifier(initialZoom: 8, initialGridSize: 11, showColorInfo: true);
+            var magnifier = new ScreenshotMagnifier(initialZoom: 8, initialGridSize: 11);
             Assert.Equal(8, magnifier.Zoom);
             Assert.Equal(11, magnifier.GridSize);
-            Assert.True(magnifier.ShowColorInfo);
+
+            // Лупа содержит только чистый элемент сетки без текстовых плашек
+            magnifier.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+            Assert.Equal(magnifier.DesiredSize.Width, magnifier.DesiredSize.Height);
+            Assert.True(magnifier.Child is FrameworkElement);
 
             // Регулировка зума
             magnifier.AdjustZoom(+2);
@@ -296,13 +310,13 @@ public class ScreenshotModuleTests
             bmp.SetPixel(0, 0, Color.Red);
             bmp.SetPixel(99, 99, Color.Green);
 
-            var magnifier = new ScreenshotMagnifier(8, 11, true);
+            var magnifier = new ScreenshotMagnifier(8, 11);
 
             // Выборка в левом верхнем углу (0,0) - пиксели вне границ не должны вызывать исключений
             magnifier.Update(bmp, 0, 0, new System.Windows.Point(0, 0), 100, 100);
 
-            // Выборка в правом нижнем углу (99,99) с активным выделением
-            magnifier.Update(bmp, 99, 99, new System.Windows.Point(99, 99), 100, 100, 50, 40);
+            // Выборка в правом нижнем углу (99,99)
+            magnifier.Update(bmp, 99, 99, new System.Windows.Point(99, 99), 100, 100);
 
             // Выборка за пределами изображения
             magnifier.Update(bmp, -10, -10, new System.Windows.Point(0, 0), 100, 100);

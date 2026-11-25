@@ -64,7 +64,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
             SavedAreaChanged?.Invoke();
             if (notifyUser)
             {
-                NotificationToast.Show("Сохранённая область сброшена. При следующем вызове откроется выбор области.", "Сброс области", ToastNotificationType.Info);
+                NotificationToast.Show("Сохранённая область сброшена. При следующем вызове откроется свободный выбор области.", "Сброс области", ToastNotificationType.Info);
             }
         }
     }
@@ -118,8 +118,8 @@ public sealed class ScreenshotModule : BaseFeatureModule
             config.ScreenshotKey,
             () => Application.Current.Dispatcher.Invoke(() => HandleHotkeyTriggered(isOcrMode: false)));
 
-        HotkeyScreenshotError = scSuccess 
-            ? null 
+        HotkeyScreenshotError = scSuccess
+            ? null
             : $"Горячая клавиша {config.ScreenshotModifiers} + {config.ScreenshotKey} уже занята другим приложением.";
 
         // Регистрация хоткея OCR
@@ -129,8 +129,8 @@ public sealed class ScreenshotModule : BaseFeatureModule
             config.OcrKey,
             () => Application.Current.Dispatcher.Invoke(() => HandleHotkeyTriggered(isOcrMode: true)));
 
-        HotkeyOcrError = ocrSuccess 
-            ? null 
+        HotkeyOcrError = ocrSuccess
+            ? null
             : $"Горячая клавиша {config.OcrModifiers} + {config.OcrKey} уже занята другим приложением.";
 
         HotkeyStatusChanged?.Invoke();
@@ -147,7 +147,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
 
     private void HandleHotkeyTriggered(bool isOcrMode)
     {
-        // Если при нажатии хоткея удерживается клавиша Alt, принудительно сбрасываем область и выбираем новую
+        // Если при нажатии хоткея удерживается клавиша Alt, принудительно сбрасываем сохранённую область
         bool isAltPressed = AltKeyChecker?.Invoke() ?? IsPhysicalAltPressed();
         if (isAltPressed && _savedCropArea.HasValue)
         {
@@ -166,69 +166,9 @@ public sealed class ScreenshotModule : BaseFeatureModule
         try
         {
             var config = _settingsService.Current.Screenshot;
-
-            // ДВУХШАГОВЫЙ РЕЖИМ: Второй/последующий вызов (мгновенный снимок зафиксированной области)
-            if (config.TwoStepCaptureEnabled && _savedCropArea.HasValue)
-            {
-                var cropArea = _savedCropArea.Value;
-
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        var virtualBounds = ScreenCaptureService.GetVirtualScreenBounds();
-                        cropArea.Intersect(new Rectangle(0, 0, virtualBounds.Width, virtualBounds.Height));
-
-                        if (cropArea.Width <= 3 || cropArea.Height <= 3)
-                        {
-                            // Область невалидна (например, разрешение изменилось) - сбрасываем и открываем оверлей
-                            _savedCropArea = null;
-                            SavedAreaChanged?.Invoke();
-                            Application.Current.Dispatcher.Invoke(() =>
-                            {
-                                _isBusy = false;
-                                StartCaptureSession(isOcrMode);
-                            });
-                            return;
-                        }
-
-                        using var screenBmp = ScreenCaptureService.CaptureVirtualScreen();
-                        using var cropped = ScreenCaptureService.CropBitmap(screenBmp, cropArea);
-
-                        if (isOcrMode)
-                        {
-                            await ProcessOcrAsync(cropped, cropArea, isRepeatCapture: true);
-                        }
-                        else
-                        {
-                            ProcessNormalScreenshot(cropped, isRepeatCapture: true);
-                        }
-
-                        // Если включен циклический 2-шаговый режим: сбрасываем область после 2-го шага
-                        if (config.TwoStepResetAfterCapture)
-                        {
-                            _savedCropArea = null;
-                            SavedAreaChanged?.Invoke();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.LogError("Ошибка при мгновенном снимке сохранённой области.", ex);
-                    }
-                    finally
-                    {
-                        _isBusy = false;
-                        GC.Collect(2, GCCollectionMode.Aggressive, true, true);
-                        GC.WaitForPendingFinalizers();
-                        GC.Collect(2, GCCollectionMode.Aggressive, true, true);
-                    }
-                });
-                return;
-            }
-
-            // ПЕРВЫЙ ВЫЗОВ (выбор области через полноэкранный оверлей)
             var currentVirtualBounds = ScreenCaptureService.GetVirtualScreenBounds();
             var screenCaptureBmp = ScreenCaptureService.CaptureVirtualScreen();
+            Rectangle? initialSavedArea = config.RememberLastArea ? _savedCropArea : null;
 
             var overlay = new SelectionOverlayWindow(currentVirtualBounds, screenCaptureBmp, cropArea =>
             {
@@ -238,32 +178,25 @@ public sealed class ScreenshotModule : BaseFeatureModule
                     {
                         if (cropArea.HasValue && cropArea.Value.Width > 3 && cropArea.Value.Height > 3)
                         {
-                            if (config.TwoStepCaptureEnabled)
+                            if (config.RememberLastArea)
                             {
                                 _savedCropArea = cropArea.Value;
                                 SavedAreaChanged?.Invoke();
                             }
-
-                            bool shouldCaptureNow = !config.TwoStepCaptureEnabled || config.CaptureOnFirstCall;
-
-                            if (shouldCaptureNow)
+                            else if (_savedCropArea.HasValue)
                             {
-                                using var cropped = ScreenCaptureService.CropBitmap(screenCaptureBmp, cropArea.Value);
-                                if (isOcrMode)
-                                {
-                                    await ProcessOcrAsync(cropped, cropArea.Value, isRepeatCapture: false);
-                                }
-                                else
-                                {
-                                    ProcessNormalScreenshot(cropped, isRepeatCapture: false);
-                                }
+                                _savedCropArea = null;
+                                SavedAreaChanged?.Invoke();
+                            }
+
+                            using var cropped = ScreenCaptureService.CropBitmap(screenCaptureBmp, cropArea.Value);
+                            if (isOcrMode)
+                            {
+                                await ProcessOcrAsync(cropped, cropArea.Value);
                             }
                             else
                             {
-                                NotificationToast.Show(
-                                    $"Область выбрана: {cropArea.Value.Width}×{cropArea.Value.Height}. Нажмите хоткей для создания снимка этой области.",
-                                    "Область зафиксирована",
-                                    ToastNotificationType.Info);
+                                ProcessNormalScreenshot(cropped);
                             }
                         }
                     }
@@ -281,7 +214,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
                         GC.Collect(2, GCCollectionMode.Aggressive, true, true);
                     }
                 });
-            }, _savedCropArea, config);
+            }, initialSavedArea, config);
 
             overlay.Show();
         }
@@ -292,7 +225,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
         }
     }
 
-    private void ProcessNormalScreenshot(Bitmap cropped, bool isRepeatCapture)
+    private void ProcessNormalScreenshot(Bitmap cropped)
     {
         // 1. Копируем изображение в буфер обмена
         Application.Current.Dispatcher.Invoke(() =>
@@ -323,10 +256,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
 
         // 2. Дополнительное сохранение в папку
         var config = _settingsService.Current.Screenshot;
-        string title = isRepeatCapture ? "Мгновенный снимок области" : "Скриншот области";
-        string hint = (config.TwoStepCaptureEnabled && !isRepeatCapture)
-            ? " (Область сохранена: следующий вызов снимет её мгновенно)"
-            : "";
+        const string title = "Скриншот области";
 
         if (config.SaveToFileEnabled && !string.IsNullOrWhiteSpace(config.SaveFolderPath))
         {
@@ -336,7 +266,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
                 var fileName = $"Screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png";
                 var fullPath = Path.Combine(config.SaveFolderPath, fileName);
                 cropped.Save(fullPath, ImageFormat.Png);
-                NotificationToast.Show($"Скриншот сохранён: {fileName}{hint}", title, ToastNotificationType.Success);
+                NotificationToast.Show($"Скриншот сохранён: {fileName}", title, ToastNotificationType.Success);
             }
             catch (Exception ex)
             {
@@ -346,11 +276,11 @@ public sealed class ScreenshotModule : BaseFeatureModule
         }
         else
         {
-            NotificationToast.Show($"Скриншот скопирован в буфер обмена.{hint}", title, ToastNotificationType.Success);
+            NotificationToast.Show("Скриншот скопирован в буфер обмена.", title, ToastNotificationType.Success);
         }
     }
 
-    private async Task ProcessOcrAsync(Bitmap cropped, Rectangle cropArea, bool isRepeatCapture)
+    private async Task ProcessOcrAsync(Bitmap cropped, Rectangle cropArea)
     {
         var (text, errorMessage) = await OcrService.RecognizeTextAsync(cropped);
 
@@ -360,7 +290,6 @@ public sealed class ScreenshotModule : BaseFeatureModule
             return;
         }
 
-        // Подготавливаем аргументы события (изображение передается и сразу освобождается)
         var eventArgs = new TextRecognizedEventArgs(text ?? string.Empty, cropped, cropArea);
         if (!string.IsNullOrWhiteSpace(text))
         {
@@ -383,18 +312,11 @@ public sealed class ScreenshotModule : BaseFeatureModule
             }
         }
 
-        // Если обработчик (например, SmartLinks) показал собственное окно или подсказку, то стандартный тост не нужен
-        if (handled)
+        if (handled || string.IsNullOrWhiteSpace(text))
         {
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return;
-        }
-
-        // Копируем текст в буфер обмена
         Application.Current.Dispatcher.Invoke(() =>
         {
             try
@@ -407,7 +329,6 @@ public sealed class ScreenshotModule : BaseFeatureModule
             }
         });
 
-        // Формируем превью первых слов
         var words = text.Split(new[] { ' ', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
         var preview = string.Join(" ", words.Take(8));
         if (words.Length > 8)
@@ -415,8 +336,7 @@ public sealed class ScreenshotModule : BaseFeatureModule
             preview += "...";
         }
 
-        string title = isRepeatCapture ? "Текст скопирован (повторный снимок)" : "Текст скопирован";
-        NotificationToast.Show(preview, title, ToastNotificationType.Success);
+        NotificationToast.Show(preview, "Текст скопирован", ToastNotificationType.Success);
     }
 
     [DllImport("user32.dll")]

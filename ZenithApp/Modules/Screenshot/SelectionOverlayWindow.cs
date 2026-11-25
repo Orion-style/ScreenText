@@ -1,5 +1,4 @@
 using System.Drawing;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
@@ -16,18 +15,25 @@ public sealed class SelectionOverlayWindow : Window
     private readonly System.Drawing.Rectangle _virtualBounds;
     private readonly Bitmap _screenCapture;
     private readonly Action<System.Drawing.Rectangle?> _onComplete;
-    private readonly System.Drawing.Rectangle? _previousArea;
     private readonly ScreenshotSettings _settings;
     private readonly ScreenshotMagnifier? _magnifier;
 
+    private readonly Canvas _canvas;
+    private readonly System.Windows.Controls.Image _bgImage;
+    private readonly System.Windows.Shapes.Path _dimOverlayPath;
+    private readonly System.Windows.Shapes.Rectangle _savedRect;
+    private readonly System.Windows.Shapes.Rectangle _selectionRect;
+    private readonly Border _savedActionsPanel;
+    private readonly Border _hintBanner;
+    private readonly TextBlock _hintTextBlock;
+
+    private System.Drawing.Rectangle? _activeSavedAreaPx;
     private System.Windows.Point _startPointDips;
     private bool _isSelecting;
-    private readonly Canvas _canvas;
-    private readonly System.Windows.Shapes.Rectangle _selectionRect;
-    private readonly System.Windows.Shapes.Rectangle? _previousRect;
-    private readonly Border _hintBanner;
-    private readonly System.Windows.Controls.Image _bgImage;
-    private readonly System.Windows.Shapes.Rectangle _dimOverlay;
+    private bool _isMovingSavedRect;
+    private System.Windows.Point _moveStartCursorDip;
+    private System.Drawing.Rectangle _moveStartRectPx;
+    private bool _isMagnifierHiddenByUser;
 
     // Масштаб DPI между экранными физическими пикселями и WPF DIPs
     private double _dpiScaleX = 1.0;
@@ -43,8 +49,8 @@ public sealed class SelectionOverlayWindow : Window
         _virtualBounds = virtualBounds;
         _screenCapture = screenCapture;
         _onComplete = onComplete;
-        _previousArea = previousArea;
         _settings = settings ?? new ScreenshotSettings();
+        _activeSavedAreaPx = ClampSavedAreaToBounds(previousArea, _screenCapture.Width, _screenCapture.Height);
 
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.NoResize;
@@ -66,54 +72,56 @@ public sealed class SelectionOverlayWindow : Window
         };
         _canvas.Children.Add(_bgImage);
 
-        // Затемняющий слой поверх фонового снимка
-        _dimOverlay = new System.Windows.Shapes.Rectangle
+        // Затемняющий слой с вырезом под активную/сохранённую область
+        _dimOverlayPath = new System.Windows.Shapes.Path
         {
-            Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(120, 0, 0, 0))
+            Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(120, 0, 0, 0)),
+            IsHitTestVisible = false
         };
-        _canvas.Children.Add(_dimOverlay);
+        _canvas.Children.Add(_dimOverlayPath);
 
-        // Контур предыдущей сохранённой области (если есть)
-        if (_previousArea.HasValue && _previousArea.Value.Width > 0 && _previousArea.Value.Height > 0)
+        // Контур сохранённой области (можно перетаскивать без изменения пропорций)
+        _savedRect = new System.Windows.Shapes.Rectangle
         {
-            _previousRect = new System.Windows.Shapes.Rectangle
-            {
-                Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 0, 200, 255)),
-                StrokeDashArray = new DoubleCollection { 4, 2 },
-                StrokeThickness = 2,
-                Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(30, 0, 200, 255)),
-                Visibility = Visibility.Visible
-            };
-            _canvas.Children.Add(_previousRect);
-        }
+            Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(240, 0, 200, 255)),
+            StrokeThickness = 2,
+            Fill = System.Windows.Media.Brushes.Transparent,
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false
+        };
+        _canvas.Children.Add(_savedRect);
 
         // Рамка нового выделения
         _selectionRect = new System.Windows.Shapes.Rectangle
         {
             Stroke = new SolidColorBrush(System.Windows.Media.Color.FromArgb(255, 0, 120, 215)),
             StrokeThickness = 2,
-            Fill = new SolidColorBrush(System.Windows.Media.Color.FromArgb(40, 0, 120, 215)),
-            Visibility = Visibility.Collapsed
+            Fill = System.Windows.Media.Brushes.Transparent,
+            Visibility = Visibility.Collapsed,
+            IsHitTestVisible = false
         };
         _canvas.Children.Add(_selectionRect);
 
-        // Лупа с пиксельной сеткой (ShareX-стиль)
+        // Компактная панель действий у сохранённой области
+        _savedActionsPanel = CreateSavedActionsPanel();
+        _canvas.Children.Add(_savedActionsPanel);
+
+        // Круглая лупа с пиксельной сеткой (без координат и текста)
         if (_settings.MagnifierEnabled)
         {
-            _magnifier = new ScreenshotMagnifier(_settings.MagnifierZoom, _settings.MagnifierGridSize, _settings.MagnifierShowColorInfo);
-            _magnifier.ZoomChanged += zoom =>
-            {
-                _settings.MagnifierZoom = zoom;
-            };
+            _magnifier = new ScreenshotMagnifier(_settings.MagnifierZoom, _settings.MagnifierGridSize);
+            _magnifier.ZoomChanged += zoom => _settings.MagnifierZoom = zoom;
             _magnifier.Visibility = Visibility.Collapsed;
             _canvas.Children.Add(_magnifier);
         }
 
         // Информационная плашка сверху
-        var hintText = _previousArea.HasValue && _previousArea.Value.Width > 0 && _previousArea.Value.Height > 0
-            ? $"Предыдущая область: {_previousArea.Value.Width}×{_previousArea.Value.Height} (Enter — подтвердить) | Выделите новую мышью | Колёсико: зум сетки | Esc — отмена"
-            : "Выделите область экрана мышью | Колёсико: зум сетки пикселей | [M] скрыть сетку | Esc — отмена";
-
+        _hintTextBlock = new TextBlock
+        {
+            Foreground = System.Windows.Media.Brushes.White,
+            FontSize = 13,
+            FontWeight = FontWeights.Medium
+        };
         _hintBanner = new Border
         {
             Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(210, 20, 20, 20)),
@@ -125,15 +133,10 @@ public sealed class SelectionOverlayWindow : Window
             VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(0, 24, 0, 0),
             IsHitTestVisible = false,
-            Child = new TextBlock
-            {
-                Text = hintText,
-                Foreground = System.Windows.Media.Brushes.White,
-                FontSize = 13,
-                FontWeight = FontWeights.Medium
-            }
+            Child = _hintTextBlock
         };
         rootGrid.Children.Add(_hintBanner);
+        UpdateHintBannerText();
 
         Loaded += OnLoaded;
         KeyDown += OnKeyDown;
@@ -141,6 +144,99 @@ public sealed class SelectionOverlayWindow : Window
         MouseMove += OnMouseMove;
         MouseUp += OnMouseUp;
         MouseWheel += OnMouseWheel;
+    }
+
+    /// <summary>
+    /// Проверяет и привязывает сохранённую область к границам экрана, не меняя её ширину и высоту.
+    /// </summary>
+    public static System.Drawing.Rectangle? ClampSavedAreaToBounds(
+        System.Drawing.Rectangle? area,
+        int boundsWidth,
+        int boundsHeight)
+    {
+        if (!area.HasValue) return null;
+        var rect = area.Value;
+        if (rect.Width <= 3 || rect.Height <= 3 || boundsWidth <= 0 || boundsHeight <= 0)
+        {
+            return null;
+        }
+
+        if (rect.Width > boundsWidth || rect.Height > boundsHeight)
+        {
+            return null;
+        }
+
+        int clampedX = Math.Clamp(rect.X, 0, boundsWidth - rect.Width);
+        int clampedY = Math.Clamp(rect.Y, 0, boundsHeight - rect.Height);
+        return new System.Drawing.Rectangle(clampedX, clampedY, rect.Width, rect.Height);
+    }
+
+    /// <summary>
+    /// Перемещает область на указанное смещение в пределах экрана, строго сохраняя её размеры и пропорции.
+    /// </summary>
+    public static System.Drawing.Rectangle MoveAreaPreservingSize(
+        System.Drawing.Rectangle startArea,
+        int deltaPxX,
+        int deltaPxY,
+        int boundsWidth,
+        int boundsHeight)
+    {
+        int maxX = Math.Max(0, boundsWidth - startArea.Width);
+        int maxY = Math.Max(0, boundsHeight - startArea.Height);
+        int newX = Math.Clamp(startArea.X + deltaPxX, 0, maxX);
+        int newY = Math.Clamp(startArea.Y + deltaPxY, 0, maxY);
+        return new System.Drawing.Rectangle(newX, newY, startArea.Width, startArea.Height);
+    }
+
+    private Border CreateSavedActionsPanel()
+    {
+        var captureBtn = new Button
+        {
+            Content = "Снять (Enter)",
+            Padding = new Thickness(10, 4, 10, 4),
+            Margin = new Thickness(0, 0, 6, 0),
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0, 120, 215)),
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new Thickness(0),
+            FontSize = 12,
+            FontWeight = FontWeights.SemiBold,
+            Cursor = Cursors.Hand
+        };
+        captureBtn.Click += (_, _) => ConfirmSavedArea();
+
+        var resetBtn = new Button
+        {
+            Content = "Сбросить (Del)",
+            Padding = new Thickness(10, 4, 10, 4),
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(220, 50, 50, 56)),
+            Foreground = System.Windows.Media.Brushes.White,
+            BorderThickness = new Thickness(0),
+            FontSize = 12,
+            Cursor = Cursors.Hand
+        };
+        resetBtn.Click += (_, _) => ClearActiveSavedArea();
+
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(captureBtn);
+        row.Children.Add(resetBtn);
+
+        return new Border
+        {
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromArgb(230, 22, 22, 26)),
+            BorderBrush = new SolidColorBrush(System.Windows.Media.Color.FromArgb(90, 255, 255, 255)),
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(6),
+            Visibility = Visibility.Collapsed,
+            Child = row
+        };
+    }
+
+    private void UpdateHintBannerText()
+    {
+        _hintTextBlock.Text = _activeSavedAreaPx.HasValue
+            ? "Перетащите рамку (пропорции сохраняются) | Enter или 2×клик — снять | Выделите новую снаружи | Esc — отмена"
+            : "Выделите область экрана мышью | Колёсико: зум сетки | [M] скрыть сетку | Esc — отмена";
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -160,19 +256,92 @@ public sealed class SelectionOverlayWindow : Window
 
         _bgImage.Width = Width;
         _bgImage.Height = Height;
-        _dimOverlay.Width = Width;
-        _dimOverlay.Height = Height;
 
-        if (_previousRect != null && _previousArea.HasValue)
+        if (_activeSavedAreaPx.HasValue)
         {
-            Canvas.SetLeft(_previousRect, _previousArea.Value.X / _dpiScaleX);
-            Canvas.SetTop(_previousRect, _previousArea.Value.Y / _dpiScaleY);
-            _previousRect.Width = _previousArea.Value.Width / _dpiScaleX;
-            _previousRect.Height = _previousArea.Value.Height / _dpiScaleY;
+            UpdateSavedRectVisuals(showActionsPanel: true);
+        }
+        else
+        {
+            UpdateDimCutout(null);
         }
 
         Focus();
-        CaptureMouse();
+    }
+
+    private void UpdateSavedRectVisuals(bool showActionsPanel)
+    {
+        if (!_activeSavedAreaPx.HasValue)
+        {
+            _savedRect.Visibility = Visibility.Collapsed;
+            _savedActionsPanel.Visibility = Visibility.Collapsed;
+            UpdateDimCutout(null);
+            return;
+        }
+
+        var area = _activeSavedAreaPx.Value;
+        double leftDip = area.X / _dpiScaleX;
+        double topDip = area.Y / _dpiScaleY;
+        double widthDip = area.Width / _dpiScaleX;
+        double heightDip = area.Height / _dpiScaleY;
+
+        Canvas.SetLeft(_savedRect, leftDip);
+        Canvas.SetTop(_savedRect, topDip);
+        _savedRect.Width = widthDip;
+        _savedRect.Height = heightDip;
+        _savedRect.Visibility = Visibility.Visible;
+
+        UpdateDimCutout(new Rect(leftDip, topDip, widthDip, heightDip));
+
+        if (showActionsPanel)
+        {
+            PositionSavedActionsPanel(leftDip, topDip, widthDip, heightDip);
+            _savedActionsPanel.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            _savedActionsPanel.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void PositionSavedActionsPanel(double rectLeft, double rectTop, double rectWidth, double rectHeight)
+    {
+        _savedActionsPanel.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        double panelW = _savedActionsPanel.DesiredSize.Width > 0 ? _savedActionsPanel.DesiredSize.Width : 210;
+        double panelH = _savedActionsPanel.DesiredSize.Height > 0 ? _savedActionsPanel.DesiredSize.Height : 36;
+
+        const double gap = 8;
+        double left = Math.Clamp(rectLeft + rectWidth - panelW, 8, Math.Max(8, Width - panelW - 8));
+
+        double top = rectTop + rectHeight + gap;
+        if (top + panelH > Height - 8)
+        {
+            top = rectTop - panelH - gap;
+        }
+        if (top < 8)
+        {
+            top = Math.Max(8, rectTop + rectHeight - panelH - gap);
+        }
+
+        Canvas.SetLeft(_savedActionsPanel, left);
+        Canvas.SetTop(_savedActionsPanel, top);
+    }
+
+    private void UpdateDimCutout(Rect? cutoutDip)
+    {
+        var fullRect = new RectangleGeometry(new Rect(0, 0, Math.Max(1, Width), Math.Max(1, Height)));
+        if (cutoutDip.HasValue && cutoutDip.Value.Width > 0 && cutoutDip.Value.Height > 0)
+        {
+            var hole = new RectangleGeometry(cutoutDip.Value);
+            var combined = new CombinedGeometry(GeometryCombineMode.Exclude, fullRect, hole);
+            combined.Freeze();
+            _dimOverlayPath.Data = combined;
+        }
+        else
+        {
+            fullRect.Freeze();
+            _dimOverlayPath.Data = fullRect;
+        }
     }
 
     private void OnKeyDown(object sender, KeyEventArgs e)
@@ -183,23 +352,40 @@ public sealed class SelectionOverlayWindow : Window
             return;
         }
 
-        if ((e.Key == Key.Enter || e.Key == Key.Space) && _previousArea.HasValue)
+        if ((e.Key == Key.Enter || e.Key == Key.Space) && _activeSavedAreaPx.HasValue && !_isSelecting)
         {
-            Close();
-            _onComplete(_previousArea.Value);
+            ConfirmSavedArea();
+            e.Handled = true;
+            return;
+        }
+
+        if ((e.Key == Key.Delete || e.Key == Key.Back) && _activeSavedAreaPx.HasValue && !_isSelecting && !_isMovingSavedRect)
+        {
+            ClearActiveSavedArea();
+            e.Handled = true;
+            return;
+        }
+
+        if (_activeSavedAreaPx.HasValue && !_isSelecting && !_isMovingSavedRect &&
+            e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
+        {
+            int step = Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? 10 : 1;
+            int dx = e.Key == Key.Left ? -step : e.Key == Key.Right ? step : 0;
+            int dy = e.Key == Key.Up ? -step : e.Key == Key.Down ? step : 0;
+            _activeSavedAreaPx = MoveAreaPreservingSize(_activeSavedAreaPx.Value, dx, dy, _screenCapture.Width, _screenCapture.Height);
+            UpdateSavedRectVisuals(showActionsPanel: true);
+            e.Handled = true;
             return;
         }
 
         if (e.Key == Key.M && _magnifier != null)
         {
-            _magnifier.Visibility = _magnifier.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
-            e.Handled = true;
-            return;
-        }
-
-        if (e.Key == Key.C && _magnifier != null && _magnifier.Visibility == Visibility.Visible)
-        {
-            _magnifier.CopyColorToClipboard();
+            _isMagnifierHiddenByUser = !_isMagnifierHiddenByUser;
+            _magnifier.Visibility = _isMagnifierHiddenByUser ? Visibility.Collapsed : Visibility.Visible;
+            if (!_isMagnifierHiddenByUser)
+            {
+                UpdateMagnifierAtCurrentMouse();
+            }
             e.Handled = true;
             return;
         }
@@ -217,13 +403,12 @@ public sealed class SelectionOverlayWindow : Window
             _magnifier.AdjustZoom(-1);
             UpdateMagnifierAtCurrentMouse();
             e.Handled = true;
-            return;
         }
     }
 
     private void OnMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (_magnifier != null && _magnifier.Visibility == Visibility.Visible)
+        if (_magnifier != null && !_isMagnifierHiddenByUser)
         {
             _magnifier.AdjustZoom(e.Delta > 0 ? 1 : -1);
             UpdateMagnifierAtCurrentMouse();
@@ -233,21 +418,52 @@ public sealed class SelectionOverlayWindow : Window
 
     private void UpdateMagnifierAtCurrentMouse()
     {
-        if (_magnifier == null || _magnifier.Visibility != Visibility.Visible) return;
+        if (_magnifier == null || _isMagnifierHiddenByUser || _isMovingSavedRect) return;
 
         var currentPoint = Mouse.GetPosition(_canvas);
-        int pxX = (int)Math.Round(currentPoint.X * _dpiScaleX);
-        int pxY = (int)Math.Round(currentPoint.Y * _dpiScaleY);
-
-        int? selW = null;
-        int? selH = null;
-        if (_isSelecting)
+        if (!_isSelecting && (IsPointInsideSavedRect(currentPoint) || IsPointOverActionsPanel(currentPoint)))
         {
-            selW = (int)Math.Round(Math.Abs(currentPoint.X - _startPointDips.X) * _dpiScaleX);
-            selH = (int)Math.Round(Math.Abs(currentPoint.Y - _startPointDips.Y) * _dpiScaleY);
+            _magnifier.Visibility = Visibility.Collapsed;
+            return;
         }
 
-        _magnifier.Update(_screenCapture, pxX, pxY, currentPoint, Width, Height, selW, selH);
+        int pxX = (int)Math.Round(currentPoint.X * _dpiScaleX);
+        int pxY = (int)Math.Round(currentPoint.Y * _dpiScaleY);
+        if (_magnifier.Visibility != Visibility.Visible)
+        {
+            _magnifier.Visibility = Visibility.Visible;
+        }
+        _magnifier.Update(_screenCapture, pxX, pxY, currentPoint, Width, Height);
+    }
+
+    private bool IsPointInsideSavedRect(System.Windows.Point pointDip)
+    {
+        if (!_activeSavedAreaPx.HasValue || _savedRect.Visibility != Visibility.Visible) return false;
+
+        double left = Canvas.GetLeft(_savedRect);
+        double top = Canvas.GetTop(_savedRect);
+        return pointDip.X >= left && pointDip.X <= left + _savedRect.Width &&
+               pointDip.Y >= top && pointDip.Y <= top + _savedRect.Height;
+    }
+
+    private bool IsPointOverActionsPanel(System.Windows.Point pointDip)
+    {
+        if (_savedActionsPanel.Visibility != Visibility.Visible) return false;
+
+        double left = Canvas.GetLeft(_savedActionsPanel);
+        double top = Canvas.GetTop(_savedActionsPanel);
+        return pointDip.X >= left && pointDip.X <= left + _savedActionsPanel.ActualWidth &&
+               pointDip.Y >= top && pointDip.Y <= top + _savedActionsPanel.ActualHeight;
+    }
+
+    private static bool IsDescendantOf(DependencyObject? source, DependencyObject ancestor)
+    {
+        while (source != null)
+        {
+            if (ReferenceEquals(source, ancestor)) return true;
+            source = VisualTreeHelper.GetParent(source);
+        }
+        return false;
     }
 
     private void OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -258,30 +474,67 @@ public sealed class SelectionOverlayWindow : Window
             return;
         }
 
-        if (e.LeftButton == MouseButtonState.Pressed)
+        if (e.LeftButton != MouseButtonState.Pressed) return;
+
+        if (e.OriginalSource is DependencyObject sourceObj && IsDescendantOf(sourceObj, _savedActionsPanel))
         {
-            if (_previousRect != null)
+            return;
+        }
+
+        var currentPoint = e.GetPosition(_canvas);
+
+        if (_activeSavedAreaPx.HasValue && IsPointInsideSavedRect(currentPoint))
+        {
+            if (e.ClickCount >= 2)
             {
-                _previousRect.Visibility = Visibility.Collapsed;
-            }
-            if (_hintBanner != null)
-            {
-                _hintBanner.Visibility = Visibility.Collapsed;
+                ConfirmSavedArea();
+                return;
             }
 
-            _isSelecting = true;
-            _startPointDips = e.GetPosition(_canvas);
-            Canvas.SetLeft(_selectionRect, _startPointDips.X);
-            Canvas.SetTop(_selectionRect, _startPointDips.Y);
-            _selectionRect.Width = 0;
-            _selectionRect.Height = 0;
-            _selectionRect.Visibility = Visibility.Visible;
+            _isMovingSavedRect = true;
+            _moveStartCursorDip = currentPoint;
+            _moveStartRectPx = _activeSavedAreaPx.Value;
+            _savedActionsPanel.Visibility = Visibility.Collapsed;
+            _hintBanner.Visibility = Visibility.Collapsed;
+            if (_magnifier != null)
+            {
+                _magnifier.Visibility = Visibility.Collapsed;
+            }
+            Cursor = Cursors.SizeAll;
+            CaptureMouse();
+            return;
         }
+
+        // Начинаем выделение новой области
+        _savedRect.Visibility = Visibility.Collapsed;
+        _savedActionsPanel.Visibility = Visibility.Collapsed;
+        _hintBanner.Visibility = Visibility.Collapsed;
+
+        _isSelecting = true;
+        _startPointDips = currentPoint;
+        Canvas.SetLeft(_selectionRect, _startPointDips.X);
+        Canvas.SetTop(_selectionRect, _startPointDips.Y);
+        _selectionRect.Width = 0;
+        _selectionRect.Height = 0;
+        _selectionRect.Visibility = Visibility.Visible;
+        UpdateDimCutout(null);
+        Cursor = Cursors.Cross;
+        CaptureMouse();
     }
 
     private void OnMouseMove(object sender, MouseEventArgs e)
     {
         var currentPoint = e.GetPosition(_canvas);
+
+        if (_isMovingSavedRect)
+        {
+            int deltaPxX = (int)Math.Round((currentPoint.X - _moveStartCursorDip.X) * _dpiScaleX);
+            int deltaPxY = (int)Math.Round((currentPoint.Y - _moveStartCursorDip.Y) * _dpiScaleY);
+            _activeSavedAreaPx = MoveAreaPreservingSize(_moveStartRectPx, deltaPxX, deltaPxY, _screenCapture.Width, _screenCapture.Height);
+            UpdateSavedRectVisuals(showActionsPanel: false);
+            return;
+        }
+
         int pxX = (int)Math.Round(currentPoint.X * _dpiScaleX);
         int pxY = (int)Math.Round(currentPoint.Y * _dpiScaleY);
 
@@ -296,17 +549,9 @@ public sealed class SelectionOverlayWindow : Window
             Canvas.SetTop(_selectionRect, y);
             _selectionRect.Width = w;
             _selectionRect.Height = h;
+            UpdateDimCutout(new Rect(x, y, w, h));
 
-            if (_magnifier != null && _magnifier.Visibility == Visibility.Visible)
-            {
-                int selPxW = (int)Math.Round(w * _dpiScaleX);
-                int selPxH = (int)Math.Round(h * _dpiScaleY);
-                _magnifier.Update(_screenCapture, pxX, pxY, currentPoint, Width, Height, selPxW, selPxH);
-            }
-        }
-        else
-        {
-            if (_magnifier != null)
+            if (_magnifier != null && !_isMagnifierHiddenByUser)
             {
                 if (_magnifier.Visibility != Visibility.Visible)
                 {
@@ -314,11 +559,52 @@ public sealed class SelectionOverlayWindow : Window
                 }
                 _magnifier.Update(_screenCapture, pxX, pxY, currentPoint, Width, Height);
             }
+            return;
+        }
+
+        // Режим наведения без зажатой кнопки
+        if (IsPointOverActionsPanel(currentPoint))
+        {
+            Cursor = Cursors.Arrow;
+            if (_magnifier != null)
+            {
+                _magnifier.Visibility = Visibility.Collapsed;
+            }
+            return;
+        }
+
+        if (IsPointInsideSavedRect(currentPoint))
+        {
+            Cursor = Cursors.SizeAll;
+            if (_magnifier != null)
+            {
+                _magnifier.Visibility = Visibility.Collapsed;
+            }
+            return;
+        }
+
+        Cursor = Cursors.Cross;
+        if (_magnifier != null && !_isMagnifierHiddenByUser)
+        {
+            if (_magnifier.Visibility != Visibility.Visible)
+            {
+                _magnifier.Visibility = Visibility.Visible;
+            }
+            _magnifier.Update(_screenCapture, pxX, pxY, currentPoint, Width, Height);
         }
     }
 
     private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
+        if (_isMovingSavedRect)
+        {
+            _isMovingSavedRect = false;
+            ReleaseMouseCapture();
+            UpdateSavedRectVisuals(showActionsPanel: true);
+            _hintBanner.Visibility = Visibility.Visible;
+            return;
+        }
+
         if (!_isSelecting) return;
         _isSelecting = false;
         ReleaseMouseCapture();
@@ -334,29 +620,59 @@ public sealed class SelectionOverlayWindow : Window
         var widthDip = Math.Abs(currentPoint.X - _startPointDips.X);
         var heightDip = Math.Abs(currentPoint.Y - _startPointDips.Y);
 
-        // Переводим из DIPs координат оверлея в физические пиксели снимка _screenCapture
-        int pxX = (int)Math.Round(leftDip * _dpiScaleX);
-        int pxY = (int)Math.Round(topDip * _dpiScaleY);
-        int pxW = (int)Math.Round(widthDip * _dpiScaleX);
-        int pxH = (int)Math.Round(heightDip * _dpiScaleY);
-
-        Close();
+        int pxX = Math.Clamp((int)Math.Round(leftDip * _dpiScaleX), 0, Math.Max(0, _screenCapture.Width - 1));
+        int pxY = Math.Clamp((int)Math.Round(topDip * _dpiScaleY), 0, Math.Max(0, _screenCapture.Height - 1));
+        int pxW = Math.Min((int)Math.Round(widthDip * _dpiScaleX), _screenCapture.Width - pxX);
+        int pxH = Math.Min((int)Math.Round(heightDip * _dpiScaleY), _screenCapture.Height - pxY);
 
         if (pxW > 3 && pxH > 3)
         {
+            Close();
             _onComplete(new System.Drawing.Rectangle(pxX, pxY, pxW, pxH));
+            return;
+        }
+
+        // Если был случайный одиночный клик при активной сохранённой рамке — возвращаем рамку вместо закрытия
+        _selectionRect.Visibility = Visibility.Collapsed;
+        if (_activeSavedAreaPx.HasValue)
+        {
+            UpdateSavedRectVisuals(showActionsPanel: true);
+            _hintBanner.Visibility = Visibility.Visible;
         }
         else
         {
+            Close();
             _onComplete(null);
         }
     }
 
+    private void ConfirmSavedArea()
+    {
+        if (!_activeSavedAreaPx.HasValue) return;
+        var result = _activeSavedAreaPx.Value;
+        if (IsMouseCaptured)
+        {
+            ReleaseMouseCapture();
+        }
+        Close();
+        _onComplete(result);
+    }
+
+    private void ClearActiveSavedArea()
+    {
+        _activeSavedAreaPx = null;
+        UpdateSavedRectVisuals(showActionsPanel: false);
+        UpdateHintBannerText();
+        _hintBanner.Visibility = Visibility.Visible;
+        Cursor = Cursors.Cross;
+    }
+
     private void CancelSelection()
     {
-        if (_isSelecting)
+        if (_isSelecting || _isMovingSavedRect)
         {
             _isSelecting = false;
+            _isMovingSavedRect = false;
             ReleaseMouseCapture();
         }
         Close();
