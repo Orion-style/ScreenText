@@ -9,6 +9,8 @@
         Topmost="True"
         MinWidth="480"
         MinHeight="340"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
         ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="Manual">
 

@@ -28,6 +28,7 @@ public partial class QuickLookWindow : Window
     private uint _pdfTotalPages;
     private uint _pdfLoadedPageCount;
     private bool _isLoadingPdfBatch;
+    private uint _pdfRenderTargetWidth = 2200;
 
     public QuickLookWindow(string filePath, QuickLookSettings settings, IAppLogger logger, nint previousForegroundHwnd)
     {
@@ -148,7 +149,7 @@ public partial class QuickLookWindow : Window
                 maxDim = (int)Math.Max(monitorArea.Width, monitorArea.Height);
             }
 
-            var bitmap = await Task.Run(() => QuickLookImageLoader.LoadImage(_filePath, maxDim));
+            var bitmap = await Task.Run(() => QuickLookImageLoader.LoadImage(_filePath, Math.Max(maxDim, 2560)));
             if (bitmap != null)
             {
                 _zoomFactor = 1.0;
@@ -187,6 +188,9 @@ public partial class QuickLookWindow : Window
             _pdfTotalPages = 0;
             _lastPdfViewportWidth = 0;
 
+            var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea(_previousForegroundHwnd);
+            _pdfRenderTargetWidth = ComputeCrispPdfRenderTargetWidth(monitorArea);
+
             using var session = await Task.Run(() => WindowsPdfRenderer.PdfSession.OpenAsync(_filePath), ct);
             if (session != null)
             {
@@ -198,8 +202,9 @@ public partial class QuickLookWindow : Window
                 }
 
                 PdfViewer.Visibility = Visibility.Visible;
+                AdjustWindowForPdf(monitorArea);
 
-                var firstPage = await Task.Run(() => session.RenderPageAsync(0), ct);
+                var firstPage = await Task.Run(() => session.RenderPageAsync(0, 2800, 4000, _pdfRenderTargetWidth), ct);
                 if (firstPage == null || _isClosing || ct.IsCancellationRequested)
                 {
                     if (!_isClosing && firstPage == null) ShowGenericCard(isFailure: true);
@@ -209,11 +214,9 @@ public partial class QuickLookWindow : Window
                 AddPdfPageImage(firstPage.Value.Bitmap);
                 _pdfLoadedPageCount = 1;
                 UpdatePdfFooterText();
-
-                AdjustWindowDimensions(firstPage.Value.LogicalWidth, firstPage.Value.LogicalHeight, extraHeight: 102);
                 UpdatePdfPagesDisplaySize();
 
-                uint initialBatchEnd = Math.Min(_pdfTotalPages, 20);
+                uint initialBatchEnd = Math.Min(_pdfTotalPages, 10);
                 if (initialBatchEnd > 1)
                 {
                     await LoadPdfPageRangeWithSessionAsync(session, 1, initialBatchEnd, ct);
@@ -232,8 +235,9 @@ public partial class QuickLookWindow : Window
 
             _pdfTotalPages = pageCount;
             PdfViewer.Visibility = Visibility.Visible;
+            AdjustWindowForPdf(monitorArea);
 
-            var fallbackFirstPage = await WindowsPdfRenderer.RenderPageAsync(_filePath, 0);
+            var fallbackFirstPage = await WindowsPdfRenderer.RenderPageAsync(_filePath, 0, 2800, 4000, _pdfRenderTargetWidth);
             if (fallbackFirstPage == null || _isClosing || ct.IsCancellationRequested)
             {
                 if (!_isClosing && fallbackFirstPage == null) ShowGenericCard(isFailure: true);
@@ -243,15 +247,13 @@ public partial class QuickLookWindow : Window
             AddPdfPageImage(fallbackFirstPage);
             _pdfLoadedPageCount = 1;
             UpdatePdfFooterText();
-
-            AdjustWindowDimensions(fallbackFirstPage.PixelWidth, fallbackFirstPage.PixelHeight, extraHeight: 102);
             UpdatePdfPagesDisplaySize();
 
-            uint maxFallbackPages = Math.Min(pageCount, 20);
+            uint maxFallbackPages = Math.Min(pageCount, 10);
             for (uint i = 1; i < maxFallbackPages; i++)
             {
                 if (_isClosing || ct.IsCancellationRequested) break;
-                var pageBmp = await WindowsPdfRenderer.RenderPageAsync(_filePath, i);
+                var pageBmp = await WindowsPdfRenderer.RenderPageAsync(_filePath, i, 2800, 4000, _pdfRenderTargetWidth);
                 if (pageBmp != null && !_isClosing && !ct.IsCancellationRequested)
                 {
                     AddPdfPageImage(pageBmp);
@@ -282,7 +284,7 @@ public partial class QuickLookWindow : Window
             if (_isClosing || ct.IsCancellationRequested) break;
 
             uint idx = i;
-            var rendered = await Task.Run(() => session.RenderPageAsync(idx), ct);
+            var rendered = await Task.Run(() => session.RenderPageAsync(idx, 2800, 4000, _pdfRenderTargetWidth), ct);
             if (rendered != null && !_isClosing && !ct.IsCancellationRequested)
             {
                 AddPdfPageImage(rendered.Value.Bitmap);
@@ -427,6 +429,28 @@ public partial class QuickLookWindow : Window
         WindowPlacementHelper.PositionWindowCentered(this, monitorArea, bounds.Width, bounds.Height);
     }
 
+    private void AdjustWindowForPdf(WindowPlacementHelper.MonitorWorkArea monitorArea)
+    {
+        var bounds = QuickLookLayoutHelper.ComputePdfWindowBounds(
+            monitorArea.Width,
+            monitorArea.Height,
+            _settings.MaxWindowScreenPercent);
+
+        MaxWidth = bounds.MaxWidth;
+        MaxHeight = bounds.MaxHeight;
+
+        WindowPlacementHelper.PositionWindowCentered(this, monitorArea, bounds.Width, bounds.Height);
+    }
+
+    private static uint ComputeCrispPdfRenderTargetWidth(WindowPlacementHelper.MonitorWorkArea monitorArea)
+    {
+        int physW = monitorArea.PhysicalWidth > 0
+            ? monitorArea.PhysicalWidth
+            : (int)Math.Round(monitorArea.Width);
+
+        return (uint)Math.Clamp((int)Math.Round(physW * 0.9), 1800, 2600);
+    }
+
     private void OnHeaderMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState == MouseButtonState.Pressed)
@@ -521,7 +545,7 @@ public partial class QuickLookWindow : Window
                 if (session != null && !_isClosing && !ct.IsCancellationRequested)
                 {
                     uint start = _pdfLoadedPageCount;
-                    uint end = Math.Min(_pdfTotalPages, start + 15);
+                    uint end = Math.Min(_pdfTotalPages, start + 10);
                     await LoadPdfPageRangeWithSessionAsync(session, start, end, ct);
                 }
             }
@@ -591,10 +615,14 @@ public partial class QuickLookWindow : Window
         double availW = availableWidthOverride ?? GetPdfAvailablePageWidth();
         if (availW <= 0) return;
 
+        double effectiveWidth = bmp.PixelWidth > bmp.PixelHeight
+            ? availW
+            : Math.Min(availW, 1280);
+
         var size = QuickLookLayoutHelper.ComputePdfPageDisplaySize(
             bmp.PixelWidth,
             bmp.PixelHeight,
-            availW,
+            effectiveWidth,
             _pdfZoomFactor);
 
         if (size.Width > 0 && size.Height > 0)

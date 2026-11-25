@@ -184,5 +184,27 @@ public class QuickLookModuleTests
 
         uint hugeBannerWidth = QuickLookLayoutHelper.ComputePdfRenderDestinationWidth(500, 5000, maxWidth: 1800, maxHeight: 2600);
         Assert.Equal(260u, hugeBannerWidth);
+
+        // High-DPI crisp target width renders A4 at >= 2000px
+        uint crispA4Width = QuickLookLayoutHelper.ComputePdfRenderDestinationWidth(595, 842, maxWidth: 2800, maxHeight: 4000, targetWidth: 2200);
+        Assert.Equal(1785u, crispA4Width); // 595 * 3.0 = 1785
+        uint crisp96DpiA4Width = QuickLookLayoutHelper.ComputePdfRenderDestinationWidth(794, 1123, maxWidth: 2800, maxHeight: 4000, targetWidth: 2200);
+        Assert.Equal(2200u, crisp96DpiA4Width);
+    }
+
+    [Fact]
+    public void LayoutHelper_PdfWindowBounds_ExpandsNearlyFullscreenLikeBrowser()
+    {
+        // 1920x1040 work area (100% DPI) with default 80% setting -> PDF expands to 94%
+        var fhdBounds = QuickLookLayoutHelper.ComputePdfWindowBounds(1920, 1040, maxWindowScreenPercent: 80);
+        Assert.True(fhdBounds.Width >= 1920 * 0.93);
+        Assert.True(fhdBounds.Height >= 1040 * 0.93);
+        Assert.Equal(fhdBounds.Width, fhdBounds.MaxWidth);
+        Assert.Equal(fhdBounds.Height, fhdBounds.MaxHeight);
+
+        // 1280x680 work area (150% DPI) -> ~1203x639
+        var scaledBounds = QuickLookLayoutHelper.ComputePdfWindowBounds(1280, 680, maxWindowScreenPercent: 80);
+        Assert.True(scaledBounds.Width >= 1200);
+        Assert.True(scaledBounds.Height >= 635);
     }
 }

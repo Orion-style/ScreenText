@@ -46,6 +46,24 @@ public static class QuickLookLayoutHelper
         return new TargetWindowBounds(targetW, targetH, maxW, maxH);
     }
 
+    /// <summary>
+    /// Computes near-fullscreen browser-style window bounds for comfortable PDF reading.
+    /// </summary>
+    public static TargetWindowBounds ComputePdfWindowBounds(
+        double workAreaWidth,
+        double workAreaHeight,
+        int maxWindowScreenPercent)
+    {
+        double safeWorkW = Math.Max(1, workAreaWidth);
+        double safeWorkH = Math.Max(1, workAreaHeight);
+
+        double percent = Math.Clamp(Math.Max(maxWindowScreenPercent, 94), 85, 97) / 100.0;
+        double targetW = Math.Clamp(safeWorkW * percent, Math.Min(640, safeWorkW), safeWorkW);
+        double targetH = Math.Clamp(safeWorkH * percent, Math.Min(480, safeWorkH), safeWorkH);
+
+        return new TargetWindowBounds(targetW, targetH, targetW, targetH);
+    }
+
     public static DisplaySize ComputeImageDisplaySize(
         double imageWidth,
         double imageHeight,
@@ -96,7 +114,8 @@ public static class QuickLookLayoutHelper
         double pageWidth,
         double pageHeight,
         uint maxWidth = 1800,
-        uint maxHeight = 2600)
+        uint maxHeight = 2600,
+        uint targetWidth = 1400)
     {
         if (pageWidth <= 0 || pageHeight <= 0)
         {
@@ -104,7 +123,7 @@ public static class QuickLookLayoutHelper
         }
 
         double maxScale = Math.Min(maxWidth / pageWidth, maxHeight / pageHeight);
-        double desiredScale = Math.Max(1.0, Math.Min(2.0, 1400.0 / pageWidth));
+        double desiredScale = Math.Max(1.0, Math.Min(3.0, (double)targetWidth / pageWidth));
         double scale = Math.Min(desiredScale, maxScale);
 
         return Math.Max(1u, (uint)Math.Round(pageWidth * scale));

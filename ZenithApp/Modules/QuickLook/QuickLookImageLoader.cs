@@ -110,10 +110,22 @@ public static class QuickLookImageLoader
             if (fileBytes.Length == 0) return null;
 
             using var memStream = new MemoryStream(fileBytes);
-            var decoder = BitmapDecoder.Create(
-                memStream,
-                BitmapCreateOptions.IgnoreColorProfile,
-                BitmapCacheOption.OnLoad);
+            BitmapDecoder decoder;
+            try
+            {
+                decoder = BitmapDecoder.Create(
+                    memStream,
+                    BitmapCreateOptions.None,
+                    BitmapCacheOption.OnLoad);
+            }
+            catch
+            {
+                memStream.Position = 0;
+                decoder = BitmapDecoder.Create(
+                    memStream,
+                    BitmapCreateOptions.IgnoreColorProfile,
+                    BitmapCacheOption.OnLoad);
+            }
 
             if (decoder.Frames.Count > 0)
             {
@@ -168,7 +180,7 @@ public static class QuickLookImageLoader
             int hr = SHCreateItemFromParsingName(filePath, nint.Zero, IShellItemImageFactoryGuid, out object factoryObj);
             if (hr == 0 && factoryObj is IShellItemImageFactory factory)
             {
-                int dimension = Math.Clamp(targetResolution, 800, 3840);
+                int dimension = Math.Clamp(targetResolution, 1920, 3840);
                 hr = factory.GetImage(new SIZE(dimension, dimension), SIIGBF.SIIGBF_BIGGERSIZEOK, out nint hBitmap);
                 if (hr == 0 && hBitmap != nint.Zero)
                 {

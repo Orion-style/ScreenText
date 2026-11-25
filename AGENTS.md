@@ -11,7 +11,11 @@
      ```powershell
      dotnet test ZenithApp.sln -c Release
      ```
-   - При необходимости сборки/обновления итогового исполняемого файла или инсталлятора (если менялся код приложения и требуется артефакт сборки) ориентироваться на сценарий `scripts/build-installer.ps1` / `dotnet publish ZenithApp/ZenithApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o build_output`.
+   - Обязательно выполнить сборку приложения (`ZenithApp.exe`) после изменений кода приложения:
+     ```powershell
+     dotnet publish ZenithApp/ZenithApp.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o build_output
+     ```
+   - При необходимости сборки/обновления инсталлятора ориентироваться на сценарий `scripts/build-installer.ps1`.
 
 2. **Коммит и отправку в GitHub**:
    - После успешной сборки компиляции и прохождения тестов зафиксировать изменения в Git и отправить их в удалённый репозиторий GitHub (`git add`, `git commit` с осмысленным сообщением, `git push`).

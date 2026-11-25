@@ -47,9 +47,13 @@ public sealed class WindowsPdfRenderer
             }
         }
 
-        public Task<RenderedPdfPage?> RenderPageAsync(uint pageIndex, uint maxWidth = 1800, uint maxHeight = 2600)
+        public Task<RenderedPdfPage?> RenderPageAsync(
+            uint pageIndex,
+            uint maxWidth = 2600,
+            uint maxHeight = 3800,
+            uint targetWidth = 2200)
         {
-            return RenderPageFromDocumentAsync(_document, pageIndex, maxWidth, maxHeight);
+            return RenderPageFromDocumentAsync(_document, pageIndex, maxWidth, maxHeight, targetWidth);
         }
 
         public void Dispose()
@@ -63,7 +67,8 @@ public sealed class WindowsPdfRenderer
         PdfDocument pdfDoc,
         uint pageIndex,
         uint maxWidth,
-        uint maxHeight)
+        uint maxHeight,
+        uint targetWidth)
     {
         try
         {
@@ -79,7 +84,8 @@ public sealed class WindowsPdfRenderer
                     pageSize.Width,
                     pageSize.Height,
                     maxWidth,
-                    maxHeight)
+                    maxHeight,
+                    targetWidth)
             };
 
             await page.RenderToStreamAsync(stream, renderOptions);
@@ -102,21 +108,26 @@ public sealed class WindowsPdfRenderer
         }
     }
 
-    public static async Task<BitmapSource?> RenderPageAsync(string filePath, uint pageIndex, uint maxWidth = 1800)
+    public static async Task<BitmapSource?> RenderPageAsync(
+        string filePath,
+        uint pageIndex,
+        uint maxWidth = 2600,
+        uint maxHeight = 3800,
+        uint targetWidth = 2200)
     {
         try
         {
             using var session = await PdfSession.OpenAsync(filePath);
             if (session != null)
             {
-                var rendered = await session.RenderPageAsync(pageIndex, maxWidth);
+                var rendered = await session.RenderPageAsync(pageIndex, maxWidth, maxHeight, targetWidth);
                 return rendered?.Bitmap;
             }
 
             // Fallback to StorageFile if direct FileStream access fails
             var storageFile = await StorageFile.GetFileFromPathAsync(filePath);
             var pdfDoc = await PdfDocument.LoadFromFileAsync(storageFile);
-            var fallbackRendered = await RenderPageFromDocumentAsync(pdfDoc, pageIndex, maxWidth, 2600);
+            var fallbackRendered = await RenderPageFromDocumentAsync(pdfDoc, pageIndex, maxWidth, maxHeight, targetWidth);
             return fallbackRendered?.Bitmap;
         }
         catch
