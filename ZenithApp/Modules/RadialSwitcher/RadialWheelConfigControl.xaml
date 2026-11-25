@@ -2,10 +2,10 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
-             Width="270" Height="270">
-    <Grid Width="270" Height="270">
+             Width="290" Height="290">
+    <Grid Width="290" Height="290">
         <!-- Холст для секторов колеса -->
-        <Canvas x:Name="WheelCanvas" Width="270" Height="270" />
+        <Canvas x:Name="WheelCanvas" Width="290" Height="290" />
 
         <!-- Центральный круг -->
         <Border Width="68" Height="68" 

@@ -25,8 +25,15 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
 
+    internal static Func<int, bool>? ModifierChecker { get; set; }
+
     private static bool IsModifierKeyDown(int vKey)
     {
+        if (ModifierChecker != null)
+        {
+            return ModifierChecker(vKey);
+        }
+
         return (GetAsyncKeyState(vKey) & 0x8000) != 0;
     }
 
@@ -39,7 +46,18 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
 
     private bool _isTabHeld;
     private bool _isWheelOpen;
+    private bool _wheelOpenedInCurrentHold;
+    private bool _holdCancelledForCurrentHold;
+    private bool _tabPassedThroughForCurrentHold;
+    private long _holdGeneration;
     private readonly object _stateLock = new();
+
+    internal Action<int>? SendKeyPressAction { get; set; }
+    internal Action<int>? SendKeyDownAction { get; set; }
+    internal Action? WheelOpenRequestedAction { get; set; }
+    internal Action? WheelCloseAndActivateAction { get; set; }
+    internal Action? WheelCloseImmediatelyAction { get; set; }
+    internal bool IsWheelOpenForTest { get { lock (_stateLock) return _isWheelOpen; } }
 
     public RadialSwitcherSettings Settings => _settingsService.Current.RadialSwitcher;
 
@@ -84,6 +102,10 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         {
             _isTabHeld = false;
             _isWheelOpen = false;
+            _wheelOpenedInCurrentHold = false;
+            _holdCancelledForCurrentHold = false;
+            _tabPassedThroughForCurrentHold = false;
+            _holdGeneration++;
         }
 
         Logger.LogInfo("[RadialSwitcher] Модуль отключен.");
@@ -95,7 +117,8 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         lock (_stateLock)
         {
             _holdTimer?.Dispose();
-            _holdTimer = new System.Threading.Timer(OnHoldTimerCallback, null, delayMs, Timeout.Infinite);
+            var generation = ++_holdGeneration;
+            _holdTimer = new System.Threading.Timer(OnHoldTimerCallback, generation, delayMs, Timeout.Infinite);
         }
     }
 
@@ -103,6 +126,7 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
     {
         lock (_stateLock)
         {
+            _holdGeneration++;
             _holdTimer?.Dispose();
             _holdTimer = null;
         }
@@ -110,16 +134,105 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
 
     private void OnHoldTimerCallback(object? state)
     {
-        lock (_stateLock)
+        if (state is not long expectedGeneration)
         {
-            if (!_isTabHeld) return;
-            _isWheelOpen = true;
+            return;
         }
 
-        Application.Current?.Dispatcher.BeginInvoke(OpenWheelWindow);
+        lock (_stateLock)
+        {
+            if (!_isTabHeld ||
+                _tabPassedThroughForCurrentHold ||
+                _holdCancelledForCurrentHold ||
+                expectedGeneration != _holdGeneration)
+            {
+                return;
+            }
+
+            _isWheelOpen = true;
+            _wheelOpenedInCurrentHold = true;
+        }
+
+        if (WheelOpenRequestedAction != null)
+        {
+            if (IsGenerationStillValidForWheel(expectedGeneration))
+            {
+                WheelOpenRequestedAction.Invoke();
+            }
+            return;
+        }
+
+        Application.Current?.Dispatcher.BeginInvoke(() => OpenWheelWindow(expectedGeneration));
     }
 
-    private bool OnKeyboardInput(KeyboardHookEventArgs e)
+    private bool IsGenerationStillValidForWheel(long expectedGeneration)
+    {
+        lock (_stateLock)
+        {
+            return _isTabHeld &&
+                   _isWheelOpen &&
+                   !_tabPassedThroughForCurrentHold &&
+                   !_holdCancelledForCurrentHold &&
+                   expectedGeneration == _holdGeneration;
+        }
+    }
+
+    private void EmitTabKeyPress()
+    {
+        if (SendKeyPressAction != null)
+        {
+            SendKeyPressAction(VK_TAB);
+            return;
+        }
+
+        KeyboardInputSender.SendKeyPress(VK_TAB);
+    }
+
+    private void EmitTabKeyDown()
+    {
+        if (SendKeyDownAction != null)
+        {
+            SendKeyDownAction(VK_TAB);
+            return;
+        }
+
+        KeyboardInputSender.SendKeyDown(VK_TAB);
+    }
+
+    private void RequestCloseWheelImmediately()
+    {
+        if (WheelCloseImmediatelyAction != null)
+        {
+            WheelCloseImmediatelyAction.Invoke();
+            return;
+        }
+
+        Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            _currentWheel?.CloseImmediately();
+            _currentWheel = null;
+        });
+    }
+
+    private void RequestCloseWheelAndActivate()
+    {
+        if (WheelCloseAndActivateAction != null)
+        {
+            WheelCloseAndActivateAction.Invoke();
+            return;
+        }
+
+        Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            if (_currentWheel != null)
+            {
+                _currentWheel.CloseAndActivateSelected();
+                _currentWheel = null;
+            }
+        });
+    }
+
+    internal bool OnKeyboardInput(KeyboardHookEventArgs e)
     {
         // Игнорируем синтетические нажатия, сгенерированные нашим приложением
         if (e.IsInjected || e.ExtraInfo == KeyboardHookService.ExtraInfoAppMarker)
@@ -130,27 +243,28 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         // Если нажат Escape при открытом меню или зажатом Tab — мгновенная отмена и закрытие
         if (e.VirtualCode == VK_ESCAPE)
         {
-            bool shouldCancel = false;
-            lock (_stateLock)
+            if (e.IsKeyDown)
             {
-                if (_isTabHeld || _isWheelOpen)
+                bool shouldCancel = false;
+                lock (_stateLock)
                 {
-                    shouldCancel = true;
-                    _isTabHeld = false;
-                    _isWheelOpen = false;
-                    StopHoldTimer();
+                    if ((_isTabHeld && !_tabPassedThroughForCurrentHold) || _isWheelOpen)
+                    {
+                        shouldCancel = true;
+                        _isWheelOpen = false;
+                        _holdCancelledForCurrentHold = _isTabHeld;
+                        _holdGeneration++;
+                        _holdTimer?.Dispose();
+                        _holdTimer = null;
+                    }
                 }
-            }
 
-            if (shouldCancel)
-            {
-                Application.Current?.Dispatcher.BeginInvoke(() =>
+                if (shouldCancel)
                 {
-                    _currentWheel?.CloseImmediately();
-                    _currentWheel = null;
-                });
-                e.SuppressKeyPress = true;
-                return true;
+                    RequestCloseWheelImmediately();
+                    e.SuppressKeyPress = true;
+                    return true;
+                }
             }
 
             return false;
@@ -160,25 +274,26 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         // мгновенно отменяем колесо, чтобы оно не застревало при вызове Пуск или смене столов
         if (e.VirtualCode == VK_LWIN || e.VirtualCode == VK_RWIN)
         {
-            bool wasActive = false;
-            lock (_stateLock)
+            if (e.IsKeyDown)
             {
-                if (_isTabHeld || _isWheelOpen)
+                bool wasActive = false;
+                lock (_stateLock)
                 {
-                    wasActive = true;
-                    _isTabHeld = false;
-                    _isWheelOpen = false;
-                    StopHoldTimer();
+                    if ((_isTabHeld && !_tabPassedThroughForCurrentHold) || _isWheelOpen)
+                    {
+                        wasActive = true;
+                        _isWheelOpen = false;
+                        _holdCancelledForCurrentHold = _isTabHeld;
+                        _holdGeneration++;
+                        _holdTimer?.Dispose();
+                        _holdTimer = null;
+                    }
                 }
-            }
 
-            if (wasActive)
-            {
-                Application.Current?.Dispatcher.BeginInvoke(() =>
+                if (wasActive)
                 {
-                    _currentWheel?.CloseImmediately();
-                    _currentWheel = null;
-                });
+                    RequestCloseWheelImmediately();
+                }
             }
 
             return false;
@@ -186,6 +301,34 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
 
         if (e.VirtualCode != VK_TAB)
         {
+            // Быстрый rollover при наборе текста: если нажата другая обычная клавиша,
+            // пока Tab был кратковременно зажат (колесо ещё не открыто), немедленно
+            // пробрасываем Tab в нужном порядке и отменяем ожидание колеса.
+            if (e.IsKeyDown && !VirtualKeyHelper.IsModifierKey(e.VirtualCode))
+            {
+                bool shouldFlushTabDown = false;
+                lock (_stateLock)
+                {
+                    if (_isTabHeld &&
+                        !_isWheelOpen &&
+                        !_wheelOpenedInCurrentHold &&
+                        !_holdCancelledForCurrentHold &&
+                        !_tabPassedThroughForCurrentHold)
+                    {
+                        _tabPassedThroughForCurrentHold = true;
+                        _holdGeneration++;
+                        _holdTimer?.Dispose();
+                        _holdTimer = null;
+                        shouldFlushTabDown = true;
+                    }
+                }
+
+                if (shouldFlushTabDown)
+                {
+                    EmitTabKeyDown();
+                }
+            }
+
             return false;
         }
 
@@ -204,20 +347,21 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
             {
                 if (_isTabHeld || _isWheelOpen)
                 {
-                    wasOpen = true;
+                    wasOpen = _isWheelOpen;
                     _isTabHeld = false;
                     _isWheelOpen = false;
-                    StopHoldTimer();
+                    _wheelOpenedInCurrentHold = false;
+                    _holdCancelledForCurrentHold = false;
+                    _tabPassedThroughForCurrentHold = false;
+                    _holdGeneration++;
+                    _holdTimer?.Dispose();
+                    _holdTimer = null;
                 }
             }
 
             if (wasOpen)
             {
-                Application.Current?.Dispatcher.BeginInvoke(() =>
-                {
-                    _currentWheel?.CloseImmediately();
-                    _currentWheel = null;
-                });
+                RequestCloseWheelImmediately();
             }
 
             return false;
@@ -231,6 +375,9 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
                 {
                     _isTabHeld = true;
                     _isWheelOpen = false;
+                    _wheelOpenedInCurrentHold = false;
+                    _holdCancelledForCurrentHold = false;
+                    _tabPassedThroughForCurrentHold = false;
 
                     int delay = Math.Max(120, Settings.HoldDelayMs);
                     StartHoldTimer(delay);
@@ -239,53 +386,67 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
                     e.SuppressKeyPress = true;
                     return true;
                 }
-                else
+
+                if (_tabPassedThroughForCurrentHold)
                 {
-                    // Повторные сообщения автоповтора клавиши Windows при удержании Tab
-                    if (_isWheelOpen || _isTabHeld)
-                    {
-                        e.SuppressKeyPress = true;
-                        return true;
-                    }
+                    return false;
                 }
+
+                // Повторные сообщения автоповтора клавиши Windows при удержании Tab
+                e.SuppressKeyPress = true;
+                return true;
             }
         }
         else if (e.IsKeyUp)
         {
             bool wasWheelOpen;
             bool wasTabHeld;
+            bool wasWheelOpenedInCurrentHold;
+            bool wasCancelled;
+            bool wasPassedThrough;
 
             lock (_stateLock)
             {
                 wasWheelOpen = _isWheelOpen;
                 wasTabHeld = _isTabHeld;
+                wasWheelOpenedInCurrentHold = _wheelOpenedInCurrentHold;
+                wasCancelled = _holdCancelledForCurrentHold;
+                wasPassedThrough = _tabPassedThroughForCurrentHold;
 
                 _isTabHeld = false;
                 _isWheelOpen = false;
+                _wheelOpenedInCurrentHold = false;
+                _holdCancelledForCurrentHold = false;
+                _tabPassedThroughForCurrentHold = false;
                 StopHoldTimer();
             }
 
             if (wasWheelOpen)
             {
                 // Пользователь отпустил Tab после удержания: активируем выбранную зону и закрываем колесо
-                Application.Current?.Dispatcher.BeginInvoke(() =>
-                {
-                    if (_currentWheel != null)
-                    {
-                        _currentWheel.CloseAndActivateSelected();
-                        _currentWheel = null;
-                    }
-                });
+                RequestCloseWheelAndActivate();
 
                 e.SuppressKeyPress = true;
                 return true;
             }
-            else if (wasTabHeld)
-            {
-                // Был короткий одиночный клик по Tab (< 200 мс)
-                // Отправляем штатный атомарный системный Tab (Down + Up) в активное приложение
-                KeyboardInputSender.SendKeyPress(VK_TAB);
 
+            if (wasPassedThrough)
+            {
+                return false;
+            }
+
+            if (wasTabHeld && !wasWheelOpenedInCurrentHold && !wasCancelled)
+            {
+                // Был короткий одиночный клик по Tab
+                // Отправляем штатный атомарный системный Tab (Down + Up) в активное приложение
+                EmitTabKeyPress();
+
+                e.SuppressKeyPress = true;
+                return true;
+            }
+
+            if (wasTabHeld)
+            {
                 e.SuppressKeyPress = true;
                 return true;
             }
@@ -294,10 +455,15 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
         return false;
     }
 
-    private void OpenWheelWindow()
+    private void OpenWheelWindow(long expectedGeneration)
     {
         try
         {
+            if (!IsGenerationStillValidForWheel(expectedGeneration))
+            {
+                return;
+            }
+
             var fgHwnd = WindowListService.GetForegroundWindow();
             if (fgHwnd != nint.Zero)
             {
@@ -317,6 +483,13 @@ public sealed class RadialSwitcherModule : BaseFeatureModule
                     _isWheelOpen = false;
                 }
             };
+
+            if (!IsGenerationStillValidForWheel(expectedGeneration))
+            {
+                _currentWheel.CloseImmediately();
+                _currentWheel = null;
+                return;
+            }
 
             // Показываем колесо без кражи фокуса (WS_EX_NOACTIVATE / ShowActivated="False")
             _currentWheel.Show();

@@ -89,8 +89,8 @@ public sealed partial class RadialWheelConfigControl : UserControl
         }
 
         int n = vm.Zones.Count;
-        double cx = 135;
-        double cy = 135;
+        double cx = 145;
+        double cy = 145;
         double r1 = 44;
         double r2 = 124;
         double sectorAngle = 360.0 / n;

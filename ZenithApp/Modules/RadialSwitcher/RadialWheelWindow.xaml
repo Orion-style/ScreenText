@@ -9,7 +9,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         ResizeMode="NoResize"
-        Width="360" Height="360"
+        Width="400" Height="400"
         WindowStartupLocation="Manual">
 
     <Window.Resources>
@@ -17,12 +17,12 @@
         <DropShadowEffect x:Key="GlowEffect" BlurRadius="14" ShadowDepth="0" Color="#E5C158" Opacity="0.75" />
     </Window.Resources>
 
-    <Grid x:Name="RootGrid" Width="360" Height="360" Effect="{StaticResource WheelShadow}">
+    <Grid x:Name="RootGrid" Width="400" Height="400" Effect="{StaticResource WheelShadow}">
         <!-- Холст для секторов колеса -->
-        <Canvas x:Name="SectorsCanvas" Width="360" Height="360" />
+        <Canvas x:Name="SectorsCanvas" Width="400" Height="400" />
 
         <!-- Центральный круг (текущее окно / подсказка действия) -->
-        <Grid Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid Width="130" Height="130" HorizontalAlignment="Center" VerticalAlignment="Center">
             <!-- Фоновый диск центра -->
             <Ellipse Fill="#F018181C" Stroke="#50FFFFFF" StrokeThickness="2" />
             
@@ -41,7 +41,7 @@
                            HorizontalAlignment="Center" 
                            TextAlignment="Center" 
                            TextTrimming="CharacterEllipsis" 
-                           MaxWidth="100" />
+                           MaxWidth="112" />
                 <TextBlock Text="Текущее окно" 
                            FontSize="9" 
                            Foreground="#80FFFFFF" 
@@ -61,13 +61,15 @@
                            HorizontalAlignment="Center" 
                            TextAlignment="Center" 
                            TextTrimming="CharacterEllipsis" 
-                           MaxWidth="104" />
+                           MaxWidth="112" />
                 <TextBlock x:Name="TxtCenterHoverSub"
                            Text="Отпустите Tab" 
                            FontSize="9" 
                            FontWeight="SemiBold" 
                            Foreground="#10B981" 
                            HorizontalAlignment="Center" 
+                           TextTrimming="CharacterEllipsis"
+                           MaxWidth="114"
                            Margin="0,1,0,0" />
             </StackPanel>
         </Grid>

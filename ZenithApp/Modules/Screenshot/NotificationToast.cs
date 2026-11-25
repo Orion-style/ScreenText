@@ -134,7 +134,7 @@ public static class NotificationToast
             var textStack = new StackPanel
             {
                 VerticalAlignment = VerticalAlignment.Center,
-                MaxWidth = 300,
+                MaxWidth = 340,
                 Margin = new Thickness(10, 0, 0, 0)
             };
 
@@ -157,7 +157,7 @@ public static class NotificationToast
                 FontSize = 11.5,
                 Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)),
                 TextWrapping = TextWrapping.Wrap,
-                MaxHeight = 60,
+                MaxHeight = 84,
                 TextTrimming = TextTrimming.CharacterEllipsis
             });
 

@@ -29,7 +29,8 @@
                 <StackPanel Grid.Column="1">
                     <TextBlock Text="Переключение окон колесом (стиль Genshin Impact)" 
                                FontWeight="SemiBold" 
-                               FontSize="14" />
+                               FontSize="14" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Зажмите клавишу Tab на ~0.2 сек, чтобы открыть круговое меню. Направление движения мыши подсвечивает сектор с нужным окном. Отпустите Tab — фокус мгновенно переключится на выбранное окно. Быстрый одиночный клик по Tab работает как обычная клавиша Tab." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
@@ -61,7 +62,8 @@
                     <TextBlock Text="Игры и программы с правами администратора (HoYoPlay, античиты)" 
                                FontWeight="SemiBold" 
                                FontSize="13.5" 
-                               Foreground="#F59E0B" />
+                               Foreground="#F59E0B" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Если активно окно с правами администратора (например, HoYoPlay, Диспетчер задач), Windows UIPI блокирует перехват клавиши Tab для обычных приложений. Чтобы колесо открывалось поверх таких окон, перезапустите Zenith Utility от имени администратора в разделе «Общие»." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12" 
@@ -81,10 +83,12 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Количество секторов в колесе" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Выберите количество направлений: 4 (простой крест), 6 или 8 (максимальная вместимость)." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
+                               TextWrapping="Wrap"
                                Margin="0,4,0,0" />
                 </StackPanel>
                 <ComboBox Grid.Column="1" 
@@ -113,10 +117,12 @@
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                         <TextBlock Text="Время зажатия Tab для открытия меню" 
                                    FontWeight="SemiBold" 
-                                   FontSize="14.5" />
+                                   FontSize="14.5" 
+                                   TextWrapping="Wrap" />
                         <TextBlock Text="Если Tab отпущен быстрее этого времени, срабатывает обычный Tab (отступ/навигация)." 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    FontSize="12.5" 
+                                   TextWrapping="Wrap"
                                    Margin="0,4,0,0" />
                     </StackPanel>
                     <TextBlock Grid.Column="1" 
@@ -146,10 +152,12 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Автозапуск закрепленного приложения при выборе" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Если закрепленное за сектором приложение не было запущено, автоматически запустить его." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
+                               TextWrapping="Wrap"
                                Margin="0,4,0,0" />
                 </StackPanel>
                 <ui:ToggleSwitch Grid.Column="1" 
@@ -167,7 +175,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:SymbolIcon Symbol="Pin24" 
                                            FontSize="20" 
@@ -175,7 +183,8 @@
                                            Margin="0,0,8,0" />
                             <TextBlock Text="Закрепление программ" 
                                        FontWeight="Bold" 
-                                       FontSize="15" />
+                                       FontSize="15" 
+                                       TextWrapping="Wrap" />
                         </StackPanel>
                         <TextBlock Text="Кликните по символу «+» в секторе, чтобы открыть список программ и закрепить приложение. Даже если приложение не запущено, при наведении в колесе Tab его можно быстро запустить. Свободные секторы динамически показывают недавние открытые окна." 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
@@ -199,7 +208,7 @@
                         Padding="14" 
                         HorizontalAlignment="Center" 
                         VerticalAlignment="Center">
-                    <local:RadialWheelConfigControl Width="270" Height="270" />
+                    <local:RadialWheelConfigControl Width="290" Height="290" />
                 </Border>
             </StackPanel>
         </ui:Card>

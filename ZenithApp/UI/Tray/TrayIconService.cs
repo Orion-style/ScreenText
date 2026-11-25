@@ -15,6 +15,7 @@ public sealed class TrayIconService : IDisposable
     private readonly Action _exitAction;
     private readonly IClipboardOcrService _clipboardOcrService;
     private readonly IOcrHistoryService _historyService;
+    private readonly Action? _resetSavedAreaAction;
 
     private NotifyIcon? _notifyIcon;
     private MenuItem? _historySubMenu;
@@ -25,13 +26,15 @@ public sealed class TrayIconService : IDisposable
         Action openSettingsAction,
         Action exitAction,
         IClipboardOcrService clipboardOcrService,
-        IOcrHistoryService historyService)
+        IOcrHistoryService historyService,
+        Action? resetSavedAreaAction = null)
     {
         _logger = logger;
         _openSettingsAction = openSettingsAction;
         _exitAction = exitAction;
         _clipboardOcrService = clipboardOcrService;
         _historyService = historyService;
+        _resetSavedAreaAction = resetSavedAreaAction;
     }
 
     public void Initialize()
@@ -91,6 +94,17 @@ public sealed class TrayIconService : IDisposable
             contextMenu.Items.Add(ocrClipboardItem);
             contextMenu.Items.Add(qrClipboardItem);
             contextMenu.Items.Add(_historySubMenu);
+
+            if (_resetSavedAreaAction != null)
+            {
+                var resetAreaItem = new MenuItem
+                {
+                    Header = "Сбросить область скриншота"
+                };
+                resetAreaItem.Click += (_, _) => _resetSavedAreaAction.Invoke();
+                contextMenu.Items.Add(resetAreaItem);
+            }
+
             contextMenu.Items.Add(new Separator());
             contextMenu.Items.Add(openSettingsItem);
             contextMenu.Items.Add(new Separator());

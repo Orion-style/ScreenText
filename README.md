@@ -68,6 +68,8 @@ Capture any screen region instantly and recognize text or scan QR codes in real 
 - **Default Shortcuts**:
   - `Ctrl + Shift + S` — Capture selected area directly to clipboard.
   - `Ctrl + Shift + T` — Capture area and perform instant optical character recognition (OCR).
+- **Two-Step Capture Mode**: First invocation lets you select the screen region, and the second invocation instantly captures and saves that same region without re-selecting. Easily reset via tray, settings, or holding `Alt`.
+- **ShareX-style Pixel Grid & Magnifier**: When selecting a region, a magnified pixel grid with center crosshair floats next to the cursor for pixel-perfect positioning. Displays exact cursor coordinates (X, Y), active selection dimensions, color swatch, and HEX/RGB codes. Zoom level can be adjusted on the fly with the mouse wheel or `+`/`-` keys, `C` copies current color, and `M` toggles the magnifier.
 - **Native Windows OCR**: High-accuracy offline recognition engine supporting English, Russian, and any language pack installed on your Windows system.
 - **Layout Reconstruction**: Automatically preserves paragraphs, column structure, and indentation.
 - **QR & Barcode Scanner**: Detects and decodes QR codes and barcodes inside captured regions.
@@ -80,7 +82,7 @@ Enjoy fast, macOS-style file previews in Windows Explorer and Desktop with zero 
 
 - **How to Use**: Select any file in Windows Explorer or Desktop and press <kbd>Space</kbd>. Press <kbd>Space</kbd> or <kbd>Esc</kbd> again to dismiss.
 - **Supported Formats**:
-  - **Images**: `.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`, `.ico`, `.tiff`.
+  - **Images**: `.png`, `.jpg`, `.jpeg`, `.jfif`, `.webp`, `.bmp`, `.gif`, `.ico`, `.tiff`, `.heic`, `.avif`, `.svg`.
   - **Text & Source Code**: `.txt`, `.cs`, `.js`, `.ts`, `.json`, `.xml`, `.html`, `.css`, `.py`, `.md`, `.yaml`, `.log`, `.sql`, etc. with syntax highlighting and line numbers.
   - **PDF Documents**: Fast native multi-page PDF rendering without heavy third-party readers.
   - **Media**: Audio and video (`.mp4`, `.mkv`, `.avi`, `.mp3`, `.wav`) with an integrated player.

@@ -17,7 +17,9 @@ public static class ContentDetector
 {
     private static readonly HashSet<string> ImageExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".ico", ".tiff", ".tif"
+        ".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".gif", ".bmp", ".dib", ".webp",
+        ".ico", ".icon", ".tiff", ".tif", ".heic", ".heif", ".avif", ".jxl",
+        ".svg", ".svgz", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".raw", ".psd"
     };
 
     private static readonly HashSet<string> PdfExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -46,7 +48,7 @@ public static class ContentDetector
         ".cs", ".py", ".js", ".ts", ".html", ".htm", ".css", ".scss", ".sass", ".less",
         ".cpp", ".c", ".h", ".hpp", ".java", ".kt", ".kts", ".rs", ".go", ".php",
         ".sql", ".sh", ".bash", ".ps1", ".psm1", ".bat", ".cmd", ".config", ".xaml",
-        ".proto", ".svg", ".properties", ".gradle", ".cmake", ".gitignore", ".env"
+        ".proto", ".properties", ".gradle", ".cmake", ".gitignore", ".env"
     };
 
     public static QuickLookContentType DetectContentType(string filePath, QuickLookSettings settings)
@@ -88,7 +90,7 @@ public static class ContentDetector
             return QuickLookContentType.Archive;
         }
 
-        if (settings.EnableText && TextExtensions.Contains(ext))
+        if (settings.EnableText && (TextExtensions.Contains(ext) || string.Equals(ext, ".svg", StringComparison.OrdinalIgnoreCase) || string.Equals(ext, ".svgz", StringComparison.OrdinalIgnoreCase)))
         {
             return QuickLookContentType.Text;
         }

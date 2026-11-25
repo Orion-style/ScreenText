@@ -71,15 +71,20 @@ public partial class App : Application
         var settingsService = _serviceProvider.GetRequiredService<ISettingsService>();
         SettingsViewModel.ApplyTheme(settingsService.Current.Theme);
 
+        // Отслеживание динамического изменения темы в Windows
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
+
         // 4. Инициализация трея
         var clipboardOcrService = _serviceProvider.GetRequiredService<IClipboardOcrService>();
         var historyService = _serviceProvider.GetRequiredService<IOcrHistoryService>();
+        var screenshotModule = _serviceProvider.GetRequiredService<ScreenshotModule>();
         _trayIconService = new TrayIconService(
             logger,
             openSettingsAction: () => Dispatcher.Invoke(OpenSettingsWindow),
             exitAction: () => Dispatcher.Invoke(ExitApplication),
             clipboardOcrService,
-            historyService
+            historyService,
+            resetSavedAreaAction: () => screenshotModule.ResetSavedArea(notifyUser: true)
         );
         _trayIconService.Initialize();
 
@@ -178,8 +183,31 @@ public partial class App : Application
         }
     }
 
+    private void OnUserPreferenceChanged(object sender, Microsoft.Win32.UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category is Microsoft.Win32.UserPreferenceCategory.General or Microsoft.Win32.UserPreferenceCategory.Color)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                var settingsService = _serviceProvider?.GetService<ISettingsService>();
+                if (settingsService?.Current.Theme == ZenithApp.Core.Settings.AppThemeMode.System)
+                {
+                    SettingsViewModel.ApplyTheme(ZenithApp.Core.Settings.AppThemeMode.System);
+                }
+            });
+        }
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+        base.OnExit(e);
+    }
+
     public void ExitApplication()
     {
+        Microsoft.Win32.SystemEvents.UserPreferenceChanged -= OnUserPreferenceChanged;
+
         var logger = _serviceProvider?.GetService<IAppLogger>();
         logger?.LogInfo("Завершение работы приложения по запросу пользователя.");
 

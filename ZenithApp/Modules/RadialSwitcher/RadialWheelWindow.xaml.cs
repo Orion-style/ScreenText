@@ -200,10 +200,10 @@ public sealed partial class RadialWheelWindow : Window
         _sectorElements.Clear();
 
         int n = _slots.Count;
-        double cx = 180;
-        double cy = 180;
-        double r1 = 65;
-        double r2 = 165;
+        double cx = 200;
+        double cy = 200;
+        double r1 = 70;
+        double r2 = 172;
         double sectorAngle = 360.0 / n;
         double gap = 1.8; // Угловой зазор между секторами в градусах
 
@@ -380,7 +380,7 @@ public sealed partial class RadialWheelWindow : Window
             double dist = Math.Sqrt(dx * dx + dy * dy);
 
             // Мертвая зона в центре
-            if (dist < 52)
+            if (dist < 56)
             {
                 HighlightZone(-1);
             }

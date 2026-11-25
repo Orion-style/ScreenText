@@ -14,6 +14,11 @@ public class QuickLookModuleTests
 
         Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("photo.png", settings));
         Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("test.jpg", settings));
+        Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("image.webp", settings));
+        Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("photo.jfif", settings));
+        Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("camera.heic", settings));
+        Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("graphic.avif", settings));
+        Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType("logo.svg", settings));
         Assert.Equal(QuickLookContentType.Pdf, ContentDetector.DetectContentType("doc.pdf", settings));
         Assert.Equal(QuickLookContentType.Video, ContentDetector.DetectContentType("movie.mp4", settings));
         Assert.Equal(QuickLookContentType.Audio, ContentDetector.DetectContentType("track.mp3", settings));
@@ -33,9 +38,19 @@ public class QuickLookModuleTests
         };
 
         Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("photo.png", settings));
+        Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("image.webp", settings));
+        Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("logo.svg", settings));
         Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("file.txt", settings));
         Assert.Equal(QuickLookContentType.Pdf, ContentDetector.DetectContentType("doc.pdf", settings));
         Assert.Equal(QuickLookContentType.GenericCard, ContentDetector.DetectContentType("archive.zip", settings));
+
+        // When Images are disabled but Text is enabled, SVG falls back to Text preview
+        var textOnlySettings = new QuickLookSettings
+        {
+            EnableImages = false,
+            EnableText = true
+        };
+        Assert.Equal(QuickLookContentType.Text, ContentDetector.DetectContentType("logo.svg", textOnlySettings));
     }
 
     [Fact]

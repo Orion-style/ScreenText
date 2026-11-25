@@ -39,7 +39,8 @@
                     <TextBlock Text="Требуется включить модуль «Скриншот области и OCR»" 
                                FontWeight="SemiBold" 
                                Foreground="#FDE68A" 
-                               FontSize="14" />
+                               FontSize="14" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Модуль «Умные подсказки» работает поверх распознавания текста и QR-кодов со снимков экрана. Включите модуль «Скриншот области и OCR» в списке функций, чтобы умные действия активировались при вызове горячей клавиши OCR." 
                                Foreground="#FCD34D" 
                                FontSize="12.5" 
@@ -59,7 +60,8 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Открывать ссылки автоматически при выделении" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Если в распознанном тексте найдена ровно одна ссылка (http/https), она немедленно откроется в браузере по умолчанию." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
@@ -82,7 +84,8 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Открывать ссылки из QR-кодов автоматически" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Внимание: вредоносные QR-коды часто ведут на поддельные сайты. Рекомендуется держать выключенным для предварительного просмотра ссылки." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
@@ -105,7 +108,8 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Показывать подсказку для обычного текста" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Отображать всплывающее меню с кнопками «Копировать», «Найти в Google» и «Перевести» для любого текста." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
@@ -128,7 +132,8 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Язык перевода по умолчанию" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Код языка для Google Translate (ru, en, de, fr, es, zh-CN и т.д.)." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 
@@ -152,7 +157,8 @@
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
                     <TextBlock Text="Время автозакрытия подсказки (сек)" 
                                FontWeight="SemiBold" 
-                               FontSize="14.5" />
+                               FontSize="14.5" 
+                               TextWrapping="Wrap" />
                     <TextBlock Text="Подсказка не закрывается, пока курсор мыши находится над ней." 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                FontSize="12.5" 

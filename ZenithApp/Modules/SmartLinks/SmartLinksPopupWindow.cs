@@ -408,6 +408,10 @@ public sealed class SmartLinksPopupWindow : Window
                 dipY = workArea.Bottom - popH - 10;
             }
         }
+        if (dipY < workArea.Top)
+        {
+            dipY = workArea.Top + 10;
+        }
 
         Left = dipX;
         Top = dipY;

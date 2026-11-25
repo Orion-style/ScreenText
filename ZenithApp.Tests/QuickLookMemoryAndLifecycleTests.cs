@@ -66,9 +66,15 @@ public class QuickLookMemoryAndLifecycleTests
         Assert.NotNull(textResult);
         Assert.Contains("Sample content", textResult.Content);
 
-        // 5. Test Content Detection
+        // 5. Test Content Detection & Image Loader
         Assert.Equal(QuickLookContentType.Text, ContentDetector.DetectContentType(txtFile, module.Settings));
         Assert.Equal(QuickLookContentType.Image, ContentDetector.DetectContentType(imgFile, module.Settings));
+
+        var loadedImage = QuickLookImageLoader.LoadImage(imgFile);
+        Assert.NotNull(loadedImage);
+        Assert.Equal(200, loadedImage.PixelWidth);
+        Assert.Equal(200, loadedImage.PixelHeight);
+        Assert.True(loadedImage.IsFrozen);
 
         // 6. Disable module & verify complete cleanup
         await module.DisableAsync();

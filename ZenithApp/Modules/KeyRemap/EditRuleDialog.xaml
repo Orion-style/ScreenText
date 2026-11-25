@@ -7,33 +7,42 @@
         xmlns:local="clr-namespace:ZenithApp.Modules.KeyRemap"
         mc:Ignorable="d"
         Title="{Binding Title}"
-        Height="580" Width="480"
-        MinHeight="500" MinWidth="420"
+        Height="660" Width="580"
+        MinHeight="520" MinWidth="500"
         WindowStartupLocation="CenterOwner"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
         ShowInTaskbar="False"
-        ResizeMode="NoResize">
+        ResizeMode="CanResizeWithGrip">
 
-    <Grid Margin="20,10,20,16">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="{Binding Title}" ShowMaximize="False" ShowMinimize="False" Margin="-20,-10,-20,10" />
+        <!-- Заголовок окна -->
+        <ui:TitleBar Grid.Row="0" 
+                     Title="{Binding Title}" 
+                     ShowMaximize="False" 
+                     ShowMinimize="False" />
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel Margin="0,0,0,10">
+        <!-- Основное содержимое -->
+        <ScrollViewer Grid.Row="1" 
+                      Margin="20,4,20,0"
+                      Padding="0,0,14,10"
+                      HorizontalScrollBarVisibility="Disabled" 
+                      VerticalScrollBarVisibility="Auto">
+            <StackPanel>
                 <!-- Описание / Имя правила -->
-                <TextBlock Text="Название правила (необязательно)" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock Text="Название правила (необязательно)" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap" />
                 <ui:TextBox Text="{Binding RuleName, UpdateSourceTrigger=PropertyChanged}" 
                             PlaceholderText="Например: CapsLock в Backspace или Ctrl+K в M" 
                             Margin="0,0,0,14" />
 
                 <!-- Исходная клавиша / Сочетание -->
-                <TextBlock Text="Исходная клавиша или комбинация" FontWeight="SemiBold" Margin="0,0,0,4" />
+                <TextBlock Text="Исходная клавиша или комбинация" FontWeight="SemiBold" Margin="0,0,0,4" TextWrapping="Wrap" />
                 <TextBlock Text="Нажмите на поле и нажмите клавишу/сочетание на клавиатуре, либо настройте модификаторы:" 
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6" TextWrapping="Wrap" />
                 <TextBox x:Name="TxtTriggerKey"
@@ -43,19 +52,27 @@
                          Focusable="True"
                          TextAlignment="Center"
                          FontWeight="Bold"
+                         Height="38"
+                         VerticalContentAlignment="Center"
                          PreviewKeyDown="OnTriggerKeyDown"
                          Margin="0,0,0,8" />
 
-                <!-- Чекбоксы модификаторов для исходной комбинации -->
-                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                    <CheckBox Content="Ctrl" IsChecked="{Binding TriggerCtrl, Mode=TwoWay}" Margin="0,0,12,0" />
-                    <CheckBox Content="Alt" IsChecked="{Binding TriggerAlt, Mode=TwoWay}" Margin="0,0,12,0" />
-                    <CheckBox Content="Shift" IsChecked="{Binding TriggerShift, Mode=TwoWay}" Margin="0,0,12,0" />
-                    <CheckBox Content="Win" IsChecked="{Binding TriggerWin, Mode=TwoWay}" />
-                </StackPanel>
+                <!-- Чекбоксы модификаторов для исходной комбинации (равномерное распределение) -->
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Grid.Column="0" Content="Ctrl" MinWidth="0" IsChecked="{Binding TriggerCtrl, Mode=TwoWay}" HorizontalAlignment="Left" />
+                    <CheckBox Grid.Column="1" Content="Alt" MinWidth="0" IsChecked="{Binding TriggerAlt, Mode=TwoWay}" HorizontalAlignment="Left" />
+                    <CheckBox Grid.Column="2" Content="Shift" MinWidth="0" IsChecked="{Binding TriggerShift, Mode=TwoWay}" HorizontalAlignment="Left" />
+                    <CheckBox Grid.Column="3" Content="Win" MinWidth="0" IsChecked="{Binding TriggerWin, Mode=TwoWay}" HorizontalAlignment="Left" />
+                </Grid>
 
                 <!-- Тип действия -->
-                <TextBlock Text="Действие" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock Text="Действие" FontWeight="SemiBold" Margin="0,0,0,6" TextWrapping="Wrap" />
                 <ComboBox SelectedIndex="{Binding ActionTypeIndex, Mode=TwoWay}" Margin="0,0,0,14" HorizontalAlignment="Stretch">
                     <ComboBoxItem Content="Заменить на другую клавишу" />
                     <ComboBoxItem Content="Заменить на сочетание клавиш" />
@@ -65,7 +82,9 @@
 
                 <!-- Целевая клавиша или сочетание (если не отключить) -->
                 <StackPanel Visibility="{Binding IsTargetVisible, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,0,0,14">
-                    <TextBlock Text="Целевая клавиша или комбинация" FontWeight="SemiBold" Margin="0,0,0,6" />
+                    <TextBlock Text="Целевая клавиша или комбинация" FontWeight="SemiBold" Margin="0,0,0,4" TextWrapping="Wrap" />
+                    <TextBlock Text="Нажмите на поле и нажмите нужную клавишу на клавиатуре:" 
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,6" TextWrapping="Wrap" />
                     <TextBox x:Name="TxtTargetKey"
                              Text="{Binding TargetDisplay, Mode=OneWay}"
                              IsReadOnly="True"
@@ -73,38 +92,52 @@
                              Focusable="True"
                              TextAlignment="Center"
                              FontWeight="Bold"
+                             Height="38"
+                             VerticalContentAlignment="Center"
                              PreviewKeyDown="OnTargetKeyDown"
                              Margin="0,0,0,8" />
 
                     <!-- Чекбоксы модификаторов для комбинации -->
-                    <StackPanel Orientation="Horizontal" Visibility="{Binding IsComboModifiersVisible, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,4,0,0">
-                        <CheckBox Content="Ctrl" IsChecked="{Binding TargetCtrl, Mode=TwoWay}" Margin="0,0,12,0" />
-                        <CheckBox Content="Alt" IsChecked="{Binding TargetAlt, Mode=TwoWay}" Margin="0,0,12,0" />
-                        <CheckBox Content="Shift" IsChecked="{Binding TargetShift, Mode=TwoWay}" Margin="0,0,12,0" />
-                        <CheckBox Content="Win" IsChecked="{Binding TargetWin, Mode=TwoWay}" />
-                    </StackPanel>
+                    <Grid Visibility="{Binding IsComboModifiersVisible, Converter={StaticResource BooleanToVisibilityConverter}}" Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <CheckBox Grid.Column="0" Content="Ctrl" MinWidth="0" IsChecked="{Binding TargetCtrl, Mode=TwoWay}" HorizontalAlignment="Left" />
+                        <CheckBox Grid.Column="1" Content="Alt" MinWidth="0" IsChecked="{Binding TargetAlt, Mode=TwoWay}" HorizontalAlignment="Left" />
+                        <CheckBox Grid.Column="2" Content="Shift" MinWidth="0" IsChecked="{Binding TargetShift, Mode=TwoWay}" HorizontalAlignment="Left" />
+                        <CheckBox Grid.Column="3" Content="Win" MinWidth="0" IsChecked="{Binding TargetWin, Mode=TwoWay}" HorizontalAlignment="Left" />
+                    </Grid>
                 </StackPanel>
 
-                <!-- Фильтр приложений (задел на будущее) -->
-                <ui:Card Padding="12" Margin="0,0,0,14">
+                <!-- Фильтр приложений -->
+                <ui:Card Padding="14,12" Margin="0,0,0,14">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Фильтр по приложениям" FontWeight="SemiBold" />
-                                <TextBlock Text="Применять правило только в определенных программах" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" />
+                            <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
+                                <TextBlock Text="Фильтр по приложениям" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Text="Применять правило только в определенных программах" 
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
+                                           FontSize="12" 
+                                           TextWrapping="Wrap" 
+                                           Margin="0,2,0,0" />
                             </StackPanel>
-                            <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding EnableAppFilter, Mode=TwoWay}" />
+                            <ui:ToggleSwitch Grid.Column="1" 
+                                             IsChecked="{Binding EnableAppFilter, Mode=TwoWay}" 
+                                             VerticalAlignment="Center" />
                         </Grid>
                         
-                        <StackPanel Margin="0,10,0,0" Visibility="{Binding EnableAppFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,6">
-                                <RadioButton Content="Только в этих:" IsChecked="{Binding AppFilterIsWhitelist, Mode=TwoWay}" Margin="0,0,12,0" />
-                                <RadioButton Content="Везде, кроме этих:" />
-                            </StackPanel>
+                        <StackPanel Margin="0,12,0,0" Visibility="{Binding EnableAppFilter, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <WrapPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <RadioButton Content="Только в этих:" MinWidth="0" IsChecked="{Binding AppFilterIsWhitelist, Mode=TwoWay}" Margin="0,0,16,4" />
+                                <RadioButton Content="Везде, кроме этих:" MinWidth="0" Margin="0,0,0,4" />
+                            </WrapPanel>
                             <ui:TextBox Text="{Binding FilterProcessesText, UpdateSourceTrigger=PropertyChanged}" 
                                         PlaceholderText="notepad, chrome, telegram" />
                         </StackPanel>
@@ -122,9 +155,11 @@
         </ScrollViewer>
 
         <!-- Кнопки действий -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
-            <ui:Button Content="Отмена" Width="100" Margin="0,0,10,0" Click="OnCancelClick" />
-            <ui:Button Content="Сохранить" Appearance="Primary" Width="120" Click="OnSaveClick" />
-        </StackPanel>
+        <Grid Grid.Row="2" Margin="20,10,20,16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button Content="Отмена" MinWidth="105" Padding="16,7" Margin="0,0,10,0" Click="OnCancelClick" />
+                <ui:Button Content="Сохранить" Appearance="Primary" MinWidth="125" Padding="16,7" Click="OnSaveClick" />
+            </StackPanel>
+        </Grid>
     </Grid>
 </ui:FluentWindow>

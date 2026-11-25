@@ -68,8 +68,8 @@ public partial class QuickLookWindow : Window
         MaxHeight = maxH;
 
         // Default comfortable window size
-        double targetW = Math.Min(900, maxW);
-        double targetH = Math.Min(650, maxH);
+        double targetW = Math.Min(940, maxW);
+        double targetH = Math.Min(680, maxH);
 
         Width = targetW;
         Height = targetH;
@@ -136,31 +136,34 @@ public partial class QuickLookWindow : Window
         }
     }
 
-    private Task LoadImagePreviewAsync()
+    private async Task LoadImagePreviewAsync()
     {
         try
         {
-            var bitmap = new BitmapImage();
-            using (var stream = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+            var monitorArea = WindowPlacementHelper.GetCurrentTargetMonitorWorkArea();
+            int maxDim = (int)Math.Max(monitorArea.Width, monitorArea.Height);
+
+            var bitmap = await Task.Run(() => QuickLookImageLoader.LoadImage(_filePath, maxDim));
+            if (bitmap != null)
             {
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.StreamSource = stream;
-                bitmap.EndInit();
+                ImgPreview.Source = bitmap;
+                ImageViewer.Visibility = Visibility.Visible;
+
+                TxtHeaderTitle.Text = $"{Title} ({bitmap.PixelWidth} × {bitmap.PixelHeight})";
+
+                // Fit window size to image aspect ratio nicely
+                AdjustWindowDimensions(bitmap.PixelWidth, bitmap.PixelHeight);
+                return;
             }
-            bitmap.Freeze();
 
-            ImgPreview.Source = bitmap;
-            ImageViewer.Visibility = Visibility.Visible;
-
-            // Fit window size to image aspect ratio nicely
-            AdjustWindowDimensions(bitmap.PixelWidth, bitmap.PixelHeight);
-        }
-        catch
-        {
+            _logger.LogWarning($"[QuickLook] Не удалось декодировать изображение '{_filePath}'. Отображение карточки файла.");
             ShowGenericCard(isFailure: true);
         }
-        return Task.CompletedTask;
+        catch (Exception ex)
+        {
+            _logger.LogError($"[QuickLook] Ошибка предпросмотра изображения '{_filePath}': {ex.Message}", ex);
+            ShowGenericCard(isFailure: true);
+        }
     }
 
     private async Task LoadPdfPreviewAsync()
@@ -328,8 +331,8 @@ public partial class QuickLookWindow : Window
         double targetH = contentHeight + extraHeight;
 
         double scale = Math.Min(1.0, Math.Min(maxW / targetW, maxH / targetH));
-        targetW = Math.Max(500, targetW * scale);
-        targetH = Math.Max(350, targetH * scale);
+        targetW = Math.Clamp(targetW * scale, Math.Min(520, maxW), maxW);
+        targetH = Math.Clamp(targetH * scale, Math.Min(380, maxH), maxH);
 
         Width = targetW;
         Height = targetH;

@@ -7,6 +7,8 @@
         Background="Transparent"
         ShowInTaskbar="False"
         Topmost="True"
+        MinWidth="480"
+        MinHeight="340"
         ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="Manual">
 
@@ -112,7 +114,7 @@
                     <!-- Подложка для аудиофайлов (обложка/значок + имя) -->
                     <StackPanel x:Name="AudioInfoPanel" Grid.Row="0" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Image x:Name="ImgAudioCover" Width="120" Height="120" Margin="0,0,0,16" HorizontalAlignment="Center" />
-                        <TextBlock x:Name="TxtAudioTitle" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock x:Name="TxtAudioTitle" FontSize="16" FontWeight="SemiBold" TextAlignment="Center" Foreground="{DynamicResource TextFillColorPrimaryBrush}" TextWrapping="Wrap" MaxWidth="440" />
                     </StackPanel>
 
                     <!-- Панель управления плеером -->
@@ -157,10 +159,14 @@
                                  TextWrapping="NoWrap" />
                     </ScrollViewer>
 
-                    <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,4">
+                    <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,6">
                         <Grid>
-                            <TextBlock x:Name="TxtTextFooterEncoding" FontSize="12" HorizontalAlignment="Left" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <TextBlock x:Name="TxtTextFooterTruncated" FontSize="12" HorizontalAlignment="Right" Foreground="#FFAA33" FontWeight="SemiBold" Visibility="Collapsed" Text="Файл усечён до установленного лимита" />
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="TxtTextFooterEncoding" Grid.Column="0" FontSize="12" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <TextBlock x:Name="TxtTextFooterTruncated" Grid.Column="1" FontSize="12" HorizontalAlignment="Right" Foreground="#FFAA33" FontWeight="SemiBold" Visibility="Collapsed" Text="Файл усечён до установленного лимита" />
                         </Grid>
                     </Border>
                 </Grid>
@@ -185,20 +191,24 @@
 
                     <Border Grid.Row="1" Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="0,1,0,0" Padding="12,6">
                         <Grid>
-                            <TextBlock x:Name="TxtArchiveFooterCount" FontSize="12" HorizontalAlignment="Left" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                            <TextBlock x:Name="TxtArchiveFooterRatio" FontSize="12" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="TxtArchiveFooterCount" Grid.Column="0" FontSize="12" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <TextBlock x:Name="TxtArchiveFooterRatio" Grid.Column="1" FontSize="12" HorizontalAlignment="Right" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </Grid>
                     </Border>
                 </Grid>
 
                 <!-- 6. Карточка файла (Generic Card / Не удалось открыть) -->
                 <Grid x:Name="GenericCardViewer" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="32">
-                    <StackPanel HorizontalAlignment="Center">
+                    <StackPanel HorizontalAlignment="Center" MaxWidth="520">
                         <Image x:Name="ImgGenericIcon" Width="96" Height="96" Margin="0,0,0,16" HorizontalAlignment="Center" />
-                        <TextBlock x:Name="TxtGenericStatus" Visibility="Collapsed" Text="Не удалось открыть предпросмотр" Foreground="#FF5555" FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center" Margin="0,0,0,8" />
+                        <TextBlock x:Name="TxtGenericStatus" Visibility="Collapsed" Text="Не удалось открыть предпросмотр" Foreground="#FF5555" FontWeight="SemiBold" FontSize="14" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,8" />
                         <TextBlock x:Name="TxtGenericFileName" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorPrimaryBrush}" Margin="0,0,0,6" />
-                        <TextBlock x:Name="TxtGenericDetails" FontSize="13" HorizontalAlignment="Center" TextAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,20" />
-                        <ui:Button Content="Открыть в программе по умолчанию" Icon="{ui:SymbolIcon Open20}" HorizontalAlignment="Center" Padding="16,8" Click="OnOpenDefaultClicked" />
+                        <TextBlock x:Name="TxtGenericDetails" FontSize="13" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,20" />
+                        <ui:Button Content="Открыть в программе по умолчанию" Icon="{ui:SymbolIcon Open20}" HorizontalAlignment="Center" Padding="18,8" Click="OnOpenDefaultClicked" />
                     </StackPanel>
                 </Grid>
             </Grid>

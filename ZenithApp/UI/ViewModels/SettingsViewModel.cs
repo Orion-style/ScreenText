@@ -233,10 +233,46 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         {
             AppThemeMode.Light => ApplicationTheme.Light,
             AppThemeMode.Dark => ApplicationTheme.Dark,
-            _ => ApplicationThemeManager.GetSystemTheme() == SystemTheme.Dark ? ApplicationTheme.Dark : ApplicationTheme.Light
+            _ => IsSystemDarkTheme() ? ApplicationTheme.Dark : ApplicationTheme.Light
         };
 
         ApplicationThemeManager.Apply(targetTheme);
+    }
+
+    public static bool IsSystemDarkTheme()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            if (key != null)
+            {
+                var appsUseLightTheme = key.GetValue("AppsUseLightTheme");
+                if (appsUseLightTheme is int appsVal)
+                {
+                    return appsVal == 0;
+                }
+
+                var systemUsesLightTheme = key.GetValue("SystemUsesLightTheme");
+                if (systemUsesLightTheme is int sysVal)
+                {
+                    return sysVal == 0;
+                }
+            }
+        }
+        catch
+        {
+            // Fallback to WPF-UI detection if registry access fails
+        }
+
+        try
+        {
+            var sysTheme = ApplicationThemeManager.GetSystemTheme();
+            return sysTheme is SystemTheme.Dark or SystemTheme.CapturedMotion or SystemTheme.Glow or SystemTheme.HCBlack or SystemTheme.HC1 or SystemTheme.HC2;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void OpenSettingsFolder()

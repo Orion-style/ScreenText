@@ -15,7 +15,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Text="Горячая клавиша закрепления" FontWeight="SemiBold" FontSize="15" />
+                    <TextBlock Text="Горячая клавиша закрепления" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
                     <TextBlock Text="Нажмите клавиши на активном окне, чтобы закрепить его поверх всех окон (или открепить)" 
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                Margin="0,4,0,0" TextWrapping="Wrap" />
@@ -35,7 +35,7 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <TextBlock Text="Цветная рамка вокруг закреплённого окна" FontWeight="SemiBold" FontSize="15" />
+                        <TextBlock Text="Цветная рамка вокруг закреплённого окна" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
                         <TextBlock Text="Отображает контрастный контур, чтобы визуально отличать закреплённое окно" 
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                                    Margin="0,4,0,0" TextWrapping="Wrap" />
@@ -51,10 +51,10 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Толщина рамки" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="0" Text="Толщина рамки" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Slider Minimum="1" Maximum="10" Value="{Binding BorderThickness, Mode=TwoWay}" Width="120" Margin="0,0,10,0" TickFrequency="1" IsSnapToTickEnabled="True" />
-                        <TextBlock Text="{Binding BorderThicknessText}" Width="45" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding BorderThicknessText}" MinWidth="52" TextAlignment="Right" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </StackPanel>
                 </Grid>
 
@@ -64,7 +64,7 @@
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock Text="Звуковое подтверждение при закреплении" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="0" Text="Звуковое подтверждение при закреплении" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0" />
                     <ui:ToggleSwitch Grid.Column="1" IsChecked="{Binding PlayNotificationSound, Mode=TwoWay}" VerticalAlignment="Center" />
                 </Grid>
             </StackPanel>
@@ -73,7 +73,7 @@
         <!-- Исключения -->
         <ui:Card Padding="16" Margin="0,0,0,12">
             <StackPanel>
-                <TextBlock Text="Исключённые приложения" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" />
+                <TextBlock Text="Исключённые приложения" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,4" TextWrapping="Wrap" />
                 <TextBlock Text="Окна этих программ не будут закрепляться поверх остальных" 
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" 
                            Margin="0,0,0,12" TextWrapping="Wrap" />
@@ -101,8 +101,12 @@
                                     Padding="10,6" 
                                     Margin="0,2,0,2">
                                 <Grid>
-                                    <TextBlock Text="{Binding}" VerticalAlignment="Center" FontWeight="Medium" />
-                                    <ui:Button HorizontalAlignment="Right" 
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center" FontWeight="Medium" TextTrimming="CharacterEllipsis" Margin="0,0,12,0" />
+                                    <ui:Button Grid.Column="1"
                                                Padding="6,2" 
                                                Icon="{ui:SymbolIcon Dismiss16}" 
                                                ToolTip="Удалить из исключений"

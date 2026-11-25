@@ -20,7 +20,22 @@ public static class KeyboardInputSender
     private struct MOUSEKEYBDHARDWAREINPUT
     {
         [FieldOffset(0)]
+        public MOUSEINPUT mi;
+        [FieldOffset(0)]
         public KEYBDINPUT ki;
+        [FieldOffset(0)]
+        public HARDWAREINPUT hi;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MOUSEINPUT
+    {
+        public int dx;
+        public int dy;
+        public uint mouseData;
+        public uint dwFlags;
+        public uint time;
+        public nuint dwExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -32,6 +47,16 @@ public static class KeyboardInputSender
         public uint time;
         public nuint dwExtraInfo;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HARDWAREINPUT
+    {
+        public uint uMsg;
+        public ushort wParamL;
+        public ushort wParamH;
+    }
+
+    internal static int InputStructSize => Marshal.SizeOf<INPUT>();
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint nInputs, [In] INPUT[] pInputs, int cbSize);
@@ -169,7 +194,12 @@ public static class KeyboardInputSender
 
     public static void SendKeyPress(int virtualKey, bool isExtended = false)
     {
-        if (virtualKey <= 0) return;
+        SendKeyPressCount(virtualKey, isExtended);
+    }
+
+    internal static uint SendKeyPressCount(int virtualKey, bool isExtended = false)
+    {
+        if (virtualKey <= 0) return 0;
 
         var scanCode = (ushort)MapVirtualKey((uint)virtualKey, 0);
         uint baseFlags = (isExtended || IsExtendedVirtualKey(virtualKey)) ? KEYEVENTF_EXTENDEDKEY : 0;
@@ -207,7 +237,7 @@ public static class KeyboardInputSender
             }
         };
 
-        SendInput(2, inputs, Marshal.SizeOf<INPUT>());
+        return SendInput(2, inputs, Marshal.SizeOf<INPUT>());
     }
 
     public static bool IsExtendedVirtualKey(int vk)
