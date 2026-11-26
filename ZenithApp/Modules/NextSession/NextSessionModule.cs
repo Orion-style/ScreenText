@@ -372,6 +372,15 @@ public sealed class NextSessionModule : BaseFeatureModule
         return _launcherService.RequestSystemRestart();
     }
 
+    public bool SaveAndShutdown(
+        string message,
+        IReadOnlyList<NextSessionProgramEntry> selectedPrograms,
+        IReadOnlyList<NextSessionProgramEntry>? customPrograms = null)
+    {
+        SavePlan(message, selectedPrograms, customPrograms);
+        return _launcherService.RequestSystemShutdown();
+    }
+
     public void OpenPlannerWindow()
     {
         if (Application.Current == null) return;

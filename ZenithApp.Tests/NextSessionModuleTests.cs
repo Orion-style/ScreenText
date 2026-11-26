@@ -46,6 +46,7 @@ public class NextSessionModuleTests
         public HashSet<string> FailingNames { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<(string Message, int LaunchedCount, IReadOnlyList<string> Failed)> Notifications { get; } = new();
         public bool RestartRequested { get; private set; }
+        public bool ShutdownRequested { get; private set; }
         public NextSessionCountdownOutcome CountdownOutcome { get; set; } = NextSessionCountdownOutcome.Completed;
         public int CountdownCallCount { get; private set; }
 
@@ -63,6 +64,12 @@ public class NextSessionModuleTests
         public bool RequestSystemRestart()
         {
             RestartRequested = true;
+            return true;
+        }
+
+        public bool RequestSystemShutdown()
+        {
+            ShutdownRequested = true;
             return true;
         }
 
@@ -486,5 +493,40 @@ public class NextSessionModuleTests
         Assert.False(vm.HasRunningApps);
         Assert.True(vm.HasNoRunningApps);
         Assert.False(vm.CanTerminateAll);
+    }
+
+    [Fact]
+    public void NextSessionWindowViewModel_SaveAndRestartOrShutdown_SavesPlanAndTriggersPowerAction()
+    {
+        var logger = new TestLogger();
+        var settingsService = new TestSettingsService();
+        var hotkeyService = new TestHotkeyService();
+        var catalog = new FakeCatalogService();
+        catalog.Items.Add(new NextSessionProgramItem
+        {
+            Key = "CODE",
+            Name = "VS Code",
+            ProcessName = "Code",
+            ExecutablePath = @"C:\Apps\Code.exe"
+        });
+
+        var launcher = new FakeLauncherService();
+        using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
+        using var vm = new NextSessionWindowViewModel(module, catalog, loadImmediately: true);
+
+        vm.Message = "Продолжить работу";
+        vm.FilteredPrograms[0].IsSelected = true;
+
+        Assert.True(vm.SaveAndRestart());
+        Assert.True(launcher.RestartRequested);
+        Assert.False(launcher.ShutdownRequested);
+        Assert.True(module.Settings.HasPendingPlan);
+        Assert.Equal("Продолжить работу", module.Settings.PendingMessage);
+        Assert.Single(module.Settings.PendingPrograms);
+
+        vm.Message = "Выключить на ночь";
+        Assert.True(vm.SaveAndShutdown());
+        Assert.True(launcher.ShutdownRequested);
+        Assert.Equal("Выключить на ночь", module.Settings.PendingMessage);
     }
 }

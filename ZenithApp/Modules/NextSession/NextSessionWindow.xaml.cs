@@ -90,16 +90,32 @@ public partial class NextSessionWindow : FluentWindow
 
     private void OnSaveAndRestartClicked(object sender, RoutedEventArgs e)
     {
+        ConfirmAndExecutePowerAction(
+            "Сохранить настройки следующего сеанса и перезагрузить компьютер сейчас?",
+            "Подтверждение перезагрузки",
+            _viewModel.SaveAndRestart);
+    }
+
+    private void OnSaveAndShutdownClicked(object sender, RoutedEventArgs e)
+    {
+        ConfirmAndExecutePowerAction(
+            "Сохранить настройки следующего сеанса и завершить работу компьютера сейчас?",
+            "Подтверждение завершения работы",
+            _viewModel.SaveAndShutdown);
+    }
+
+    private void ConfirmAndExecutePowerAction(string message, string title, Func<bool> action)
+    {
         var result = System.Windows.MessageBox.Show(
             this,
-            "Сохранить план следующего сеанса и перезагрузить компьютер сейчас?",
-            "Подтверждение перезагрузки",
+            message,
+            title,
             System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Question);
 
         if (result == System.Windows.MessageBoxResult.Yes)
         {
-            _viewModel.SaveAndRestart();
+            action();
             Close();
         }
     }

@@ -160,7 +160,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0"
-                           Text="Выберите программы для запуска после перезагрузки и оставьте заметку — она появится в уведомлениях."
+                           Text="Выберите программы для следующего запуска и оставьте заметку — она появится в уведомлениях."
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                            FontSize="13"
                            TextWrapping="Wrap"
@@ -353,6 +353,7 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
                 <ui:Button Grid.Column="0"
@@ -363,22 +364,38 @@
                 <ui:Button Grid.Column="2"
                            Content="Отмена"
                            Appearance="Secondary"
-                           MinWidth="88"
+                           MinWidth="84"
                            Margin="0,0,8,0"
                            Click="OnCancelClicked" />
 
                 <ui:Button Grid.Column="3"
-                           Content="Сохранить и перезагрузить"
-                           Icon="{ui:SymbolIcon ArrowClockwise24}"
                            IsEnabled="{Binding CanSave}"
                            Margin="0,0,8,0"
-                           Click="OnSaveAndRestartClicked" />
+                           ToolTip="Сохранить настройки и перезагрузить компьютер"
+                           Click="OnSaveAndRestartClicked">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Сохранить" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ui:SymbolIcon Symbol="ArrowClockwise24" FontSize="16" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ui:Button>
 
                 <ui:Button Grid.Column="4"
+                           IsEnabled="{Binding CanSave}"
+                           Margin="0,0,8,0"
+                           ToolTip="Сохранить настройки и завершить работу компьютера"
+                           Click="OnSaveAndShutdownClicked">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Сохранить" VerticalAlignment="Center" Margin="0,0,6,0" />
+                        <ui:SymbolIcon Symbol="Power24" FontSize="16" VerticalAlignment="Center" />
+                    </StackPanel>
+                </ui:Button>
+
+                <ui:Button Grid.Column="5"
                            Content="Сохранить"
                            Appearance="Primary"
                            IsEnabled="{Binding CanSave}"
-                           MinWidth="115"
+                           MinWidth="105"
+                           ToolTip="Сохранить настройки без перезагрузки и выключения"
                            Click="OnSaveClicked" />
             </Grid>
         </Grid>

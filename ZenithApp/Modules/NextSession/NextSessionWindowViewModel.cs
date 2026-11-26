@@ -246,10 +246,7 @@ public sealed class NextSessionWindowViewModel : ViewModelBase, IDisposable
 
     public bool SavePlan(bool showToast = true)
     {
-        var selectedEntries = _allPrograms
-            .Where(p => p.IsSelected)
-            .Select(p => p.ToEntry())
-            .ToList();
+        var selectedEntries = GetSelectedProgramEntries();
 
         _module.SavePlan(Message, selectedEntries, _customPrograms);
         OnPropertyChanged(nameof(HasActivePlan));
@@ -272,12 +269,20 @@ public sealed class NextSessionWindowViewModel : ViewModelBase, IDisposable
 
     public bool SaveAndRestart()
     {
-        var selectedEntries = _allPrograms
+        return _module.SaveAndRestart(Message, GetSelectedProgramEntries(), _customPrograms);
+    }
+
+    public bool SaveAndShutdown()
+    {
+        return _module.SaveAndShutdown(Message, GetSelectedProgramEntries(), _customPrograms);
+    }
+
+    private List<NextSessionProgramEntry> GetSelectedProgramEntries()
+    {
+        return _allPrograms
             .Where(p => p.IsSelected)
             .Select(p => p.ToEntry())
             .ToList();
-
-        return _module.SaveAndRestart(Message, selectedEntries, _customPrograms);
     }
 
     public void ClearSavedPlan()

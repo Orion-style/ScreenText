@@ -167,6 +167,7 @@ public interface INextSessionLauncherService
     void ShowSessionNotification(string message, int launchedCount, IReadOnlyList<string> failedPrograms);
     bool LaunchProgram(NextSessionProgramEntry entry);
     bool RequestSystemRestart();
+    bool RequestSystemShutdown();
     Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(int delaySeconds, int programCount, string? messagePreview, CancellationToken cancellationToken);
 
     Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
@@ -326,14 +327,18 @@ public sealed class NextSessionLauncherService : INextSessionLauncherService
         }
     }
 
-    public bool RequestSystemRestart()
+    public bool RequestSystemRestart() => RunShutdownCommand("/r /t 0", "restart");
+
+    public bool RequestSystemShutdown() => RunShutdownCommand("/s /t 0", "shutdown");
+
+    private bool RunShutdownCommand(string arguments, string actionName)
     {
         try
         {
             var psi = new ProcessStartInfo
             {
                 FileName = "shutdown.exe",
-                Arguments = "/r /t 0",
+                Arguments = arguments,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -342,7 +347,7 @@ public sealed class NextSessionLauncherService : INextSessionLauncherService
         }
         catch (Exception ex)
         {
-            _logger.LogError("[NextSession] Failed to initiate system restart.", ex);
+            _logger.LogError($"[NextSession] Failed to initiate system {actionName}.", ex);
             return false;
         }
     }
