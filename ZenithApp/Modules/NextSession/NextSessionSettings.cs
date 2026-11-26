@@ -31,7 +31,6 @@ public sealed class NextSessionSettings
     public KeyModifiers HotkeyModifiers { get; set; } = KeyModifiers.Control | KeyModifiers.Alt;
     public Key HotkeyKey { get; set; } = Key.N;
 
-    public bool OnlyAfterSystemReboot { get; set; } = true;
     public bool TriggerOnResumeFromSleep { get; set; } = false;
 
     public int StartupDelaySeconds { get; set; } = 3;

@@ -99,6 +99,7 @@ public partial class SettingsWindow : FluentWindow
             }
             else if (moduleVm.Id == ZenithApp.Modules.NextSession.NextSessionModule.ModuleId)
             {
+                _ = _viewModel.NextSessionSettings?.RefreshRunningAppsAsync();
                 NextSessionConfigContainer.Visibility = Visibility.Visible;
             }
             else

@@ -139,12 +139,6 @@ public sealed class NextSessionModule : BaseFeatureModule
             return false;
         }
 
-        if (!config.OnlyAfterSystemReboot)
-        {
-            Logger.LogInfo("[NextSession] Pending plan armed (OnlyAfterSystemReboot=false); executing.");
-            return true;
-        }
-
         if (config.SystemShutdownObserved)
         {
             Logger.LogInfo("[NextSession] Pending plan armed (SystemShutdownObserved=true); executing.");

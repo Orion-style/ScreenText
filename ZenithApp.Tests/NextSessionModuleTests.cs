@@ -77,6 +77,30 @@ public class NextSessionModuleTests
         }
     }
 
+    private sealed class FakeTerminationService : IRunningAppsTerminationService
+    {
+        public List<RunningAppItem> Apps { get; } = new();
+        public List<string> TerminatedKeys { get; } = new();
+        public HashSet<string> AccessDeniedKeys { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+        public IReadOnlyList<RunningAppItem> GetAltTabRunningApps()
+        {
+            return Apps.ToList();
+        }
+
+        public Task<TerminationResult> TerminateAppAsync(RunningAppItem app, CancellationToken cancellationToken = default)
+        {
+            TerminatedKeys.Add(app.Key);
+            if (AccessDeniedKeys.Contains(app.Key))
+            {
+                return Task.FromResult(new TerminationResult(false, true, $"Нет прав для «{app.DisplayName}»"));
+            }
+
+            Apps.RemoveAll(a => string.Equals(a.Key, app.Key, StringComparison.OrdinalIgnoreCase));
+            return Task.FromResult(new TerminationResult(true, false));
+        }
+    }
+
     [Fact]
     public void NextSessionSettings_DefaultValues_AreCorrect()
     {
@@ -84,7 +108,6 @@ public class NextSessionModuleTests
 
         Assert.Equal(KeyModifiers.Control | KeyModifiers.Alt, settings.HotkeyModifiers);
         Assert.Equal(Key.N, settings.HotkeyKey);
-        Assert.True(settings.OnlyAfterSystemReboot);
         Assert.False(settings.TriggerOnResumeFromSleep);
         Assert.False(settings.HasPendingPlan);
         Assert.Equal(3, settings.StartupDelaySeconds);
@@ -174,10 +197,9 @@ public class NextSessionModuleTests
         boot.BootTimeUtc = boot.BootTimeUtc.AddMinutes(10);
         Assert.True(module.ShouldExecutePendingPlanOnStartup());
 
-        // Если OnlyAfterSystemReboot отключён -> срабатывает даже без перезагрузки
+        // Без перезагрузки план не должен срабатывать (поведение «только после перезагрузки» включено всегда)
         boot.BootTimeUtc = module.Settings.PlannedBootTimestampUtc!.Value;
-        module.Settings.OnlyAfterSystemReboot = false;
-        Assert.True(module.ShouldExecutePendingPlanOnStartup());
+        Assert.False(module.ShouldExecutePendingPlanOnStartup());
     }
 
     [Fact]
@@ -317,9 +339,10 @@ public class NextSessionModuleTests
                 var catalog = new FakeCatalogService();
                 var launcher = new FakeLauncherService();
 
+                var termination = new FakeTerminationService();
                 using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
                 using var windowVm = new NextSessionWindowViewModel(module, catalog, loadImmediately: true);
-                using var settingsVm = new NextSessionSettingsViewModel(module, settingsService);
+                using var settingsVm = new NextSessionSettingsViewModel(module, settingsService, termination);
 
                 var window = new NextSessionWindow(windowVm);
                 var settingsView = new NextSessionSettingsView { DataContext = settingsVm };
@@ -399,7 +422,7 @@ public class NextSessionModuleTests
 
         using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
         using var windowVm = new NextSessionWindowViewModel(module, catalog, loadImmediately: true);
-        using var settingsVm = new NextSessionSettingsViewModel(module, settingsService);
+        using var settingsVm = new NextSessionSettingsViewModel(module, settingsService, new FakeTerminationService());
 
         windowVm.StartupDelaySeconds = 10;
         windowVm.TriggerOnResumeFromSleep = true;
@@ -408,6 +431,60 @@ public class NextSessionModuleTests
         Assert.Equal("10 сек", windowVm.StartupDelayText);
         Assert.True(module.Settings.TriggerOnResumeFromSleep);
         Assert.Equal(10, settingsVm.StartupDelaySeconds);
-        Assert.True(settingsVm.TriggerOnResumeFromSleep);
+    }
+
+    [Fact]
+    public async Task NextSessionSettingsViewModel_TerminateSingleAndAll_UpdatesRunningAppsAndHandlesAccessDenied()
+    {
+        var logger = new TestLogger();
+        var settingsService = new TestSettingsService();
+        var hotkeyService = new TestHotkeyService();
+        var catalog = new FakeCatalogService();
+        var launcher = new FakeLauncherService();
+        var termination = new FakeTerminationService();
+
+        var chrome = new RunningAppItem { Key = "EXE:CHROME", DisplayName = "Chrome", ProcessName = "chrome" };
+        var telegram = new RunningAppItem { Key = "EXE:TELEGRAM", DisplayName = "Telegram", ProcessName = "Telegram" };
+        var adminTool = new RunningAppItem { Key = "EXE:ADMIN", DisplayName = "AdminTool", ProcessName = "AdminTool" };
+
+        termination.Apps.AddRange(new[] { chrome, telegram, adminTool });
+        termination.AccessDeniedKeys.Add(adminTool.Key);
+
+        using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
+        using var vm = new NextSessionSettingsViewModel(module, settingsService, termination);
+
+        await vm.RefreshRunningAppsAsync();
+
+        Assert.Equal(3, vm.RunningAppsCount);
+        Assert.True(vm.HasRunningApps);
+        Assert.False(vm.HasNoRunningApps);
+        Assert.True(vm.CanTerminateAll);
+
+        // Завершаем одно приложение
+        await vm.TerminateAppAsync(chrome);
+
+        Assert.Contains("EXE:CHROME", termination.TerminatedKeys);
+        Assert.Equal(2, vm.RunningAppsCount);
+        Assert.DoesNotContain(vm.RunningApps, a => a.Key == "EXE:CHROME");
+
+        // Попытка завершить все: Telegram удаляется, а AdminTool с AccessDenied остаётся
+        await vm.TerminateAllAppsAsync();
+
+        Assert.Contains("EXE:TELEGRAM", termination.TerminatedKeys);
+        Assert.Contains("EXE:ADMIN", termination.TerminatedKeys);
+        Assert.Single(vm.RunningApps);
+        Assert.Equal("EXE:ADMIN", vm.RunningApps[0].Key);
+        Assert.False(vm.RunningApps[0].IsTerminating);
+        Assert.True(vm.CanTerminateAll);
+
+        // Если убрать блокировку прав и завершить последнее приложение -> список пуст
+        termination.AccessDeniedKeys.Clear();
+        await vm.TerminateAllAppsAsync();
+
+        Assert.Empty(vm.RunningApps);
+        Assert.Equal(0, vm.RunningAppsCount);
+        Assert.False(vm.HasRunningApps);
+        Assert.True(vm.HasNoRunningApps);
+        Assert.False(vm.CanTerminateAll);
     }
 }

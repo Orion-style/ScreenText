@@ -1,14 +1,56 @@
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using ZenithApp.Core.Hotkeys;
 
 namespace ZenithApp.Modules.NextSession;
 
 public partial class NextSessionSettingsView : UserControl
 {
+    private readonly DispatcherTimer _refreshTimer;
+
     public NextSessionSettingsView()
     {
         InitializeComponent();
+
+        _refreshTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(2.5)
+        };
+        _refreshTimer.Tick += OnRefreshTimerTick;
+
+        IsVisibleChanged += OnIsVisibleChanged;
+        Unloaded += OnUnloaded;
+    }
+
+    private async void OnRefreshTimerTick(object? sender, EventArgs e)
+    {
+        if (IsVisible && DataContext is NextSessionSettingsViewModel vm)
+        {
+            await vm.RefreshRunningAppsAsync();
+        }
+    }
+
+    private async void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        if (IsVisible)
+        {
+            if (DataContext is NextSessionSettingsViewModel vm)
+            {
+                await vm.RefreshRunningAppsAsync();
+            }
+            _refreshTimer.Start();
+        }
+        else
+        {
+            _refreshTimer.Stop();
+        }
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        _refreshTimer.Stop();
     }
 
     private void OnHotkeyPreviewKeyDown(object sender, KeyEventArgs e)
