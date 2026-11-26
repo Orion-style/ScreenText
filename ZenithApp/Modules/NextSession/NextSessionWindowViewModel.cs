@@ -94,6 +94,38 @@ public sealed class NextSessionWindowViewModel : ViewModelBase, IDisposable
 
     public bool CanSave => !string.IsNullOrWhiteSpace(Message) || SelectedCount > 0;
 
+    public int StartupDelaySeconds
+    {
+        get => _module.Settings.StartupDelaySeconds;
+        set
+        {
+            var clamped = Math.Clamp(value, 0, 30);
+            if (_module.Settings.StartupDelaySeconds != clamped)
+            {
+                _module.UpdateStartupDelaySeconds(clamped);
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(StartupDelayText));
+            }
+        }
+    }
+
+    public string StartupDelayText => StartupDelaySeconds == 0
+        ? "Сразу (0 сек)"
+        : $"{StartupDelaySeconds} сек";
+
+    public bool TriggerOnResumeFromSleep
+    {
+        get => _module.Settings.TriggerOnResumeFromSleep;
+        set
+        {
+            if (_module.Settings.TriggerOnResumeFromSleep != value)
+            {
+                _module.UpdateTriggerOnResumeFromSleep(value);
+                OnPropertyChanged();
+            }
+        }
+    }
+
     public bool HasNoFilteredResults => !IsLoading && FilteredPrograms.Count == 0;
 
     public async Task LoadProgramsAsync()
@@ -225,8 +257,11 @@ public sealed class NextSessionWindowViewModel : ViewModelBase, IDisposable
 
         if (showToast && _module.Settings.HasPendingPlan)
         {
+            var delayNote = StartupDelaySeconds > 0
+                ? $" Таймер запуска: {StartupDelaySeconds} сек."
+                : string.Empty;
             NotificationToast.Show(
-                $"Запланировано программ: {selectedEntries.Count}. При следующем запуске появится ваше уведомление.",
+                $"Запланировано программ: {selectedEntries.Count}.{delayNote} При следующем запуске появится ваше уведомление.",
                 "Следующий сеанс сохранён",
                 ToastNotificationType.Success,
                 durationSeconds: 4);

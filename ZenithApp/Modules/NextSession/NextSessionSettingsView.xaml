@@ -22,6 +22,10 @@
                                TextWrapping="Wrap" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button Content="Проверить таймер"
+                               ToolTip="Показать виджет обратного отсчёта на рабочем столе (без очистки плана)"
+                               Command="{Binding PreviewCountdownCommand}"
+                               Margin="0,0,8,0" />
                     <ui:Button Content="Тест запуска"
                                Command="{Binding ExecuteNowCommand}"
                                IsEnabled="{Binding HasPendingPlan}"
@@ -133,9 +137,11 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                     <Slider Width="140"
                             Minimum="0"
-                            Maximum="15"
+                            Maximum="30"
                             SmallChange="1"
-                            LargeChange="3"
+                            LargeChange="5"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
                             Value="{Binding StartupDelaySeconds, Mode=TwoWay}"
                             VerticalAlignment="Center"
                             Margin="0,0,10,0" />

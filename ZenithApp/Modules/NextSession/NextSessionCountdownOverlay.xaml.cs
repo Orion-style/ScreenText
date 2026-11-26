@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
@@ -14,36 +15,57 @@ public enum NextSessionCountdownOutcome
 
 public partial class NextSessionCountdownOverlay : Window
 {
+    private const double RingCenter = 30.0;
+    private const double RingRadius = 26.0;
+
     private readonly int _totalSeconds;
-    private readonly int _programCount;
+    private readonly IReadOnlyList<string> _programNames;
     private readonly Stopwatch _stopwatch = new();
     private readonly DispatcherTimer _timer;
     private readonly TaskCompletionSource<NextSessionCountdownOutcome> _tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private CancellationTokenRegistration _cancelRegistration;
     private bool _isClosing;
 
     public NextSessionCountdownOverlay(int totalSeconds, int programCount, string? messagePreview)
+        : this(
+            totalSeconds,
+            programCount > 0
+                ? Enumerable.Range(1, programCount).Select(i => $"Приложение {i}").ToList()
+                : Array.Empty<string>(),
+            messagePreview)
+    {
+    }
+
+    public NextSessionCountdownOverlay(int totalSeconds, IReadOnlyList<string> programNames, string? messagePreview)
     {
         InitializeComponent();
 
         _totalSeconds = Math.Max(1, totalSeconds);
-        _programCount = Math.Max(0, programCount);
+        _programNames = (programNames ?? Array.Empty<string>())
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n.Trim())
+            .ToList();
+
+        TxtProgramsSummary.Text = BuildProgramsSummary(_programNames);
 
         if (!string.IsNullOrWhiteSpace(messagePreview))
         {
             TxtMessagePreview.Text = $"«{messagePreview.Trim()}»";
-            TxtMessagePreview.Visibility = Visibility.Visible;
+            MessagePreviewBorder.Visibility = Visibility.Visible;
         }
 
         _timer = new DispatcherTimer(DispatcherPriority.Render)
         {
-            Interval = TimeSpan.FromMilliseconds(50)
+            Interval = TimeSpan.FromMilliseconds(33)
         };
         _timer.Tick += OnTimerTick;
 
         Loaded += OnLoaded;
+        SizeChanged += (_, _) => PositionAtBottomRight();
         Closed += (_, _) =>
         {
             _timer.Stop();
+            _cancelRegistration.Dispose();
             _tcs.TrySetResult(NextSessionCountdownOutcome.Cancelled);
         };
     }
@@ -52,7 +74,7 @@ public partial class NextSessionCountdownOverlay : Window
     {
         if (cancellationToken.CanBeCanceled)
         {
-            cancellationToken.Register(() =>
+            _cancelRegistration = cancellationToken.Register(() =>
             {
                 Dispatcher.BeginInvoke(() => FinishAndClose(NextSessionCountdownOutcome.Cancelled));
             });
@@ -75,6 +97,7 @@ public partial class NextSessionCountdownOverlay : Window
 
     private void PositionAtBottomRight()
     {
+        if (!IsLoaded) return;
         var workArea = SystemParameters.WorkArea;
         Left = workArea.Right - ActualWidth - 16;
         Top = workArea.Bottom - ActualHeight - 16;
@@ -98,17 +121,76 @@ public partial class NextSessionCountdownOverlay : Window
     private void UpdateVisualProgress(double fraction)
     {
         var clamped = Math.Clamp(fraction, 0.0, 1.0);
-        var remainingSeconds = Math.Max(0, (int)Math.Ceiling(_totalSeconds * (1.0 - clamped)));
+        var remainingFraction = 1.0 - clamped;
+        var remainingSeconds = Math.Max(0, (int)Math.Ceiling(_totalSeconds * remainingFraction));
 
         TxtSecondsLeft.Text = remainingSeconds.ToString();
+        TxtCountdownTitle.Text = _programNames.Count > 0
+            ? $"Запуск через {remainingSeconds} сек"
+            : $"Напоминание через {remainingSeconds} сек";
 
-        var suffix = _programCount > 0
-            ? $" • Программ: {_programCount}"
-            : " • Уведомление";
-        TxtCountdownDetail.Text = $"Запуск через {remainingSeconds} сек{suffix}";
+        ProgressArcPath.Data = BuildArcGeometry(remainingFraction);
 
-        var barWidth = Math.Max(0, CardBorder.ActualWidth > 0 ? CardBorder.ActualWidth : 326);
-        ProgressFill.Width = barWidth * (1.0 - clamped);
+        var innerWidth = CardBorder.ActualWidth > 2 ? CardBorder.ActualWidth - 2 : 358;
+        ProgressFill.Width = Math.Max(0, innerWidth * remainingFraction);
+    }
+
+    private static Geometry? BuildArcGeometry(double remainingFraction)
+    {
+        if (remainingFraction <= 0.002)
+        {
+            return null;
+        }
+
+        if (remainingFraction >= 0.999)
+        {
+            return new EllipseGeometry(new Point(RingCenter, RingCenter), RingRadius, RingRadius);
+        }
+
+        var angleDegrees = remainingFraction * 360.0;
+        var startPoint = new Point(RingCenter, RingCenter - RingRadius);
+        var endAngleRad = (angleDegrees - 90.0) * Math.PI / 180.0;
+        var endPoint = new Point(
+            RingCenter + RingRadius * Math.Cos(endAngleRad),
+            RingCenter + RingRadius * Math.Sin(endAngleRad));
+
+        var segment = new ArcSegment
+        {
+            Point = endPoint,
+            Size = new Size(RingRadius, RingRadius),
+            IsLargeArc = angleDegrees > 180.0,
+            SweepDirection = SweepDirection.Clockwise,
+            IsStroked = true
+        };
+
+        var figure = new PathFigure
+        {
+            StartPoint = startPoint,
+            IsClosed = false,
+            Segments = { segment }
+        };
+
+        return new PathGeometry { Figures = { figure } };
+    }
+
+    private static string BuildProgramsSummary(IReadOnlyList<string> programNames)
+    {
+        if (programNames.Count == 0)
+        {
+            return "Показ сохранённой заметки для сеанса";
+        }
+
+        if (programNames.Count == 1)
+        {
+            return $"Приложение: {programNames[0]}";
+        }
+
+        if (programNames.Count <= 3)
+        {
+            return $"Программы ({programNames.Count}): {string.Join(", ", programNames)}";
+        }
+
+        return $"Программы ({programNames.Count}): {programNames[0]}, {programNames[1]} (+{programNames.Count - 2})";
     }
 
     private void OnRunNowClicked(object sender, RoutedEventArgs e)
@@ -128,6 +210,7 @@ public partial class NextSessionCountdownOverlay : Window
 
         _timer.Stop();
         _stopwatch.Stop();
+        _cancelRegistration.Dispose();
         _tcs.TrySetResult(outcome);
 
         var fadeOut = new DoubleAnimation(Opacity, 0.0, TimeSpan.FromMilliseconds(180));

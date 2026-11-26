@@ -31,11 +31,13 @@ public sealed class NextSessionSettingsViewModel : ViewModelBase, IDisposable
         OpenPlannerCommand = new RelayCommand(() => _module.OpenPlannerWindow());
         ClearPlanCommand = new RelayCommand(() => _module.ClearPlan());
         ExecuteNowCommand = new RelayCommand(async () => await _module.ExecutePendingPlanAsync(force: true));
+        PreviewCountdownCommand = new RelayCommand(async () => await _module.PreviewCountdownAsync());
     }
 
     public ICommand OpenPlannerCommand { get; }
     public ICommand ClearPlanCommand { get; }
     public ICommand ExecuteNowCommand { get; }
+    public ICommand PreviewCountdownCommand { get; }
 
     public string HotkeyText
     {
@@ -144,6 +146,19 @@ public sealed class NextSessionSettingsViewModel : ViewModelBase, IDisposable
 
     private void UpdatePlanSummary()
     {
+        var cfg = _module.Settings;
+        if (_startupDelaySeconds != cfg.StartupDelaySeconds)
+        {
+            _startupDelaySeconds = cfg.StartupDelaySeconds;
+            OnPropertyChanged(nameof(StartupDelaySeconds));
+        }
+
+        if (_triggerOnResumeFromSleep != cfg.TriggerOnResumeFromSleep)
+        {
+            _triggerOnResumeFromSleep = cfg.TriggerOnResumeFromSleep;
+            OnPropertyChanged(nameof(TriggerOnResumeFromSleep));
+        }
+
         OnPropertyChanged(nameof(HasPendingPlan));
         OnPropertyChanged(nameof(PendingPlanSummary));
     }

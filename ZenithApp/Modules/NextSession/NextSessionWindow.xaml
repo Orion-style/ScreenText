@@ -150,6 +150,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Описание и статус плана -->
@@ -293,8 +294,60 @@
                 </Grid>
             </Border>
 
+            <!-- Панель параметров таймера и срабатывания -->
+            <Border Grid.Row="4"
+                    Margin="0,12,0,0"
+                    Padding="12,8"
+                    CornerRadius="8"
+                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="Таймер запуска на рабочем столе:"
+                               VerticalAlignment="Center"
+                               FontSize="12.5"
+                               FontWeight="Medium"
+                               Margin="0,0,10,0" />
+
+                    <Slider Grid.Column="1"
+                            Width="130"
+                            Minimum="0"
+                            Maximum="30"
+                            SmallChange="1"
+                            LargeChange="5"
+                            TickFrequency="1"
+                            IsSnapToTickEnabled="True"
+                            Value="{Binding StartupDelaySeconds, Mode=TwoWay}"
+                            VerticalAlignment="Center"
+                            Margin="0,0,8,0" />
+
+                    <TextBlock Grid.Column="2"
+                               Text="{Binding StartupDelayText}"
+                               MinWidth="82"
+                               VerticalAlignment="Center"
+                               FontSize="12.5"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+
+                    <CheckBox Grid.Column="4"
+                              Content="Также при выходе из сна"
+                              IsChecked="{Binding TriggerOnResumeFromSleep, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              ToolTip="Сработать также при открытии крышки ноутбука / выходе из режима сна" />
+                </Grid>
+            </Border>
+
             <!-- Нижняя панель кнопок -->
-            <Grid Grid.Row="4" Margin="0,14,0,0">
+            <Grid Grid.Row="5" Margin="0,12,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />

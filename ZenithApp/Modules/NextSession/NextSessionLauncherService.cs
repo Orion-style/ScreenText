@@ -1,5 +1,8 @@
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+using Microsoft.Win32;
 using ZenithApp.Core.Logging;
 using ZenithApp.Modules.Screenshot;
 
@@ -8,14 +11,155 @@ namespace ZenithApp.Modules.NextSession;
 public interface ISystemBootTimeProvider
 {
     DateTime GetCurrentBootTimestampUtc();
+    string? GetCurrentLogonSessionId() => null;
+    DateTime? GetCurrentLogonTimestampUtc() => null;
+    int? GetCurrentKernelBootId() => null;
 }
 
 public sealed class SystemBootTimeProvider : ISystemBootTimeProvider
 {
+    private const string PrefetchParametersSubKey = @"SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters";
+    private const int TokenStatisticsClass = 10;
+
     public DateTime GetCurrentBootTimestampUtc()
     {
         return DateTime.UtcNow - TimeSpan.FromMilliseconds(Environment.TickCount64);
     }
+
+    public string? GetCurrentLogonSessionId()
+    {
+        return TryReadLogonSession(out var sessionId, out _) ? sessionId : null;
+    }
+
+    public DateTime? GetCurrentLogonTimestampUtc()
+    {
+        return TryReadLogonSession(out _, out var logonTimeUtc) ? logonTimeUtc : null;
+    }
+
+    public int? GetCurrentKernelBootId()
+    {
+        try
+        {
+            using var key = Registry.LocalMachine.OpenSubKey(PrefetchParametersSubKey, writable: false);
+            var raw = key?.GetValue("BootId");
+            if (raw is int bootId)
+            {
+                return bootId;
+            }
+            if (raw != null && int.TryParse(raw.ToString(), out var parsed))
+            {
+                return parsed;
+            }
+        }
+        catch
+        {
+            // Registry read is optional
+        }
+
+        return null;
+    }
+
+    private static bool TryReadLogonSession(out string? sessionId, out DateTime? logonTimeUtc)
+    {
+        sessionId = null;
+        logonTimeUtc = null;
+
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            var structSize = Marshal.SizeOf<TOKEN_STATISTICS>();
+            if (!GetTokenInformation(identity.Token, TokenStatisticsClass, out var stats, structSize, out _))
+            {
+                return false;
+            }
+
+            var authId = stats.AuthenticationId;
+            sessionId = $"{authId.HighPart:X8}-{authId.LowPart:X8}";
+
+            if (LsaGetLogonSessionData(ref authId, out var buffer) == 0 && buffer != IntPtr.Zero)
+            {
+                try
+                {
+                    var data = Marshal.PtrToStructure<SECURITY_LOGON_SESSION_DATA>(buffer);
+                    if (data.LogonTime > 0)
+                    {
+                        logonTimeUtc = DateTime.FromFileTimeUtc(data.LogonTime);
+                    }
+                }
+                finally
+                {
+                    LsaFreeReturnBuffer(buffer);
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct LUID
+    {
+        public uint LowPart;
+        public int HighPart;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TOKEN_STATISTICS
+    {
+        public LUID TokenId;
+        public LUID AuthenticationId;
+        public long ExpirationTime;
+        public int TokenType;
+        public int ImpersonationLevel;
+        public uint DynamicCharged;
+        public uint DynamicAvailable;
+        public uint GroupCount;
+        public uint PrivilegeCount;
+        public LUID ModifiedId;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct LSA_UNICODE_STRING
+    {
+        public ushort Length;
+        public ushort MaximumLength;
+        public IntPtr Buffer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct SECURITY_LOGON_SESSION_DATA
+    {
+        public uint Size;
+        public LUID LogonId;
+        public LSA_UNICODE_STRING UserName;
+        public LSA_UNICODE_STRING LogonDomain;
+        public LSA_UNICODE_STRING AuthenticationPackage;
+        public uint LogonType;
+        public uint Session;
+        public IntPtr Sid;
+        public long LogonTime;
+        public LSA_UNICODE_STRING LogonServer;
+        public LSA_UNICODE_STRING DnsDomainName;
+        public LSA_UNICODE_STRING Upn;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    private static extern bool GetTokenInformation(
+        IntPtr TokenHandle,
+        int TokenInformationClass,
+        out TOKEN_STATISTICS TokenInformation,
+        int TokenInformationLength,
+        out int ReturnLength);
+
+    [DllImport("secur32.dll")]
+    private static extern int LsaGetLogonSessionData(ref LUID LogonId, out IntPtr ppLogonSessionData);
+
+    [DllImport("secur32.dll")]
+    private static extern int LsaFreeReturnBuffer(IntPtr Buffer);
 }
 
 public interface INextSessionLauncherService
@@ -24,6 +168,13 @@ public interface INextSessionLauncherService
     bool LaunchProgram(NextSessionProgramEntry entry);
     bool RequestSystemRestart();
     Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(int delaySeconds, int programCount, string? messagePreview, CancellationToken cancellationToken);
+
+    Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
+        int delaySeconds,
+        IReadOnlyList<string> programNames,
+        string? messagePreview,
+        CancellationToken cancellationToken)
+        => WaitWithCountdownAsync(delaySeconds, programNames.Count, messagePreview, cancellationToken);
 }
 
 public sealed class NextSessionLauncherService : INextSessionLauncherService
@@ -35,9 +186,22 @@ public sealed class NextSessionLauncherService : INextSessionLauncherService
         _logger = logger;
     }
 
-    public async Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
+    public Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
         int delaySeconds,
         int programCount,
+        string? messagePreview,
+        CancellationToken cancellationToken)
+    {
+        var placeholderNames = programCount > 0
+            ? Enumerable.Range(1, programCount).Select(i => $"Программа {i}").ToList()
+            : Array.Empty<string>() as IReadOnlyList<string>;
+
+        return WaitWithCountdownAsync(delaySeconds, placeholderNames, messagePreview, cancellationToken);
+    }
+
+    public async Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
+        int delaySeconds,
+        IReadOnlyList<string> programNames,
         string? messagePreview,
         CancellationToken cancellationToken)
     {
@@ -53,17 +217,34 @@ public sealed class NextSessionLauncherService : INextSessionLauncherService
             return NextSessionCountdownOutcome.Completed;
         }
 
-        Task<NextSessionCountdownOutcome>? waitTask = null;
-        await dispatcher.InvokeAsync(() =>
+        try
         {
-            var overlay = new NextSessionCountdownOverlay(delaySeconds, programCount, messagePreview);
-            waitTask = overlay.WaitForCompletionAsync(cancellationToken);
-            overlay.Show();
-        });
+            _logger.LogInfo($"[NextSession] Showing desktop countdown overlay ({delaySeconds}s, programs: {programNames.Count}).");
 
-        return waitTask != null
-            ? await waitTask
-            : NextSessionCountdownOutcome.Completed;
+            Task<NextSessionCountdownOutcome>? waitTask = null;
+            await dispatcher.InvokeAsync(() =>
+            {
+                var overlay = new NextSessionCountdownOverlay(delaySeconds, programNames, messagePreview);
+                waitTask = overlay.WaitForCompletionAsync(cancellationToken);
+                overlay.Show();
+            });
+
+            if (waitTask != null)
+            {
+                return await waitTask;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("[NextSession] Failed to display countdown overlay; falling back to delay.", ex);
+            await Task.Delay(TimeSpan.FromSeconds(delaySeconds), cancellationToken);
+        }
+
+        return NextSessionCountdownOutcome.Completed;
     }
 
     public void ShowSessionNotification(string message, int launchedCount, IReadOnlyList<string> failedPrograms)

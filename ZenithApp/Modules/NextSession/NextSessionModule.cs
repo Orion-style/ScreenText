@@ -141,21 +141,60 @@ public sealed class NextSessionModule : BaseFeatureModule
 
         if (!config.OnlyAfterSystemReboot)
         {
+            Logger.LogInfo("[NextSession] Pending plan armed (OnlyAfterSystemReboot=false); executing.");
             return true;
         }
 
         if (config.SystemShutdownObserved)
         {
+            Logger.LogInfo("[NextSession] Pending plan armed (SystemShutdownObserved=true); executing.");
+            return true;
+        }
+
+        // Fast Startup (Hiberboot) and Hibernate do not reset TickCount64, so check Windows logon session & BootId first
+        var currentLogonSessionId = _bootTimeProvider.GetCurrentLogonSessionId();
+        if (!string.IsNullOrWhiteSpace(config.PlannedLogonSessionId) &&
+            !string.IsNullOrWhiteSpace(currentLogonSessionId) &&
+            !string.Equals(currentLogonSessionId, config.PlannedLogonSessionId, StringComparison.OrdinalIgnoreCase))
+        {
+            Logger.LogInfo($"[NextSession] New Windows logon session detected ({config.PlannedLogonSessionId} -> {currentLogonSessionId}); executing pending plan.");
+            return true;
+        }
+
+        var currentKernelBootId = _bootTimeProvider.GetCurrentKernelBootId();
+        if (config.PlannedKernelBootId.HasValue &&
+            currentKernelBootId.HasValue &&
+            currentKernelBootId.Value != config.PlannedKernelBootId.Value)
+        {
+            Logger.LogInfo($"[NextSession] Kernel BootId changed ({config.PlannedKernelBootId.Value} -> {currentKernelBootId.Value}); executing pending plan.");
+            return true;
+        }
+
+        // Backward-compatible check for plans saved before PlannedLogonSessionId existed
+        var currentLogonTimeUtc = _bootTimeProvider.GetCurrentLogonTimestampUtc();
+        if (currentLogonTimeUtc.HasValue &&
+            config.PlannedAtUtc.HasValue &&
+            currentLogonTimeUtc.Value > config.PlannedAtUtc.Value.AddSeconds(2))
+        {
+            Logger.LogInfo($"[NextSession] Windows session logon ({currentLogonTimeUtc.Value:O}) occurred after plan save ({config.PlannedAtUtc.Value:O}); executing pending plan.");
             return true;
         }
 
         if (!config.PlannedBootTimestampUtc.HasValue)
         {
+            Logger.LogInfo("[NextSession] PlannedBootTimestampUtc missing; executing pending plan.");
             return true;
         }
 
         var currentBoot = _bootTimeProvider.GetCurrentBootTimestampUtc();
-        return Math.Abs((currentBoot - config.PlannedBootTimestampUtc.Value).TotalSeconds) > 60.0;
+        if (Math.Abs((currentBoot - config.PlannedBootTimestampUtc.Value).TotalSeconds) > 60.0)
+        {
+            Logger.LogInfo($"[NextSession] System boot timestamp changed ({config.PlannedBootTimestampUtc.Value:O} -> {currentBoot:O}); executing pending plan.");
+            return true;
+        }
+
+        Logger.LogInfo("[NextSession] Pending plan kept waiting: same Windows session and boot detected.");
+        return false;
     }
 
     public async Task<bool> ExecutePendingPlanAsync(bool force = false, CancellationToken cancellationToken = default)
@@ -176,6 +215,10 @@ public sealed class NextSessionModule : BaseFeatureModule
 
             var messageSnapshot = config.PendingMessage;
             var programsSnapshot = config.PendingPrograms.ToList();
+            var programNames = programsSnapshot
+                .Select(p => !string.IsNullOrWhiteSpace(p.Name) ? p.Name.Trim() : p.ExecutablePath)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .ToList();
             var delaySeconds = Math.Clamp(config.StartupDelaySeconds, 0, 30);
             var intervalMs = Math.Clamp(config.LaunchIntervalMs, 50, 5000);
 
@@ -183,18 +226,14 @@ public sealed class NextSessionModule : BaseFeatureModule
             {
                 var outcome = await _launcherService.WaitWithCountdownAsync(
                     delaySeconds,
-                    programsSnapshot.Count,
+                    programNames,
                     messageSnapshot,
                     cancellationToken);
 
                 if (outcome == NextSessionCountdownOutcome.Cancelled)
                 {
                     Logger.LogInfo("[NextSession] Startup launch cancelled by user from countdown overlay.");
-                    config.HasPendingPlan = false;
-                    config.PendingMessage = string.Empty;
-                    config.PendingPrograms = new List<NextSessionProgramEntry>();
-                    config.PlannedBootTimestampUtc = null;
-                    config.SystemShutdownObserved = false;
+                    ResetPendingPlanState(config);
                     _settingsService.Save();
                     NotifyPlanStateChanged();
                     return false;
@@ -226,11 +265,7 @@ public sealed class NextSessionModule : BaseFeatureModule
 
             _launcherService.ShowSessionNotification(messageSnapshot, launchedCount, failedNames);
 
-            config.HasPendingPlan = false;
-            config.PendingMessage = string.Empty;
-            config.PendingPrograms = new List<NextSessionProgramEntry>();
-            config.PlannedBootTimestampUtc = null;
-            config.SystemShutdownObserved = false;
+            ResetPendingPlanState(config);
             config.LastExecutedAtUtc = DateTime.UtcNow;
             _settingsService.Save();
 
@@ -241,6 +276,31 @@ public sealed class NextSessionModule : BaseFeatureModule
         {
             _executionGate.Release();
         }
+    }
+
+    public async Task<NextSessionCountdownOutcome> PreviewCountdownAsync(CancellationToken cancellationToken = default)
+    {
+        var config = Settings;
+        var delaySeconds = Math.Clamp(config.StartupDelaySeconds, 1, 30);
+        var programNames = config.PendingPrograms
+            .Select(p => !string.IsNullOrWhiteSpace(p.Name) ? p.Name.Trim() : p.ExecutablePath)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .ToList();
+
+        if (programNames.Count == 0 && string.IsNullOrWhiteSpace(config.PendingMessage))
+        {
+            programNames.Add("Пример приложения");
+        }
+
+        var message = string.IsNullOrWhiteSpace(config.PendingMessage)
+            ? "Предпросмотр таймера запуска"
+            : config.PendingMessage;
+
+        return await _launcherService.WaitWithCountdownAsync(
+            delaySeconds,
+            programNames,
+            message,
+            cancellationToken);
     }
 
     public void SavePlan(
@@ -262,6 +322,8 @@ public sealed class NextSessionModule : BaseFeatureModule
         config.PendingMessage = trimmedMessage;
         config.PendingPrograms = programsList;
         config.PlannedBootTimestampUtc = hasContent ? _bootTimeProvider.GetCurrentBootTimestampUtc() : null;
+        config.PlannedLogonSessionId = hasContent ? _bootTimeProvider.GetCurrentLogonSessionId() : null;
+        config.PlannedKernelBootId = hasContent ? _bootTimeProvider.GetCurrentKernelBootId() : null;
         config.PlannedAtUtc = hasContent ? DateTime.UtcNow : null;
         config.SystemShutdownObserved = false;
 
@@ -271,16 +333,40 @@ public sealed class NextSessionModule : BaseFeatureModule
 
     public void ClearPlan()
     {
-        var config = Settings;
+        ResetPendingPlanState(Settings);
+        _settingsService.Save();
+        NotifyPlanStateChanged();
+    }
+
+    public void UpdateStartupDelaySeconds(int delaySeconds)
+    {
+        var clamped = Math.Clamp(delaySeconds, 0, 30);
+        if (Settings.StartupDelaySeconds == clamped) return;
+
+        Settings.StartupDelaySeconds = clamped;
+        _settingsService.Save();
+        NotifyPlanStateChanged();
+    }
+
+    public void UpdateTriggerOnResumeFromSleep(bool triggerOnResume)
+    {
+        if (Settings.TriggerOnResumeFromSleep == triggerOnResume) return;
+
+        Settings.TriggerOnResumeFromSleep = triggerOnResume;
+        _settingsService.Save();
+        NotifyPlanStateChanged();
+    }
+
+    private static void ResetPendingPlanState(NextSessionSettings config)
+    {
         config.HasPendingPlan = false;
         config.PendingMessage = string.Empty;
         config.PendingPrograms = new List<NextSessionProgramEntry>();
         config.PlannedBootTimestampUtc = null;
+        config.PlannedLogonSessionId = null;
+        config.PlannedKernelBootId = null;
         config.PlannedAtUtc = null;
         config.SystemShutdownObserved = false;
-
-        _settingsService.Save();
-        NotifyPlanStateChanged();
     }
 
     public bool SaveAndRestart(

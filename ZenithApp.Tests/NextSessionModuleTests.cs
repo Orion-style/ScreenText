@@ -16,7 +16,14 @@ public class NextSessionModuleTests
     private sealed class FakeBootTimeProvider : ISystemBootTimeProvider
     {
         public DateTime BootTimeUtc { get; set; } = new DateTime(2026, 11, 25, 20, 0, 0, DateTimeKind.Utc);
+        public string? LogonSessionId { get; set; } = "00000000-01000001";
+        public DateTime? LogonTimestampUtc { get; set; } = new DateTime(2026, 11, 25, 20, 0, 5, DateTimeKind.Utc);
+        public int? KernelBootId { get; set; } = 10;
+
         public DateTime GetCurrentBootTimestampUtc() => BootTimeUtc;
+        public string? GetCurrentLogonSessionId() => LogonSessionId;
+        public DateTime? GetCurrentLogonTimestampUtc() => LogonTimestampUtc;
+        public int? GetCurrentKernelBootId() => KernelBootId;
     }
 
     private sealed class FakeCatalogService : INextSessionProgramCatalogService
@@ -317,13 +324,16 @@ public class NextSessionModuleTests
                 var window = new NextSessionWindow(windowVm);
                 var settingsView = new NextSessionSettingsView { DataContext = settingsVm };
                 var countdown = new NextSessionCountdownOverlay(10, 2, "Проверка");
+                var countdownNamed = new NextSessionCountdownOverlay(10, new[] { "HoYoPlay", "Telegram" }, "Проверка");
 
                 Assert.NotNull(window);
                 Assert.NotNull(settingsView);
                 Assert.NotNull(countdown);
+                Assert.NotNull(countdownNamed);
 
                 window.Close();
                 countdown.Close();
+                countdownNamed.Close();
             }
             catch (Exception ex)
             {
@@ -336,5 +346,68 @@ public class NextSessionModuleTests
         thread.Join();
 
         Assert.Null(threadEx);
+    }
+
+    [Fact]
+    public void NextSessionModule_ShouldExecutePendingPlanOnStartup_DetectsFastStartupLogonSessionAndBootIdChanges()
+    {
+        var logger = new TestLogger();
+        var settingsService = new TestSettingsService();
+        var hotkeyService = new TestHotkeyService();
+        var catalog = new FakeCatalogService();
+        var launcher = new FakeLauncherService();
+        var boot = new FakeBootTimeProvider
+        {
+            BootTimeUtc = new DateTime(2026, 11, 25, 14, 0, 0, DateTimeKind.Utc),
+            LogonSessionId = "00000000-00111111",
+            LogonTimestampUtc = DateTime.UtcNow.AddMinutes(-30),
+            KernelBootId = 15
+        };
+
+        using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher, boot);
+        module.SavePlan("Запустить HoYoPlay", new[] { new NextSessionProgramEntry { Name = "HoYoPlay", ExecutablePath = @"C:\HoYoPlay.lnk" } });
+
+        // Тот же сеанс Windows (обычный перезапуск приложения) -> не должно срабатывать
+        Assert.False(module.ShouldExecutePendingPlanOnStartup());
+
+        // Имитация Fast Startup: TickCount64 (BootTimeUtc) НЕ изменился, но сменился LogonSessionId
+        boot.LogonSessionId = "00000000-00222222";
+        Assert.True(module.ShouldExecutePendingPlanOnStartup());
+
+        // Сбросим LogonSessionId обратно, но изменим KernelBootId -> тоже должно срабатывать
+        boot.LogonSessionId = "00000000-00111111";
+        boot.KernelBootId = 16;
+        Assert.True(module.ShouldExecutePendingPlanOnStartup());
+
+        // Сбросим KernelBootId, и проверим устаревший план без PlannedLogonSessionId, но с новым LogonTimestampUtc
+        boot.KernelBootId = 15;
+        module.Settings.PlannedLogonSessionId = null;
+        module.Settings.PlannedKernelBootId = null;
+        module.Settings.PlannedAtUtc = DateTime.UtcNow.AddHours(-8);
+        boot.LogonTimestampUtc = DateTime.UtcNow.AddMinutes(-1);
+        Assert.True(module.ShouldExecutePendingPlanOnStartup());
+    }
+
+    [Fact]
+    public void NextSessionWindowViewModel_DelayAndSleepSettings_UpdateAndSyncModule()
+    {
+        var logger = new TestLogger();
+        var settingsService = new TestSettingsService();
+        var hotkeyService = new TestHotkeyService();
+        var catalog = new FakeCatalogService();
+        var launcher = new FakeLauncherService();
+
+        using var module = new NextSessionModule(logger, settingsService, hotkeyService, catalog, launcher);
+        using var windowVm = new NextSessionWindowViewModel(module, catalog, loadImmediately: true);
+        using var settingsVm = new NextSessionSettingsViewModel(module, settingsService);
+
+        windowVm.StartupDelaySeconds = 10;
+        windowVm.TriggerOnResumeFromSleep = true;
+
+        Assert.Equal(10, module.Settings.StartupDelaySeconds);
+        Assert.Equal("10 сек", windowVm.StartupDelayText);
+        Assert.True(module.Settings.TriggerOnResumeFromSleep);
+        Assert.Equal(10, settingsVm.StartupDelaySeconds);
+        Assert.True(settingsVm.TriggerOnResumeFromSleep);
     }
 }

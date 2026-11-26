@@ -43,6 +43,8 @@ public sealed class NextSessionSettings
     public List<NextSessionProgramEntry> CustomPrograms { get; set; } = new();
 
     public DateTime? PlannedBootTimestampUtc { get; set; }
+    public string? PlannedLogonSessionId { get; set; }
+    public int? PlannedKernelBootId { get; set; }
     public bool SystemShutdownObserved { get; set; } = false;
     public DateTime? PlannedAtUtc { get; set; }
     public DateTime? LastExecutedAtUtc { get; set; }
