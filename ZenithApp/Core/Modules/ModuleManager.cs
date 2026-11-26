@@ -41,7 +41,8 @@ public sealed class ModuleManager : IDisposable
                               string.Equals(module.Id, "radial_switcher", StringComparison.OrdinalIgnoreCase) ||
                               string.Equals(module.Id, "startup_manager", StringComparison.OrdinalIgnoreCase) ||
                               string.Equals(module.Id, "next_session", StringComparison.OrdinalIgnoreCase) ||
-                              string.Equals(module.Id, "sticky_notes", StringComparison.OrdinalIgnoreCase);
+                              string.Equals(module.Id, "sticky_notes", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(module.Id, "dynamic_island", StringComparison.OrdinalIgnoreCase);
 
             var shouldEnable = _settingsService.Current.IsModuleEnabled(module.Id, defaultValue: isDefaultOn);
             if (shouldEnable)

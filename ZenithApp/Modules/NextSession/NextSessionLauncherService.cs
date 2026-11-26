@@ -162,6 +162,16 @@ public sealed class SystemBootTimeProvider : ISystemBootTimeProvider
     private static extern int LsaFreeReturnBuffer(IntPtr Buffer);
 }
 
+public interface INextSessionCountdownPresenter
+{
+    bool IsActive { get; }
+    Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
+        int delaySeconds,
+        IReadOnlyList<string> programNames,
+        string? messagePreview,
+        CancellationToken cancellationToken);
+}
+
 public interface INextSessionLauncherService
 {
     void ShowSessionNotification(string message, int launchedCount, IReadOnlyList<string> failedPrograms);
@@ -181,10 +191,12 @@ public interface INextSessionLauncherService
 public sealed class NextSessionLauncherService : INextSessionLauncherService
 {
     private readonly IAppLogger _logger;
+    private readonly INextSessionCountdownPresenter? _countdownPresenter;
 
-    public NextSessionLauncherService(IAppLogger logger)
+    public NextSessionLauncherService(IAppLogger logger, INextSessionCountdownPresenter? countdownPresenter = null)
     {
         _logger = logger;
+        _countdownPresenter = countdownPresenter;
     }
 
     public Task<NextSessionCountdownOutcome> WaitWithCountdownAsync(
@@ -209,6 +221,23 @@ public sealed class NextSessionLauncherService : INextSessionLauncherService
         if (delaySeconds <= 0)
         {
             return NextSessionCountdownOutcome.Completed;
+        }
+
+        if (_countdownPresenter is { IsActive: true })
+        {
+            try
+            {
+                _logger.LogInfo($"[NextSession] Routing countdown ({delaySeconds}s, programs: {programNames.Count}) to Dynamic Island.");
+                return await _countdownPresenter.WaitWithCountdownAsync(delaySeconds, programNames, messagePreview, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("[NextSession] Dynamic Island countdown failed; falling back to standard overlay.", ex);
+            }
         }
 
         var dispatcher = System.Windows.Application.Current?.Dispatcher;

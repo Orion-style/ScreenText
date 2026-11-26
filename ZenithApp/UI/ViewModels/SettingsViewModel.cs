@@ -10,6 +10,7 @@ using ZenithApp.Core.Lifecycle;
 using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
+using ZenithApp.Modules.DynamicIsland;
 using ZenithApp.Modules.KeyRemap;
 using ZenithApp.Modules.NextSession;
 using ZenithApp.Modules.QuickLook;
@@ -38,6 +39,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly IStartupItemsService? _startupItemsService;
     private readonly NextSessionModule? _nextSessionModule;
     private readonly StickyNotesModule? _stickyNotesModule;
+    private readonly DynamicIslandModule? _dynamicIslandModule;
 
     private bool _startWithWindows;
     private bool _isAlwaysRunAsAdmin;
@@ -58,7 +60,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         IStartupItemsService? startupItemsService = null,
         IElevationService? elevationService = null,
         NextSessionModule? nextSessionModule = null,
-        StickyNotesModule? stickyNotesModule = null)
+        StickyNotesModule? stickyNotesModule = null,
+        DynamicIslandModule? dynamicIslandModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -74,6 +77,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _startupItemsService = startupItemsService;
         _nextSessionModule = nextSessionModule;
         _stickyNotesModule = stickyNotesModule;
+        _dynamicIslandModule = dynamicIslandModule;
 
         _startWithWindows = _autoLaunchService.IsAutoLaunchEnabled();
         if (_settingsService.Current.StartWithWindows != _startWithWindows)
@@ -135,6 +139,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             StickyNotesSettings = new StickyNotesSettingsViewModel(_stickyNotesModule, _settingsService);
         }
 
+        if (_dynamicIslandModule != null)
+        {
+            DynamicIslandSettings = new DynamicIslandSettingsViewModel(_dynamicIslandModule, _settingsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
         RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
     }
@@ -148,6 +157,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public StartupManagerViewModel? StartupManagerSettings { get; }
     public NextSessionSettingsViewModel? NextSessionSettings { get; }
     public StickyNotesSettingsViewModel? StickyNotesSettings { get; }
+    public DynamicIslandSettingsViewModel? DynamicIslandSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 
@@ -320,5 +330,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _autoLaunchService.AutoLaunchChanged -= OnAutoLaunchChanged;
         NextSessionSettings?.Dispose();
         StickyNotesSettings?.Dispose();
+        DynamicIslandSettings?.Dispose();
     }
 }

@@ -6,6 +6,7 @@ using ZenithApp.Core.Logging;
 using ZenithApp.Core.Modules;
 using ZenithApp.Core.Settings;
 using ZenithApp.Core.Startup;
+using ZenithApp.Modules.DynamicIsland;
 using ZenithApp.Modules.KeyRemap;
 using ZenithApp.Modules.NextSession;
 using ZenithApp.Modules.QuickLook;
@@ -156,6 +157,9 @@ public partial class App : Application
         services.AddSingleton<IStartupItemsService, StartupItemsService>();
         services.AddSingleton<StartupManagerModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<StartupManagerModule>());
+        services.AddSingleton<DynamicIslandModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<DynamicIslandModule>());
+        services.AddSingleton<INextSessionCountdownPresenter>(sp => sp.GetRequiredService<DynamicIslandModule>());
         services.AddSingleton<INextSessionProgramCatalogService, NextSessionProgramCatalogService>();
         services.AddSingleton<INextSessionLauncherService, NextSessionLauncherService>();
         services.AddSingleton<ISystemBootTimeProvider, SystemBootTimeProvider>();

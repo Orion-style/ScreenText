@@ -14,6 +14,7 @@
         xmlns:startup="clr-namespace:ZenithApp.Modules.StartupManager"
         xmlns:nextsession="clr-namespace:ZenithApp.Modules.NextSession"
         xmlns:stickynotes="clr-namespace:ZenithApp.Modules.StickyNotes"
+        xmlns:island="clr-namespace:ZenithApp.Modules.DynamicIsland"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -394,6 +395,13 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <stickynotes:StickyNotesSettingsView DataContext="{Binding StickyNotesSettings}" />
+                            </ContentControl>
+
+                            <!-- Настройки модуля DynamicIsland -->
+                            <ContentControl x:Name="DynamicIslandConfigContainer"
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                <island:DynamicIslandSettingsView DataContext="{Binding DynamicIslandSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

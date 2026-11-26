@@ -19,13 +19,46 @@ public enum ToastNotificationType
     Info
 }
 
+public delegate bool NotificationToastInterceptor(string message, string? title, ToastNotificationType type, int durationSeconds);
+
 public static class NotificationToast
 {
     public const string AppUserModelId = "Zenith.Utility";
+    private static readonly object _interceptorLock = new();
+    private static NotificationToastInterceptor? _interceptor;
+
+    public static void SetInterceptor(NotificationToastInterceptor? interceptor)
+    {
+        lock (_interceptorLock)
+        {
+            _interceptor = interceptor;
+        }
+    }
 
     public static void Show(string message, string? title = null, ToastNotificationType type = ToastNotificationType.Success, int durationSeconds = 3)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
+
+        NotificationToastInterceptor? interceptor;
+        lock (_interceptorLock)
+        {
+            interceptor = _interceptor;
+        }
+
+        if (interceptor != null)
+        {
+            try
+            {
+                if (interceptor(message, title, type, durationSeconds))
+                {
+                    return;
+                }
+            }
+            catch
+            {
+                // Fallback to standard toast notification if interceptor fails
+            }
+        }
 
         // 1. Попытка отправить нативный тост Windows (попадает в системный трей / Центр уведомлений)
         try

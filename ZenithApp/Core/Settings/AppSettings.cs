@@ -17,7 +17,8 @@ public sealed class AppSettings
         ["smart_links"] = true,
         ["radial_switcher"] = true,
         ["next_session"] = true,
-        ["sticky_notes"] = true
+        ["sticky_notes"] = true,
+        ["dynamic_island"] = true
     };
     public ZenithApp.Modules.Screenshot.ScreenshotSettings Screenshot { get; set; } = new();
     public ZenithApp.Modules.SmartLinks.SmartLinksSettings SmartLinks { get; set; } = new();
@@ -27,6 +28,7 @@ public sealed class AppSettings
     public ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettings RadialSwitcher { get; set; } = new();
     public ZenithApp.Modules.NextSession.NextSessionSettings NextSession { get; set; } = new();
     public ZenithApp.Modules.StickyNotes.StickyNotesSettings StickyNotes { get; set; } = new();
+    public ZenithApp.Modules.DynamicIsland.DynamicIslandSettings DynamicIsland { get; set; } = new();
 
     public bool IsModuleEnabled(string moduleId, bool defaultValue = false)
     {
@@ -40,7 +42,8 @@ public sealed class AppSettings
             string.Equals(moduleId, "smart_links", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(moduleId, "radial_switcher", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(moduleId, "next_session", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(moduleId, "sticky_notes", StringComparison.OrdinalIgnoreCase))
+            string.Equals(moduleId, "sticky_notes", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(moduleId, "dynamic_island", StringComparison.OrdinalIgnoreCase))
         {
             return true;
         }

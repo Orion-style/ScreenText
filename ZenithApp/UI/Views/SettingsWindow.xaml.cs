@@ -107,6 +107,11 @@ public partial class SettingsWindow : FluentWindow
                 _viewModel.StickyNotesSettings?.RefreshNotes();
                 StickyNotesConfigContainer.Visibility = Visibility.Visible;
             }
+            else if (moduleVm.Id == ZenithApp.Modules.DynamicIsland.DynamicIslandModule.ModuleId)
+            {
+                _viewModel.DynamicIslandSettings?.RefreshShelfInfo();
+                DynamicIslandConfigContainer.Visibility = Visibility.Visible;
+            }
             else
             {
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
@@ -125,6 +130,7 @@ public partial class SettingsWindow : FluentWindow
         StartupManagerConfigContainer.Visibility = Visibility.Collapsed;
         NextSessionConfigContainer.Visibility = Visibility.Collapsed;
         StickyNotesConfigContainer.Visibility = Visibility.Collapsed;
+        DynamicIslandConfigContainer.Visibility = Visibility.Collapsed;
         CardConfigPlaceholder.Visibility = Visibility.Collapsed;
     }
 

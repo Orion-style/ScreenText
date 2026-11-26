@@ -1,0 +1,183 @@
+<UserControl x:Class="ZenithApp.Modules.DynamicIsland.DynamicIslandSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             mc:Ignorable="d"
+             d:DesignHeight="640" d:DesignWidth="600">
+
+    <StackPanel>
+        <!-- Управление полкой буфера -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Полка буфера обмена" FontWeight="SemiBold" FontSize="15" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ShelfSummaryText}"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <ui:Button Content="Вставить из буфера"
+                               Command="{Binding AddClipboardCommand}"
+                               Margin="0,0,8,0" />
+                    <ui:Button Content="Очистить"
+                               Command="{Binding ClearShelfCommand}"
+                               IsEnabled="{Binding HasShelfItems}"
+                               Margin="0,0,8,0" />
+                    <ui:Button Content="Открыть"
+                               Appearance="Primary"
+                               Command="{Binding ExpandIslandCommand}" />
+                </StackPanel>
+            </Grid>
+        </ui:Card>
+
+        <!-- Сценарии отображения -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Что показывать в островке" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,12" />
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Уведомления Zenith Utility" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="Перехватывать сообщения о скриншотах, OCR и ссылках вместо стандартных тостов справа снизу"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding ShowAppNotifications, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Таймер «Следующий сеанс»" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="Показывать обратный отсчёт отложенного запуска программ и заметку в островке"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding ShowNextSessionCountdown, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Активный медиаплеер (музыка)" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="Отображать текущий трек и кнопки управления из системной медиа-сессии Windows"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding ShowMediaControls, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+
+        <!-- Поведение и положение -->
+        <ui:Card Padding="16" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Поведение и внешний вид" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,12" />
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Сворачивать в тонкую полоску в покое" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="В режиме ожидания оставляет аккуратную полоску у верхней кромки, раскрывается при наведении или перетаскивании"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding AutoHideWhenIdle, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Скрывать в полноэкранных приложениях" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="Прячет островок в режиме покоя поверх полноэкранных игр и видео"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding HideInFullscreen, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Удалять элемент с полки после перетаскивания" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="Если выключено — сохранённые файлы и текст остаются на полке до ручного удаления"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+                    <ui:ToggleSwitch Grid.Column="1"
+                                     IsChecked="{Binding RemoveShelfItemAfterDrag, Mode=TwoWay}"
+                                     VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="180" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <TextBlock Text="Отступ от верхнего края экрана" FontWeight="Medium" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding TopMarginPx, StringFormat={}{0} пикс.}"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   FontSize="12"
+                                   Margin="0,2,0,0" />
+                    </StackPanel>
+                    <Slider Grid.Column="1"
+                            Minimum="0"
+                            Maximum="32"
+                            TickFrequency="2"
+                            IsSnapToTickEnabled="True"
+                            Value="{Binding TopMarginPx, Mode=TwoWay}"
+                            VerticalAlignment="Center" />
+                </Grid>
+            </StackPanel>
+        </ui:Card>
+    </StackPanel>
+</UserControl>
