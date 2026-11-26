@@ -102,6 +102,11 @@ public partial class SettingsWindow : FluentWindow
                 _ = _viewModel.NextSessionSettings?.RefreshRunningAppsAsync();
                 NextSessionConfigContainer.Visibility = Visibility.Visible;
             }
+            else if (moduleVm.Id == ZenithApp.Modules.StickyNotes.StickyNotesModule.ModuleId)
+            {
+                _viewModel.StickyNotesSettings?.RefreshNotes();
+                StickyNotesConfigContainer.Visibility = Visibility.Visible;
+            }
             else
             {
                 CardConfigPlaceholder.Visibility = Visibility.Visible;
@@ -119,6 +124,7 @@ public partial class SettingsWindow : FluentWindow
         RadialSwitcherConfigContainer.Visibility = Visibility.Collapsed;
         StartupManagerConfigContainer.Visibility = Visibility.Collapsed;
         NextSessionConfigContainer.Visibility = Visibility.Collapsed;
+        StickyNotesConfigContainer.Visibility = Visibility.Collapsed;
         CardConfigPlaceholder.Visibility = Visibility.Collapsed;
     }
 

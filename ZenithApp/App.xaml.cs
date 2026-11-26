@@ -13,6 +13,7 @@ using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.Modules.SnapZones;
 using ZenithApp.Modules.StartupManager;
+using ZenithApp.Modules.StickyNotes;
 using ZenithApp.UI.Tray;
 using ZenithApp.UI.ViewModels;
 using ZenithApp.UI.Views;
@@ -80,6 +81,7 @@ public partial class App : Application
         var historyService = _serviceProvider.GetRequiredService<IOcrHistoryService>();
         var screenshotModule = _serviceProvider.GetRequiredService<ScreenshotModule>();
         var nextSessionModule = _serviceProvider.GetRequiredService<NextSessionModule>();
+        var stickyNotesModule = _serviceProvider.GetRequiredService<StickyNotesModule>();
         _trayIconService = new TrayIconService(
             logger,
             openSettingsAction: () => Dispatcher.Invoke(OpenSettingsWindow),
@@ -87,7 +89,22 @@ public partial class App : Application
             clipboardOcrService,
             historyService,
             resetSavedAreaAction: () => screenshotModule.ResetSavedArea(notifyUser: true),
-            openNextSessionAction: () => Dispatcher.Invoke(() => nextSessionModule.OpenPlannerWindow())
+            openNextSessionAction: () => Dispatcher.Invoke(() => nextSessionModule.OpenPlannerWindow()),
+            createStickyNoteAction: () => Dispatcher.Invoke(() =>
+            {
+                if (!stickyNotesModule.IsEnabled)
+                {
+                    _ = _serviceProvider!.GetRequiredService<ModuleManager>().SetModuleStateAsync(StickyNotesModule.ModuleId, true);
+                }
+                stickyNotesModule.CreateNote();
+            }),
+            toggleStickyNotesAction: () => Dispatcher.Invoke(() =>
+            {
+                if (stickyNotesModule.IsEnabled)
+                {
+                    stickyNotesModule.ToggleAllVisibility();
+                }
+            })
         );
         _trayIconService.Initialize();
 
@@ -144,6 +161,9 @@ public partial class App : Application
         services.AddSingleton<ISystemBootTimeProvider, SystemBootTimeProvider>();
         services.AddSingleton<NextSessionModule>();
         services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<NextSessionModule>());
+        services.AddSingleton<IStickyNotesStorageService, StickyNotesStorageService>();
+        services.AddSingleton<StickyNotesModule>();
+        services.AddSingleton<IFeatureModule>(sp => sp.GetRequiredService<StickyNotesModule>());
 
         // Module Manager
         services.AddSingleton<ModuleManager>();
@@ -219,6 +239,7 @@ public partial class App : Application
         var logger = _serviceProvider?.GetService<IAppLogger>();
         logger?.LogInfo("Завершение работы приложения по запросу пользователя.");
 
+        _serviceProvider?.GetService<StickyNotesModule>()?.FlushSave();
         _trayIconService?.Dispose();
         _singleInstanceService?.Dispose();
 

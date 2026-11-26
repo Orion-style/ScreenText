@@ -13,6 +13,7 @@
         xmlns:radial="clr-namespace:ZenithApp.Modules.RadialSwitcher"
         xmlns:startup="clr-namespace:ZenithApp.Modules.StartupManager"
         xmlns:nextsession="clr-namespace:ZenithApp.Modules.NextSession"
+        xmlns:stickynotes="clr-namespace:ZenithApp.Modules.StickyNotes"
         mc:Ignorable="d"
         Title="{DynamicResource App_Title}"
         Icon="/Resources/app.ico"
@@ -386,6 +387,13 @@
                                             Visibility="Collapsed"
                                             Margin="0,0,0,16">
                                 <nextsession:NextSessionSettingsView DataContext="{Binding NextSessionSettings}" />
+                            </ContentControl>
+
+                            <!-- Настройки модуля StickyNotes -->
+                            <ContentControl x:Name="StickyNotesConfigContainer"
+                                            Visibility="Collapsed"
+                                            Margin="0,0,0,16">
+                                <stickynotes:StickyNotesSettingsView DataContext="{Binding StickyNotesSettings}" />
                             </ContentControl>
 
                             <!-- Плейсхолдер под дальнейшие настройки остальных модулей -->

@@ -17,6 +17,7 @@ using ZenithApp.Modules.Screenshot;
 using ZenithApp.Modules.SmartLinks;
 using ZenithApp.Modules.SnapZones;
 using ZenithApp.Modules.StartupManager;
+using ZenithApp.Modules.StickyNotes;
 using ZenithApp.UI.Common;
 
 namespace ZenithApp.UI.ViewModels;
@@ -36,6 +37,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     private readonly StartupManagerModule? _startupManagerModule;
     private readonly IStartupItemsService? _startupItemsService;
     private readonly NextSessionModule? _nextSessionModule;
+    private readonly StickyNotesModule? _stickyNotesModule;
 
     private bool _startWithWindows;
     private bool _isAlwaysRunAsAdmin;
@@ -55,7 +57,8 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         StartupManagerModule? startupManagerModule = null,
         IStartupItemsService? startupItemsService = null,
         IElevationService? elevationService = null,
-        NextSessionModule? nextSessionModule = null)
+        NextSessionModule? nextSessionModule = null,
+        StickyNotesModule? stickyNotesModule = null)
     {
         _settingsService = settingsService;
         _autoLaunchService = autoLaunchService;
@@ -70,6 +73,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
         _startupManagerModule = startupManagerModule;
         _startupItemsService = startupItemsService;
         _nextSessionModule = nextSessionModule;
+        _stickyNotesModule = stickyNotesModule;
 
         _startWithWindows = _autoLaunchService.IsAutoLaunchEnabled();
         if (_settingsService.Current.StartWithWindows != _startWithWindows)
@@ -126,6 +130,11 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
             NextSessionSettings = new NextSessionSettingsViewModel(_nextSessionModule, _settingsService);
         }
 
+        if (_stickyNotesModule != null)
+        {
+            StickyNotesSettings = new StickyNotesSettingsViewModel(_stickyNotesModule, _settingsService);
+        }
+
         OpenSettingsFolderCommand = new RelayCommand(OpenSettingsFolder);
         RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
     }
@@ -138,6 +147,7 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     public ZenithApp.Modules.RadialSwitcher.RadialSwitcherSettingsViewModel? RadialSwitcherSettings { get; }
     public StartupManagerViewModel? StartupManagerSettings { get; }
     public NextSessionSettingsViewModel? NextSessionSettings { get; }
+    public StickyNotesSettingsViewModel? StickyNotesSettings { get; }
 
     public ObservableCollection<ModuleItemViewModel> Modules { get; }
 
@@ -309,5 +319,6 @@ public sealed class SettingsViewModel : ViewModelBase, IDisposable
     {
         _autoLaunchService.AutoLaunchChanged -= OnAutoLaunchChanged;
         NextSessionSettings?.Dispose();
+        StickyNotesSettings?.Dispose();
     }
 }

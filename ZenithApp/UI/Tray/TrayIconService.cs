@@ -17,6 +17,8 @@ public sealed class TrayIconService : IDisposable
     private readonly IOcrHistoryService _historyService;
     private readonly Action? _resetSavedAreaAction;
     private readonly Action? _openNextSessionAction;
+    private readonly Action? _createStickyNoteAction;
+    private readonly Action? _toggleStickyNotesAction;
 
     private NotifyIcon? _notifyIcon;
     private MenuItem? _historySubMenu;
@@ -29,7 +31,9 @@ public sealed class TrayIconService : IDisposable
         IClipboardOcrService clipboardOcrService,
         IOcrHistoryService historyService,
         Action? resetSavedAreaAction = null,
-        Action? openNextSessionAction = null)
+        Action? openNextSessionAction = null,
+        Action? createStickyNoteAction = null,
+        Action? toggleStickyNotesAction = null)
     {
         _logger = logger;
         _openSettingsAction = openSettingsAction;
@@ -38,6 +42,8 @@ public sealed class TrayIconService : IDisposable
         _historyService = historyService;
         _resetSavedAreaAction = resetSavedAreaAction;
         _openNextSessionAction = openNextSessionAction;
+        _createStickyNoteAction = createStickyNoteAction;
+        _toggleStickyNotesAction = toggleStickyNotesAction;
     }
 
     public void Initialize()
@@ -116,6 +122,31 @@ public sealed class TrayIconService : IDisposable
                 };
                 nextSessionItem.Click += (_, _) => _openNextSessionAction.Invoke();
                 contextMenu.Items.Add(nextSessionItem);
+            }
+
+            if (_createStickyNoteAction != null || _toggleStickyNotesAction != null)
+            {
+                contextMenu.Items.Add(new Separator());
+
+                if (_createStickyNoteAction != null)
+                {
+                    var createNoteItem = new MenuItem
+                    {
+                        Header = "Новый стикер"
+                    };
+                    createNoteItem.Click += (_, _) => _createStickyNoteAction.Invoke();
+                    contextMenu.Items.Add(createNoteItem);
+                }
+
+                if (_toggleStickyNotesAction != null)
+                {
+                    var toggleNotesItem = new MenuItem
+                    {
+                        Header = "Показать / скрыть стикеры"
+                    };
+                    toggleNotesItem.Click += (_, _) => _toggleStickyNotesAction.Invoke();
+                    contextMenu.Items.Add(toggleNotesItem);
+                }
             }
 
             contextMenu.Items.Add(new Separator());

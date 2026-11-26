@@ -1,0 +1,273 @@
+<Window x:Class="ZenithApp.Modules.StickyNotes.StickyNoteWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize"
+        MinWidth="200"
+        MinHeight="30">
+    <Window.Resources>
+        <Style x:Key="NoteActionBtnStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Margin" Value="1,0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#24FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#40FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder"
+            CornerRadius="8"
+            BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Верхняя панель стикера -->
+            <Border x:Name="HeaderBorder"
+                    Grid.Row="0"
+                    CornerRadius="7,7,0,0"
+                    Padding="8,0,4,0">
+                <Grid x:Name="HeaderControlsGrid">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Зона перетаскивания + краткий текст в свёрнутом состоянии -->
+                    <Grid Grid.Column="0"
+                          Background="Transparent"
+                          Cursor="SizeAll"
+                          MouseLeftButtonDown="OnHeaderMouseLeftButtonDown">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon x:Name="IconDragGrip"
+                                           Symbol="ReOrderDotsHorizontal16"
+                                           FontSize="13"
+                                           Margin="0,0,6,0" />
+                            <TextBlock x:Name="TxtCollapsedPreview"
+                                       FontSize="11.5"
+                                       FontWeight="Medium"
+                                       VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis"
+                                       Visibility="Collapsed" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Кнопки управления -->
+                    <StackPanel x:Name="HeaderButtonsPanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center">
+                        <Button x:Name="BtnStyle"
+                                Style="{StaticResource NoteActionBtnStyle}"
+                                ToolTip="Цвет, прозрачность и шрифт"
+                                Click="OnStyleClick">
+                            <ui:SymbolIcon x:Name="IconColor" Symbol="Color16" FontSize="13" />
+                        </Button>
+                        <Button x:Name="BtnTopmost"
+                                Style="{StaticResource NoteActionBtnStyle}"
+                                ToolTip="Поверх всех окон"
+                                Click="OnToggleTopmostClick">
+                            <ui:SymbolIcon x:Name="IconPin" Symbol="Pin16" FontSize="13" />
+                        </Button>
+                        <Button x:Name="BtnClickThrough"
+                                Style="{StaticResource NoteActionBtnStyle}"
+                                ToolTip="Прозрачность для кликов (клики проходят сквозь текст)"
+                                Click="OnToggleClickThroughClick">
+                            <ui:SymbolIcon x:Name="IconClickThrough" Symbol="LockOpen16" FontSize="13" />
+                        </Button>
+                        <Button x:Name="BtnCollapse"
+                                Style="{StaticResource NoteActionBtnStyle}"
+                                ToolTip="Свернуть / развернуть"
+                                Click="OnToggleCollapseClick">
+                            <ui:SymbolIcon x:Name="IconCollapse" Symbol="ChevronUp16" FontSize="13" />
+                        </Button>
+                        <Button x:Name="BtnHide"
+                                Style="{StaticResource NoteActionBtnStyle}"
+                                ToolTip="Скрыть с экрана (останется в списке)"
+                                Click="OnHideClick">
+                            <ui:SymbolIcon x:Name="IconHide" Symbol="Subtract16" FontSize="13" />
+                        </Button>
+                        <Button x:Name="BtnDelete"
+                                Style="{StaticResource NoteActionBtnStyle}"
+                                ToolTip="Удалить стикер"
+                                Click="OnDeleteClick">
+                            <ui:SymbolIcon x:Name="IconDelete" Symbol="Delete16" FontSize="13" />
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Встроенное подтверждение удаления -->
+                    <StackPanel x:Name="ConfirmDeletePanel"
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                Visibility="Collapsed">
+                        <TextBlock x:Name="TxtConfirmDelete"
+                                   Text="Удалить?"
+                                   FontSize="11"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,5,0" />
+                        <Button Content="Да"
+                                Height="22"
+                                Padding="7,0"
+                                Margin="0,0,3,0"
+                                FontSize="11"
+                                FontWeight="SemiBold"
+                                Foreground="White"
+                                Background="#DC2626"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Click="OnConfirmDeleteYesClick" />
+                        <Button Content="Нет"
+                                Height="22"
+                                Padding="6,0"
+                                FontSize="11"
+                                Foreground="White"
+                                Background="#3F4654"
+                                BorderThickness="0"
+                                Cursor="Hand"
+                                Click="OnConfirmDeleteNoClick" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Текст стикера -->
+            <Grid x:Name="BodyGrid" Grid.Row="1">
+                <TextBox x:Name="NoteTextBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Disabled"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="10,8,10,12"
+                         UndoLimit="25"
+                         FontFamily="Segoe UI"
+                         TextChanged="OnNoteTextChanged" />
+
+                <!-- Лёгкий плейсхолдер при пустом стикере -->
+                <TextBlock x:Name="TxtPlaceholder"
+                           Text="Введите заметку..."
+                           Margin="12,9,12,12"
+                           IsHitTestVisible="False"
+                           Opacity="0.45"
+                           FontFamily="Segoe UI" />
+
+                <!-- Зоны изменения размера (без WindowChrome, чтобы не конфликтовать с AllowsTransparency) -->
+                <Thumb x:Name="ResizeRightThumb"
+                       Width="6"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Stretch"
+                       Cursor="SizeWE"
+                       Opacity="0"
+                       DragDelta="OnResizeRightDragDelta" />
+                <Thumb x:Name="ResizeBottomThumb"
+                       Height="6"
+                       HorizontalAlignment="Stretch"
+                       VerticalAlignment="Bottom"
+                       Cursor="SizeNS"
+                       Opacity="0"
+                       DragDelta="OnResizeBottomDragDelta" />
+                <Thumb x:Name="ResizeCornerThumb"
+                       Width="14"
+                       Height="14"
+                       HorizontalAlignment="Right"
+                       VerticalAlignment="Bottom"
+                       Cursor="SizeNWSE"
+                       DragDelta="OnResizeCornerDragDelta">
+                    <Thumb.Template>
+                        <ControlTemplate TargetType="Thumb">
+                            <Grid Background="Transparent">
+                                <Path Data="M 10,3 L 3,10 M 10,7 L 7,10"
+                                      Stroke="{Binding ElementName=IconDelete, Path=Foreground}"
+                                      StrokeThickness="1.2"
+                                      Opacity="0.65" />
+                            </Grid>
+                        </ControlTemplate>
+                    </Thumb.Template>
+                </Thumb>
+            </Grid>
+
+            <!-- Компактное всплывающее меню стиля (цвет / прозрачность / шрифт) -->
+            <Popup x:Name="StylePopup"
+                   PlacementTarget="{Binding ElementName=BtnStyle}"
+                   Placement="Bottom"
+                   StaysOpen="False"
+                   AllowsTransparency="True">
+                <Border x:Name="StylePopupBorder"
+                        CornerRadius="8"
+                        BorderThickness="1"
+                        Padding="10"
+                        Margin="4">
+                    <StackPanel Width="206">
+                        <TextBlock x:Name="TxtStyleColorLabel"
+                                   Text="Цвет"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6" />
+                        <WrapPanel x:Name="ColorSwatchesPanel" Margin="0,0,0,10" />
+
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="TxtOpacityLabel"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       FontSize="11.5" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="−" Width="24" Height="22" Margin="0,0,4,0" Click="OnOpacityDecreaseClick" />
+                                <Button Content="+" Width="24" Height="22" Click="OnOpacityIncreaseClick" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock x:Name="TxtFontLabel"
+                                       Grid.Column="0"
+                                       VerticalAlignment="Center"
+                                       FontSize="11.5" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="−" Width="24" Height="22" Margin="0,0,4,0" Click="OnFontDecreaseClick" />
+                                <Button Content="+" Width="24" Height="22" Click="OnFontIncreaseClick" />
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Popup>
+        </Grid>
+    </Border>
+</Window>
