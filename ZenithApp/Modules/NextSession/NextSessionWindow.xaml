@@ -265,8 +265,7 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate DataType="{x:Type local:NextSessionProgramItem}">
                                     <ToggleButton IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                                                  Style="{StaticResource AppTileToggleStyle}"
-                                                  ToolTip="{Binding ToolTipText}" />
+                                                  Style="{StaticResource AppTileToggleStyle}" />
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

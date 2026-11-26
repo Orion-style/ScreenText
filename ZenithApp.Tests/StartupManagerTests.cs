@@ -143,4 +143,19 @@ public class StartupManagerTests
         var simple = "C:\\Windows\\notepad.exe";
         Assert.Equal("C:\\Windows\\notepad.exe", StartupItemsService.ExtractExecutablePath(simple));
     }
+
+    [Fact]
+    public void StartupIconService_GetIcon_ReturnsFrozenIconForExistingExecutable()
+    {
+        var notepadPath = System.IO.Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "notepad.exe");
+        if (!System.IO.File.Exists(notepadPath))
+        {
+            return;
+        }
+
+        var icon = StartupIconService.GetIcon(notepadPath, null);
+        Assert.NotNull(icon);
+        Assert.True(icon!.IsFrozen);
+        Assert.True(icon.Width >= 32);
+    }
 }
