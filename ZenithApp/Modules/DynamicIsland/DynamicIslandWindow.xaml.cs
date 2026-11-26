@@ -1,6 +1,5 @@
 using System.Collections.Specialized;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
@@ -28,6 +27,9 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         ExpandedDrawer
     }
 
+    private const double PopupCardWidth = 416.0;
+    private const double ExpandedWindowWidth = 424.0;
+
     private const int GWL_EXSTYLE = -20;
     private const int WS_EX_TOOLWINDOW = 0x00000080;
     private const int WS_EX_NOACTIVATE = 0x08000000;
@@ -36,6 +38,8 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOACTIVATE = 0x0010;
     private static readonly nint HWND_TOPMOST = new(-1);
+
+    private static readonly Brush DragHitBridgeBrush = new SolidColorBrush(Color.FromArgb(1, 0, 0, 0));
 
     [StructLayout(LayoutKind.Sequential)]
     private struct RECT
@@ -55,6 +59,13 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         public uint dwFlags;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    private struct POINT
+    {
+        public int X;
+        public int Y;
+    }
+
     [DllImport("user32.dll")]
     private static extern nint GetForegroundWindow();
 
@@ -64,13 +75,6 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
     [DllImport("user32.dll")]
     private static extern nint MonitorFromPoint(POINT pt, uint dwFlags);
 
-    [StructLayout(LayoutKind.Sequential)]
-    private struct POINT
-    {
-        public int X;
-        public int Y;
-    }
-
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
@@ -78,6 +82,10 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool GetWindowRect(nint hWnd, out RECT lpRect);
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetCursorPos(out POINT lpPoint);
 
     [DllImport("user32.dll", CharSet = CharSet.Auto)]
     private static extern int GetClassName(nint hWnd, StringBuilder lpClassName, int nMaxCount);
@@ -105,6 +113,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
     private readonly DispatcherTimer _notificationTimer;
     private readonly DispatcherTimer _autoCollapseTimer;
+    private readonly DispatcherTimer _dragLeaveDebounceTimer;
     private readonly DispatcherTimer _countdownTimer;
     private readonly DispatcherTimer _fullscreenCheckTimer;
 
@@ -119,6 +128,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
     private bool _isDraggingOut;
     private bool _isDrawerPinned;
     private bool _isHiddenByFullscreen;
+    private int _animationGeneration;
 
     // Active notification state
     private bool _hasActiveNotification;
@@ -159,20 +169,22 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         _autoCollapseTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(850) };
         _autoCollapseTimer.Tick += OnAutoCollapseTick;
 
+        _dragLeaveDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(65) };
+        _dragLeaveDebounceTimer.Tick += OnDragLeaveDebounceTick;
+
         _countdownTimer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(33) };
         _countdownTimer.Tick += OnCountdownTimerTick;
 
         _fullscreenCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1500) };
         _fullscreenCheckTimer.Tick += OnFullscreenCheckTick;
 
+        UpdateNotchGeometryForMode(_currentMode);
+
         Loaded += (_, _) =>
         {
-            PositionTopCenterOnPrimaryMonitor();
             TransitionToBestIdleOrActiveMode();
             _fullscreenCheckTimer.Start();
         };
-
-        SizeChanged += (_, _) => PositionTopCenterOnPrimaryMonitor();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -199,7 +211,6 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
             }
             UpdateMediaVisuals();
             TransitionToBestIdleOrActiveMode();
-            PositionTopCenterOnPrimaryMonitor();
         });
     }
 
@@ -217,7 +228,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
             TxtDrawerShelfSummary.Text = hasItems
                 ? $"· Элементов: {items.Count}"
-                : "· Полка пуста";
+                : "· Пусто";
 
             int fileCount = items.Count(i => i.IsFileOrFolder);
             int textCount = items.Count - fileCount;
@@ -243,7 +254,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
-            UpdateCompactIdleVisuals();
+            UpdateNotchVisuals();
             TransitionToBestIdleOrActiveMode();
         });
     }
@@ -254,7 +265,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         {
             _mediaState = state ?? IslandMediaState.Empty;
             UpdateMediaVisuals();
-            UpdateCompactIdleVisuals();
+            UpdateNotchVisuals();
             TransitionToBestIdleOrActiveMode();
         });
     }
@@ -390,6 +401,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
             _notificationTimer.Stop();
             _autoCollapseTimer.Stop();
+            _dragLeaveDebounceTimer.Stop();
             _countdownTimer.Stop();
             _fullscreenCheckTimer.Stop();
             FinishActiveCountdown(NextSessionCountdownOutcome.Cancelled);
@@ -433,109 +445,221 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
     private bool ShouldKeepCompactVisibleWhenIdle()
     {
-        return (_settings.ShowMediaControls && _mediaState.HasSession && _mediaState.IsPlaying);
+        return _settings.ShowMediaControls && _mediaState.HasSession && _mediaState.IsPlaying;
+    }
+
+    private static bool IsPopupMode(IslandVisualMode mode)
+    {
+        return mode is IslandVisualMode.DropTarget
+            or IslandVisualMode.Notification
+            or IslandVisualMode.Countdown
+            or IslandVisualMode.ExpandedDrawer;
     }
 
     private void ApplyVisualMode(IslandVisualMode mode)
     {
+        bool wasPopup = IsPopupMode(_currentMode);
+        bool isPopup = IsPopupMode(mode);
         bool modeChanged = _currentMode != mode;
         _currentMode = mode;
 
-        ViewHiddenNotch.Visibility = mode == IslandVisualMode.HiddenNotch ? Visibility.Visible : Visibility.Collapsed;
-        ViewCompactIdle.Visibility = mode == IslandVisualMode.CompactIdle ? Visibility.Visible : Visibility.Collapsed;
+        // Верхний трапециевидный выступ /----\ не меняет форму при появлении карточки снизу
+        var (notchWidth, notchHeight, slope) = UpdateNotchGeometryForMode(mode);
+        UpdateNotchVisuals();
+
+        // Невидимый мостик 1/255 alpha только во время перетаскивания, чтобы зазор между холмиком и полем сброса не мигал DragLeave
+        RootGrid.Background = _isDraggingOver ? DragHitBridgeBrush : null;
+
+        if (!isPopup)
+        {
+            if (wasPopup && PopupCardBorder.Visibility == Visibility.Visible)
+            {
+                AnimatePopupCardOut(notchWidth, notchHeight);
+            }
+            else
+            {
+                HideAllPopupViews();
+                PopupCardBorder.Visibility = Visibility.Collapsed;
+                SetWindowBoundsAndCenter(notchWidth, notchHeight);
+            }
+            return;
+        }
+
+        // Показываем нужную карточку под трапециевидным выступом
+        int gen = ++_animationGeneration;
+
         ViewDropTarget.Visibility = mode == IslandVisualMode.DropTarget ? Visibility.Visible : Visibility.Collapsed;
         ViewNotification.Visibility = mode == IslandVisualMode.Notification ? Visibility.Visible : Visibility.Collapsed;
         ViewCountdown.Visibility = mode == IslandVisualMode.Countdown ? Visibility.Visible : Visibility.Collapsed;
         ViewExpandedDrawer.Visibility = mode == IslandVisualMode.ExpandedDrawer ? Visibility.Visible : Visibility.Collapsed;
 
-        double targetWidth;
-        double targetMinHeight;
-        double targetCornerRadius;
+        // Для зоны сброса делаем фон чуть более прозрачным, как стеклянная плашка
+        PopupCardBorder.Background = mode == IslandVisualMode.DropTarget
+            ? new SolidColorBrush(Color.FromArgb(196, 17, 23, 36))
+            : new SolidColorBrush(Color.FromArgb(224, 18, 21, 30));
+        PopupCardBorder.BorderBrush = mode == IslandVisualMode.DropTarget
+            ? new SolidColorBrush(Color.FromArgb(160, 96, 165, 250))
+            : new SolidColorBrush(Color.FromArgb(54, 255, 255, 255));
 
-        switch (mode)
+        PopupCardBorder.Visibility = Visibility.Visible;
+        PopupCardBorder.Width = mode == IslandVisualMode.DropTarget ? 360.0 : PopupCardWidth;
+
+        // Измеряем целевую высоту карточки один раз, без дёрганий SizeToContent на каждом кадре
+        PopupCardBorder.InvalidateMeasure();
+        PopupCardBorder.Measure(new Size(PopupCardBorder.Width, 560));
+        double cardHeight = Math.Ceiling(PopupCardBorder.DesiredSize.Height);
+        double targetWindowWidth = Math.Max(ExpandedWindowWidth, notchWidth);
+        double targetWindowHeight = notchHeight + cardHeight + 4;
+
+        SetWindowBoundsAndCenter(targetWindowWidth, targetWindowHeight);
+
+        if (!wasPopup || modeChanged)
         {
-            case IslandVisualMode.HiddenNotch:
-                targetWidth = 112;
-                targetMinHeight = 7;
-                targetCornerRadius = 4;
-                break;
-
-            case IslandVisualMode.CompactIdle:
-                targetWidth = ComputeCompactIdleWidth();
-                targetMinHeight = 30;
-                targetCornerRadius = 15;
-                break;
-
-            case IslandVisualMode.DropTarget:
-                targetWidth = 350;
-                targetMinHeight = 96;
-                targetCornerRadius = 22;
-                break;
-
-            case IslandVisualMode.Notification:
-                targetWidth = 392;
-                targetMinHeight = 58;
-                targetCornerRadius = 22;
-                break;
-
-            case IslandVisualMode.Countdown:
-                targetWidth = 420;
-                targetMinHeight = 76;
-                targetCornerRadius = 22;
-                break;
-
-            case IslandVisualMode.ExpandedDrawer:
-            default:
-                targetWidth = 420;
-                targetMinHeight = 120;
-                targetCornerRadius = 24;
-                break;
+            AnimatePopupCardIn(gen);
         }
-
-        PillBorder.MinHeight = targetMinHeight;
-        PillBorder.CornerRadius = new CornerRadius(targetCornerRadius);
-
-        var duration = modeChanged ? TimeSpan.FromMilliseconds(210) : TimeSpan.FromMilliseconds(140);
-        var widthAnim = new DoubleAnimation(targetWidth, duration)
+        else
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        PillBorder.BeginAnimation(WidthProperty, widthAnim);
-
-        if (modeChanged)
-        {
-            var fade = new DoubleAnimation(0.55, 1.0, TimeSpan.FromMilliseconds(160))
-            {
-                EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-            };
-            ContentHost.BeginAnimation(OpacityProperty, fade);
+            PopupCardBorder.BeginAnimation(OpacityProperty, null);
+            PopupTranslateTransform.BeginAnimation(TranslateTransform.YProperty, null);
+            PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            PopupCardBorder.Opacity = 1.0;
+            PopupTranslateTransform.Y = 0;
+            PopupScaleTransform.ScaleX = 1.0;
+            PopupScaleTransform.ScaleY = 1.0;
         }
-
-        UpdateCompactIdleVisuals();
-        PositionTopCenterOnPrimaryMonitor();
     }
 
-    private double ComputeCompactIdleWidth()
+    private (double Width, double Height, double Slope) UpdateNotchGeometryForMode(IslandVisualMode mode)
     {
-        if (_settings.ShowMediaControls && _mediaState.HasSession)
+        double width;
+        double height;
+        double slope;
+
+        if (mode == IslandVisualMode.HiddenNotch)
         {
-            return 224;
+            width = 116;
+            height = 9;
+            slope = 6;
+            ViewHiddenNotch.Visibility = Visibility.Visible;
+            ViewCompactNotch.Visibility = Visibility.Collapsed;
+        }
+        else
+        {
+            height = 28;
+            slope = 15;
+            if (_settings.ShowMediaControls && _mediaState.HasSession)
+            {
+                width = 250;
+            }
+            else if (_shelfService.Count > 0)
+            {
+                width = 212;
+            }
+            else
+            {
+                width = 186;
+            }
+
+            ViewHiddenNotch.Visibility = Visibility.Collapsed;
+            ViewCompactNotch.Visibility = Visibility.Visible;
         }
 
-        if (_shelfService.Count > 0)
-        {
-            return 178;
-        }
+        NotchHost.Width = width;
+        NotchHost.Height = height;
 
-        return 146;
+        // Чёткая трапеция /----\ (перевёрнутая от верхней границы экрана вниз: \____/)
+        var fillGeom = new StreamGeometry();
+        using (var ctx = fillGeom.Open())
+        {
+            ctx.BeginFigure(new Point(0, 0), isFilled: true, isClosed: true);
+            ctx.LineTo(new Point(width, 0), isStroked: false, isSmoothJoin: false);
+            ctx.LineTo(new Point(width - slope, height), isStroked: false, isSmoothJoin: false);
+            ctx.LineTo(new Point(slope, height), isStroked: false, isSmoothJoin: false);
+        }
+        fillGeom.Freeze();
+        NotchFillPath.Data = fillGeom;
+
+        // Обводка только боковых граней и нижней площадки (верхняя граница прилегает к краю экрана)
+        var strokeGeom = new StreamGeometry();
+        using (var ctx = strokeGeom.Open())
+        {
+            ctx.BeginFigure(new Point(0.5, 0), isFilled: false, isClosed: false);
+            ctx.LineTo(new Point(slope, height - 0.5), isStroked: true, isSmoothJoin: false);
+            ctx.LineTo(new Point(width - slope, height - 0.5), isStroked: true, isSmoothJoin: false);
+            ctx.LineTo(new Point(width - 0.5, 0), isStroked: true, isSmoothJoin: false);
+        }
+        strokeGeom.Freeze();
+        NotchStrokePath.Data = strokeGeom;
+
+        return (width, height, slope);
     }
 
-    private void UpdateCompactIdleVisuals()
+    private void AnimatePopupCardIn(int generation)
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var duration = TimeSpan.FromMilliseconds(210);
+
+        PopupCardBorder.BeginAnimation(OpacityProperty, null);
+        PopupTranslateTransform.BeginAnimation(TranslateTransform.YProperty, null);
+        PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
+        PopupCardBorder.Opacity = 0.0;
+        PopupTranslateTransform.Y = -10.0;
+        PopupScaleTransform.ScaleX = 0.96;
+        PopupScaleTransform.ScaleY = 0.92;
+
+        PopupCardBorder.BeginAnimation(OpacityProperty, new DoubleAnimation(0.0, 1.0, duration) { EasingFunction = ease });
+        PopupTranslateTransform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(-10.0, 0.0, duration) { EasingFunction = ease });
+        PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.96, 1.0, duration) { EasingFunction = ease });
+        PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.92, 1.0, duration) { EasingFunction = ease });
+    }
+
+    private void AnimatePopupCardOut(double targetNotchWidth, double targetNotchHeight)
+    {
+        int gen = ++_animationGeneration;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var duration = TimeSpan.FromMilliseconds(150);
+
+        var fadeOut = new DoubleAnimation(PopupCardBorder.Opacity, 0.0, duration) { EasingFunction = ease };
+        fadeOut.Completed += (_, _) =>
+        {
+            if (_isClosing || gen != _animationGeneration || IsPopupMode(_currentMode))
+            {
+                return;
+            }
+
+            HideAllPopupViews();
+            PopupCardBorder.Visibility = Visibility.Collapsed;
+            SetWindowBoundsAndCenter(targetNotchWidth, targetNotchHeight);
+        };
+
+        PopupCardBorder.BeginAnimation(OpacityProperty, fadeOut);
+        PopupTranslateTransform.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0.0, -8.0, duration) { EasingFunction = ease });
+        PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1.0, 0.96, duration) { EasingFunction = ease });
+        PopupScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1.0, 0.92, duration) { EasingFunction = ease });
+    }
+
+    private void HideAllPopupViews()
+    {
+        ViewDropTarget.Visibility = Visibility.Collapsed;
+        ViewNotification.Visibility = Visibility.Collapsed;
+        ViewCountdown.Visibility = Visibility.Collapsed;
+        ViewExpandedDrawer.Visibility = Visibility.Collapsed;
+    }
+
+    private void UpdateNotchVisuals()
     {
         int shelfCount = _shelfService.Count;
         bool hasMedia = _settings.ShowMediaControls && _mediaState.HasSession;
 
-        if (hasMedia)
+        if (_isDraggingOver)
+        {
+            CompactStatusDot.Background = new SolidColorBrush(Color.FromRgb(96, 165, 250));
+            TxtCompactStatus.Text = "Сбросьте ниже";
+        }
+        else if (hasMedia)
         {
             CompactStatusDot.Background = _mediaState.IsPlaying
                 ? new SolidColorBrush(Color.FromRgb(16, 185, 129))
@@ -583,8 +707,8 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
     private void AnimateNotifProgressBar(TimeSpan duration)
     {
         NotifProgressBar.BeginAnimation(WidthProperty, null);
-        NotifProgressBar.Width = 392;
-        var shrink = new DoubleAnimation(392, 0, duration);
+        NotifProgressBar.Width = PopupCardWidth;
+        var shrink = new DoubleAnimation(PopupCardWidth, 0, duration);
         NotifProgressBar.BeginAnimation(WidthProperty, shrink);
     }
 
@@ -651,7 +775,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
             ? $"Запуск через {remainingSeconds} сек"
             : $"Напоминание через {remainingSeconds} сек";
 
-        CountdownProgressBar.Width = Math.Max(0, 420.0 * remainingFraction);
+        CountdownProgressBar.Width = Math.Max(0, PopupCardWidth * remainingFraction);
     }
 
     private void FinishActiveCountdown(NextSessionCountdownOutcome outcome)
@@ -729,6 +853,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         if (_isDrawerPinned && !_isDraggingOut && !_isDraggingOver)
         {
             _autoCollapseTimer.Stop();
+            _autoCollapseTimer.Interval = TimeSpan.FromMilliseconds(850);
             _autoCollapseTimer.Start();
         }
         else if (_currentMode == IslandVisualMode.CompactIdle && _settings.AutoHideWhenIdle)
@@ -747,23 +872,31 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         }
     }
 
-    private void OnPillMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void OnNotchMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.OriginalSource is DependencyObject src && FindAncestor<Button>(src) != null)
+        if (_hasActiveNotification)
+        {
+            DismissActiveNotification();
+            return;
+        }
+
+        if (_hasActiveCountdown)
         {
             return;
         }
 
-        if (_currentMode is IslandVisualMode.CompactIdle or IslandVisualMode.HiddenNotch)
+        if (_isDrawerPinned)
+        {
+            _isDrawerPinned = false;
+            _autoCollapseTimer.Stop();
+        }
+        else
         {
             _isDrawerPinned = true;
             _autoCollapseTimer.Stop();
-            TransitionToBestIdleOrActiveMode();
         }
-        else if (_currentMode == IslandVisualMode.Notification)
-        {
-            DismissActiveNotification();
-        }
+
+        TransitionToBestIdleOrActiveMode();
     }
 
     private void OnCollapseDrawerClicked(object sender, RoutedEventArgs e)
@@ -821,14 +954,9 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
     private void OnWindowDragEnter(object sender, DragEventArgs e)
     {
-        if (!CanAcceptDrop(e.Data))
-        {
-            e.Effects = DragDropEffects.None;
-            e.Handled = true;
-            return;
-        }
+        _dragLeaveDebounceTimer.Stop();
 
-        if (_isDraggingOut)
+        if (_isDraggingOut || !CanAcceptDrop(e.Data))
         {
             e.Effects = DragDropEffects.None;
             e.Handled = true;
@@ -844,11 +972,17 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         _autoCollapseTimer.Stop();
         e.Effects = DragDropEffects.Copy;
         e.Handled = true;
-        TransitionToBestIdleOrActiveMode();
+
+        if (_currentMode != IslandVisualMode.DropTarget)
+        {
+            TransitionToBestIdleOrActiveMode();
+        }
     }
 
     private void OnWindowDragOver(object sender, DragEventArgs e)
     {
+        _dragLeaveDebounceTimer.Stop();
+
         if (_isDraggingOut || !CanAcceptDrop(e.Data))
         {
             e.Effects = DragDropEffects.None;
@@ -862,13 +996,42 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
     private void OnWindowDragLeave(object sender, DragEventArgs e)
     {
-        _isDraggingOver = false;
         e.Handled = true;
+        if (!_isDraggingOver) return;
+
+        // Небольшой дебаунс, чтобы перемещение между холмиком и карточкой не закрывало DropTarget
+        _dragLeaveDebounceTimer.Stop();
+        _dragLeaveDebounceTimer.Start();
+    }
+
+    private void OnDragLeaveDebounceTick(object? sender, EventArgs e)
+    {
+        _dragLeaveDebounceTimer.Stop();
+        if (!_isDraggingOver) return;
+
+        if (IsCursorInsideWindowRect())
+        {
+            return;
+        }
+
+        _isDraggingOver = false;
         TransitionToBestIdleOrActiveMode();
+    }
+
+    private bool IsCursorInsideWindowRect()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == nint.Zero) return false;
+        if (!GetWindowRect(hwnd, out var rect)) return false;
+        if (!GetCursorPos(out var pt)) return false;
+
+        return pt.X >= rect.Left && pt.X <= rect.Right &&
+               pt.Y >= rect.Top && pt.Y <= rect.Bottom;
     }
 
     private void OnWindowDrop(object sender, DragEventArgs e)
     {
+        _dragLeaveDebounceTimer.Stop();
         _isDraggingOver = false;
         e.Handled = true;
 
@@ -905,7 +1068,7 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
             if (!_isPointerInside)
             {
                 _autoCollapseTimer.Stop();
-                _autoCollapseTimer.Interval = TimeSpan.FromMilliseconds(2000);
+                _autoCollapseTimer.Interval = TimeSpan.FromMilliseconds(2200);
                 _autoCollapseTimer.Start();
             }
         }
@@ -966,7 +1129,11 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
             return;
         }
 
-        ExecuteDragOut((DependencyObject)sender, dataObject, item.IsFileOrFolder ? DragDropEffects.Copy | DragDropEffects.Move : DragDropEffects.Copy, removeItemId: _settings.RemoveShelfItemAfterDrag ? item.Id : null);
+        ExecuteDragOut(
+            (DependencyObject)sender,
+            dataObject,
+            item.IsFileOrFolder ? DragDropEffects.Copy | DragDropEffects.Move : DragDropEffects.Copy,
+            removeItemId: _settings.RemoveShelfItemAfterDrag ? item.Id : null);
     }
 
     private void OnShelfItemMouseUp(object sender, MouseButtonEventArgs e)
@@ -1088,9 +1255,11 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
 
     #region Positioning & Fullscreen Guard
 
-    private void PositionTopCenterOnPrimaryMonitor()
+    private void SetWindowBoundsAndCenter(double dipWidth, double dipHeight)
     {
-        if (!IsLoaded) return;
+        Width = dipWidth;
+        Height = dipHeight;
+        UpdateLayout();
 
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd == nint.Zero) return;
@@ -1107,10 +1276,10 @@ public partial class DynamicIslandWindow : Window, IDynamicIslandHost
         double scaleX = dpi.DpiScaleX > 0 ? dpi.DpiScaleX : 1.0;
         double scaleY = dpi.DpiScaleY > 0 ? dpi.DpiScaleY : 1.0;
 
-        int physicalWidth = (int)Math.Round(ActualWidth * scaleX);
+        int physicalWidth = (int)Math.Round(dipWidth * scaleX);
         int topOffsetDip = _currentMode == IslandVisualMode.HiddenNotch
             ? 0
-            : Math.Clamp(_settings.TopMarginPx, 0, 32);
+            : Math.Clamp(_settings.TopMarginPx, 0, 24);
         int topMargin = (int)Math.Round(topOffsetDip * scaleY);
 
         int monitorWidth = workArea.Right - workArea.Left;

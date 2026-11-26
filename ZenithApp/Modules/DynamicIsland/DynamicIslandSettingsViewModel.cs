@@ -32,7 +32,7 @@ public sealed class DynamicIslandSettingsViewModel : ViewModelBase, IDisposable
         _autoHideWhenIdle = s.AutoHideWhenIdle;
         _hideInFullscreen = s.HideInFullscreen;
         _removeShelfItemAfterDrag = s.RemoveShelfItemAfterDrag;
-        _topMarginPx = Math.Clamp(s.TopMarginPx, 0, 32);
+        _topMarginPx = Math.Clamp(s.TopMarginPx, 0, 24);
 
         ExpandIslandCommand = new RelayCommand(() => _module.ExpandIsland());
         AddClipboardCommand = new RelayCommand(() => _module.AddClipboardToShelf());
@@ -129,7 +129,7 @@ public sealed class DynamicIslandSettingsViewModel : ViewModelBase, IDisposable
         get => _topMarginPx;
         set
         {
-            var clamped = Math.Clamp(value, 0, 32);
+            var clamped = Math.Clamp(value, 0, 24);
             if (SetProperty(ref _topMarginPx, clamped))
             {
                 _settingsService.Current.DynamicIsland.TopMarginPx = clamped;

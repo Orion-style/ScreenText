@@ -9,8 +9,10 @@
         ShowActivated="False"
         Focusable="False"
         AllowDrop="True"
-        SizeToContent="WidthAndHeight"
+        SizeToContent="Manual"
         ResizeMode="NoResize"
+        Width="220"
+        Height="28"
         PreviewDragEnter="OnWindowDragEnter"
         PreviewDragOver="OnWindowDragOver"
         PreviewDragLeave="OnWindowDragLeave"
@@ -19,10 +21,8 @@
         MouseLeave="OnWindowMouseLeave">
 
     <Window.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVis" />
-
         <Style x:Key="IslandIconButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="#1AFFFFFF" />
+            <Setter Property="Background" Value="#1EFFFFFF" />
             <Setter Property="Foreground" Value="#F3F4F6" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="Cursor" Value="Hand" />
@@ -40,10 +40,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#33FFFFFF" />
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#36FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#48FFFFFF" />
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#4DFFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -65,10 +65,10 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#33FFFFFF" />
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#36FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="BtnBorder" Property="Background" Value="#48FFFFFF" />
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#4DFFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -103,85 +103,126 @@
         </Style>
     </Window.Resources>
 
-    <!-- Небольшое прозрачное поле для тени (Background=null вокруг, чтобы не перехватывать клики) -->
-    <Grid Margin="10,2,10,12">
-        <Border x:Name="PillBorder"
-                Width="164"
-                MinHeight="30"
-                CornerRadius="15"
-                Background="#F2101116"
-                BorderBrush="#33FFFFFF"
+    <Grid x:Name="RootGrid" Background="{x:Null}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Верхний трапециевидный выступ-холмик \____/ с чёткими углами -->
+        <Grid x:Name="NotchHost"
+              Grid.Row="0"
+              Width="220"
+              Height="28"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Top"
+              Cursor="Hand"
+              MouseLeftButtonUp="OnNotchMouseLeftButtonUp">
+
+            <!-- Заливка трапеции (без DropShadowEffect — без серых артефактов) -->
+            <Path x:Name="NotchFillPath"
+                  Fill="#F2101218"
+                  SnapsToDevicePixels="True" />
+
+            <!-- Чёткая контурная обводка боковых и нижней граней -->
+            <Path x:Name="NotchStrokePath"
+                  Stroke="#3DFFFFFF"
+                  StrokeThickness="1"
+                  StrokeLineJoin="Miter"
+                  SnapsToDevicePixels="True" />
+
+            <!-- Тонкая полоска при авто-скрытии -->
+            <Grid x:Name="ViewHiddenNotch" Visibility="Collapsed">
+                <Border Background="#77FFFFFF"
+                        CornerRadius="1.5"
+                        Width="44"
+                        Height="2.5"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Контент компактного выступа -->
+            <Grid x:Name="ViewCompactNotch"
+                  Margin="22,0,22,1"
+                  VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Border x:Name="CompactStatusDot"
+                        Grid.Column="0"
+                        Width="7" Height="7"
+                        CornerRadius="3.5"
+                        Background="#3B82F6"
+                        VerticalAlignment="Center"
+                        Margin="0,0,7,0" />
+
+                <TextBlock x:Name="TxtCompactStatus"
+                           Grid.Column="1"
+                           Text="Zenith"
+                           Foreground="#F3F4F6"
+                           FontSize="11.5"
+                           FontWeight="SemiBold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+
+                <Border x:Name="CompactShelfBadge"
+                        Grid.Column="2"
+                        Background="#28FFFFFF"
+                        CornerRadius="6"
+                        Padding="6,1"
+                        Margin="7,0,0,0"
+                        VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                    <TextBlock x:Name="TxtCompactShelfCount"
+                               Text="0"
+                               Foreground="#93C5FD"
+                               FontSize="10.5"
+                               FontWeight="SemiBold" />
+                </Border>
+            </Grid>
+        </Grid>
+
+        <!-- Отдельная полупрозрачная карточка со скруглёнными углами под островком -->
+        <Border x:Name="PopupCardBorder"
+                Grid.Row="1"
+                Width="416"
+                Margin="0,8,0,0"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                CornerRadius="18"
+                Background="#D912151E"
+                BorderBrush="#36FFFFFF"
                 BorderThickness="1"
                 ClipToBounds="True"
                 SnapsToDevicePixels="True"
-                MouseLeftButtonUp="OnPillMouseLeftButtonUp">
-            <Border.Effect>
-                <DropShadowEffect BlurRadius="14" Opacity="0.45" ShadowDepth="2" Color="#000000" />
-            </Border.Effect>
+                Visibility="Collapsed"
+                Opacity="0"
+                RenderTransformOrigin="0.5,0">
+            <Border.RenderTransform>
+                <TransformGroup>
+                    <ScaleTransform x:Name="PopupScaleTransform" ScaleX="0.96" ScaleY="0.92" />
+                    <TranslateTransform x:Name="PopupTranslateTransform" Y="-10" />
+                </TransformGroup>
+            </Border.RenderTransform>
 
-            <Grid x:Name="ContentHost">
-                <!-- 1. Тонкий режим (AutoHideWhenIdle) -->
-                <Grid x:Name="ViewHiddenNotch" Visibility="Collapsed" Height="7">
-                    <Border Background="#66FFFFFF" CornerRadius="2" Width="44" Height="3" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Grid>
-
-                <!-- 2. Компактная пилюля покоя -->
-                <Grid x:Name="ViewCompactIdle"
-                      Visibility="Visible"
-                      Height="30"
-                      Margin="11,0"
-                      Cursor="Hand">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Индикатор статуса (музыка / полка / точка) -->
-                    <Border x:Name="CompactStatusDot"
-                            Grid.Column="0"
-                            Width="8" Height="8"
-                            CornerRadius="4"
-                            Background="#3B82F6"
-                            VerticalAlignment="Center"
-                            Margin="0,0,7,0" />
-
-                    <TextBlock x:Name="TxtCompactStatus"
-                               Grid.Column="1"
-                               Text="Zenith"
-                               Foreground="#E5E7EB"
-                               FontSize="11.5"
-                               FontWeight="Medium"
-                               VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" />
-
-                    <!-- Бейдж полки -->
-                    <Border x:Name="CompactShelfBadge"
-                            Grid.Column="2"
-                            Background="#24FFFFFF"
-                            CornerRadius="8"
-                            Padding="6,1"
-                            Margin="7,0,0,0"
-                            VerticalAlignment="Center"
-                            Visibility="Collapsed">
-                        <TextBlock x:Name="TxtCompactShelfCount"
-                                   Text="0"
-                                   Foreground="#93C5FD"
-                                   FontSize="10.5"
-                                   FontWeight="SemiBold" />
-                    </Border>
-                </Grid>
-
-                <!-- 3. Зона сброса (DragOver) -->
-                <Border x:Name="ViewDropTarget"
-                        Visibility="Collapsed"
-                        Margin="10"
-                        Padding="14,12"
-                        CornerRadius="14"
-                        Background="#1A3B82F6"
-                        BorderBrush="#8860A5FA"
-                        BorderThickness="1.5">
-                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <Grid>
+                <!-- 1. Полупрозрачное поле для сброса файлов/текста (не деформирует верхний выступ) -->
+                <Grid x:Name="ViewDropTarget"
+                      Visibility="Collapsed"
+                      Margin="10">
+                    <Rectangle RadiusX="13"
+                               RadiusY="13"
+                               Fill="#1C3B82F6"
+                               Stroke="#9960A5FA"
+                               StrokeThickness="1.5"
+                               StrokeDashArray="4 3" />
+                    <StackPanel VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                Margin="14,16">
                         <TextBlock Text="⬇  Отпустите, чтобы сохранить в островок"
                                    Foreground="#EFF6FF"
                                    FontSize="13"
@@ -193,16 +234,16 @@
                                    Margin="0,3,0,0"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
-                </Border>
+                </Grid>
 
-                <!-- 4. Уведомление приложения -->
+                <!-- 2. Уведомление приложения -->
                 <Grid x:Name="ViewNotification" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="3" />
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0" Margin="14,11,12,10">
+                    <Grid Grid.Row="0" Margin="14,12,12,11">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -258,19 +299,19 @@
                     <Border Grid.Row="1" Background="#14FFFFFF" HorizontalAlignment="Stretch">
                         <Border x:Name="NotifProgressBar"
                                 HorizontalAlignment="Left"
-                                Width="380"
+                                Width="416"
                                 Background="#10B981" />
                     </Border>
                 </Grid>
 
-                <!-- 5. Таймер NextSession -->
+                <!-- 3. Таймер NextSession -->
                 <Grid x:Name="ViewCountdown" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="*" />
                         <RowDefinition Height="3" />
                     </Grid.RowDefinitions>
 
-                    <Grid Grid.Row="0" Margin="14,11,14,10">
+                    <Grid Grid.Row="0" Margin="14,12,14,11">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -331,13 +372,13 @@
                     <Border Grid.Row="1" Background="#14FFFFFF" HorizontalAlignment="Stretch">
                         <Border x:Name="CountdownProgressBar"
                                 HorizontalAlignment="Left"
-                                Width="400"
+                                Width="416"
                                 Background="#3B82F6" />
                     </Border>
                 </Grid>
 
-                <!-- 6. Развёрнутый ящик: Медиа + Полка буфера обмена -->
-                <StackPanel x:Name="ViewExpandedDrawer" Visibility="Collapsed" Margin="14,11,14,13">
+                <!-- 4. Развёрнутый ящик: Медиа + Полка буфера обмена -->
+                <StackPanel x:Name="ViewExpandedDrawer" Visibility="Collapsed" Margin="14,12,14,13">
                     <!-- Шапка -->
                     <Grid Margin="0,0,0,10">
                         <Grid.ColumnDefinitions>
@@ -347,9 +388,9 @@
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                             <Border Width="8" Height="8" CornerRadius="4" Background="#3B82F6" VerticalAlignment="Center" Margin="0,0,8,0" />
-                            <TextBlock Text="Островок" Foreground="White" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            <TextBlock Text="Полка островка" Foreground="White" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" />
                             <TextBlock x:Name="TxtDrawerShelfSummary"
-                                       Text="· Полка пуста"
+                                       Text="· Пусто"
                                        Foreground="#9CA3AF"
                                        FontSize="11.5"
                                        Margin="6,0,0,0"
@@ -369,7 +410,7 @@
                                     Visibility="Collapsed"
                                     Click="OnClearShelfClicked" />
                             <Button Style="{StaticResource IslandRoundIconButtonStyle}"
-                                    ToolTip="Свернуть островок"
+                                    ToolTip="Свернуть"
                                     Click="OnCollapseDrawerClicked">
                                 <TextBlock Text="▲" FontSize="9" Foreground="#D1D5DB" />
                             </Button>
@@ -450,13 +491,13 @@
                             CornerRadius="14"
                             Padding="14,16">
                         <StackPanel HorizontalAlignment="Center">
-                            <TextBlock Text="Полка буфера: перетащите сюда текст или файлы"
+                            <TextBlock Text="Перетащите сюда текст, ссылки или файлы"
                                        Foreground="#E5E7EB"
                                        FontSize="12"
                                        FontWeight="Medium"
                                        HorizontalAlignment="Center"
                                        TextAlignment="Center" />
-                            <TextBlock Text="Затем просто потяните элемент мышкой из островка в любое окно или папку"
+                            <TextBlock Text="Затем потяните любой элемент из списка обратно в нужное окно"
                                        Foreground="#9CA3AF"
                                        FontSize="11"
                                        Margin="0,4,0,0"
@@ -466,7 +507,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Список элементов полки (перетаскиваемые) -->
+                    <!-- Список элементов полки -->
                     <ScrollViewer x:Name="ShelfScrollViewer"
                                   Visibility="Collapsed"
                                   MaxHeight="210"

@@ -8,5 +8,5 @@ public sealed class DynamicIslandSettings
     public bool AutoHideWhenIdle { get; set; } = false;
     public bool HideInFullscreen { get; set; } = true;
     public bool RemoveShelfItemAfterDrag { get; set; } = false;
-    public int TopMarginPx { get; set; } = 8;
+    public int TopMarginPx { get; set; } = 0;
 }

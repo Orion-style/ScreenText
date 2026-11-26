@@ -56,7 +56,7 @@ public class DynamicIslandTests
         Assert.False(settings.DynamicIsland.AutoHideWhenIdle);
         Assert.True(settings.DynamicIsland.HideInFullscreen);
         Assert.False(settings.DynamicIsland.RemoveShelfItemAfterDrag);
-        Assert.Equal(8, settings.DynamicIsland.TopMarginPx);
+        Assert.Equal(0, settings.DynamicIsland.TopMarginPx);
     }
 
     [Fact]
