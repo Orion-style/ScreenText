@@ -159,7 +159,7 @@ public sealed class StickyNotesModule : BaseFeatureModule
                 Top = top,
                 Width = StickyNoteItem.DefaultWidth,
                 Height = StickyNoteItem.DefaultHeight,
-                ColorHex = StickyNotePalette.Resolve(Settings.DefaultColorHex).BackgroundHex,
+                ColorHex = StickyNotePalette.Resolve(Settings.DefaultColorHex).Id,
                 Opacity = Math.Clamp(Settings.DefaultOpacity, 0.35, 1.0),
                 FontSize = Math.Clamp(Settings.DefaultFontSize, 10, 28),
                 IsPinnedTopmost = Settings.DefaultTopmost,

@@ -86,7 +86,7 @@ public sealed class StickyNotesStorageService : IStickyNotesStorageService
                     }
 
                     note.Content ??= string.Empty;
-                    note.ColorHex = StickyNotePalette.Resolve(note.ColorHex).BackgroundHex;
+                    note.ColorHex = StickyNotePalette.Resolve(note.ColorHex).Id;
                     note.Opacity = double.IsFinite(note.Opacity) ? Math.Clamp(note.Opacity, 0.35, 1.0) : 0.92;
                     note.FontSize = double.IsFinite(note.FontSize) ? Math.Clamp(note.FontSize, 10, 28) : 14;
                     sanitized.Add(note);

@@ -61,9 +61,11 @@ public partial class StickyNoteHeaderOverlay : Window
             _isUpdatingPosition = false;
         }
 
-        byte bgAlpha = (byte)Math.Clamp((int)Math.Round(opacity * 255), 140, 255);
-        RootBorder.Background = StickyNotePalette.CreateFrozenBrush(theme.HeaderHex, bgAlpha);
-        RootBorder.BorderBrush = StickyNotePalette.CreateFrozenBrush(theme.BorderHex);
+        RootBorder.Background = isCollapsed
+            ? StickyNotePalette.CreateBackgroundBrush(theme, opacity)
+            : StickyNotePalette.CreateHeaderOverlayBrush(theme, opacity);
+        RootBorder.BorderBrush = StickyNotePalette.CreateBorderBrush(theme);
+        RootBorder.BorderThickness = isCollapsed ? new Thickness(1) : new Thickness(1, 1, 1, 0);
         RootBorder.CornerRadius = isCollapsed ? new CornerRadius(8) : new CornerRadius(8, 8, 0, 0);
 
         var mutedBrush = StickyNotePalette.CreateFrozenBrush(theme.MutedForegroundHex);

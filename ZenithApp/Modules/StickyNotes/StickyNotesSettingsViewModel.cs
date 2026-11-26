@@ -18,7 +18,7 @@ public sealed class StickyNotePresetOption
     }
 
     public StickyNoteTheme Theme { get; }
-    public string ColorHex => Theme.BackgroundHex;
+    public string ColorHex => Theme.Id;
     public string Name => Theme.Name;
     public Brush BackgroundBrush { get; }
     public Brush BorderBrush { get; }
@@ -38,7 +38,7 @@ public sealed class StickyNoteListItemViewModel
             : (singleLine.Length > 70 ? singleLine[..70] + "..." : singleLine);
 
         var theme = StickyNotePalette.Resolve(item.ColorHex);
-        AccentBrush = StickyNotePalette.CreateFrozenBrush(theme.BorderHex);
+        AccentBrush = StickyNotePalette.CreateBorderBrush(theme);
         IsVisible = item.IsVisible;
         IsClickThrough = item.IsClickThrough;
         IsPinnedTopmost = item.IsPinnedTopmost;
@@ -95,8 +95,8 @@ public sealed class StickyNotesSettingsViewModel : ViewModelBase, IDisposable
         ColorPresets = new ObservableCollection<StickyNotePresetOption>(
             StickyNotePalette.Presets.Select(p => new StickyNotePresetOption(
                 p,
-                StickyNotePalette.CreateFrozenBrush(p.BackgroundHex),
-                StickyNotePalette.CreateFrozenBrush(p.BorderHex))));
+                StickyNotePalette.CreateBackgroundBrush(p, 1.0),
+                StickyNotePalette.CreateBorderBrush(p))));
 
         CreateNoteCommand = new RelayCommand(() => _module.CreateNote());
         ToggleAllVisibilityCommand = new RelayCommand(() => _module.ToggleAllVisibility());
@@ -339,7 +339,7 @@ public sealed class StickyNotesSettingsViewModel : ViewModelBase, IDisposable
         var s = _settingsService.Current.StickyNotes;
         CreateHotkeyText = StickyNotesModule.FormatHotkey(s.CreateHotkeyModifiers, s.CreateHotkeyKey);
         ToggleVisibilityHotkeyText = StickyNotesModule.FormatHotkey(s.ToggleVisibilityHotkeyModifiers, s.ToggleVisibilityHotkeyKey);
-        _defaultColorHex = StickyNotePalette.Resolve(s.DefaultColorHex).BackgroundHex;
+        _defaultColorHex = StickyNotePalette.Resolve(s.DefaultColorHex).Id;
         _defaultOpacityPercent = Math.Clamp(Math.Round(s.DefaultOpacity * 100), 35, 100);
         _defaultFontSize = Math.Clamp(Math.Round(s.DefaultFontSize), 10, 28);
         _defaultTopmost = s.DefaultTopmost;

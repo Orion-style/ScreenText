@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Wpf.Ui.Controls;
 
 namespace ZenithApp.Modules.StickyNotes;
@@ -17,6 +18,7 @@ public partial class StickyNoteWindow : Window
     private StickyNoteHeaderOverlay? _clickThroughHeader;
     private bool _isApplyingModel;
     private bool _isClosingCleanly;
+    private bool _heightAdjustQueued;
 
     public StickyNoteWindow(
         StickyNoteItem item,
@@ -43,6 +45,10 @@ public partial class StickyNoteWindow : Window
     private void OnWindowLoaded(object sender, RoutedEventArgs e)
     {
         ApplyWindowMode();
+        if (_item.AutoHeight && !_item.IsCollapsed)
+        {
+            QueueAutoHeightAdjustment();
+        }
     }
 
     public void RefreshFromModel()
@@ -51,6 +57,10 @@ public partial class StickyNoteWindow : Window
         if (IsLoaded)
         {
             ApplyWindowMode();
+            if (_item.AutoHeight && !_item.IsCollapsed)
+            {
+                QueueAutoHeightAdjustment();
+            }
         }
     }
 
@@ -96,7 +106,6 @@ public partial class StickyNoteWindow : Window
                 : Visibility.Collapsed;
 
             BodyGrid.Visibility = _item.IsCollapsed ? Visibility.Collapsed : Visibility.Visible;
-            HeaderBorder.CornerRadius = _item.IsCollapsed ? new CornerRadius(7) : new CornerRadius(7, 7, 0, 0);
 
             if (_item.IsCollapsed)
             {
@@ -114,6 +123,7 @@ public partial class StickyNoteWindow : Window
                 TxtCollapsedPreview.Visibility = Visibility.Collapsed;
             }
 
+            SyncPopupControls();
             ApplyThemeColors();
         }
         finally
@@ -122,23 +132,30 @@ public partial class StickyNoteWindow : Window
         }
     }
 
+    private void SyncPopupControls()
+    {
+        OpacitySlider.Value = Math.Clamp(Math.Round(_item.Opacity * 100), 35, 100);
+        ChkTopmost.IsChecked = _item.IsPinnedTopmost;
+        ChkAutoHeight.IsChecked = _item.AutoHeight;
+        ChkClickThrough.IsChecked = _item.IsClickThrough;
+    }
+
     private void ApplyThemeColors()
     {
         var theme = StickyNotePalette.Resolve(_item.ColorHex);
         var opacity = Math.Clamp(_item.Opacity, 0.35, 1.0);
-        byte bgAlpha = (byte)Math.Clamp((int)Math.Round(opacity * 255), 89, 255);
-        byte headerAlpha = (byte)Math.Clamp((int)Math.Round(Math.Min(1.0, opacity + 0.06) * 255), 110, 255);
 
-        var bgBrush = StickyNotePalette.CreateFrozenBrush(theme.BackgroundHex, bgAlpha);
-        var headerBrush = StickyNotePalette.CreateFrozenBrush(theme.HeaderHex, headerAlpha);
-        var borderBrush = StickyNotePalette.CreateFrozenBrush(theme.BorderHex);
+        var bgBrush = StickyNotePalette.CreateBackgroundBrush(theme, opacity);
+        var borderBrush = StickyNotePalette.CreateBorderBrush(theme);
         var fgBrush = StickyNotePalette.CreateFrozenBrush(theme.ForegroundHex);
         var mutedBrush = StickyNotePalette.CreateFrozenBrush(theme.MutedForegroundHex);
         var accentBrush = StickyNotePalette.CreateFrozenBrush("#60CDFF");
 
         RootBorder.Background = bgBrush;
         RootBorder.BorderBrush = borderBrush;
-        HeaderBorder.Background = headerBrush;
+        RootBorder.BorderThickness = _item.IsClickThrough && !_item.IsCollapsed
+            ? new Thickness(1, 0, 1, 1)
+            : new Thickness(1);
 
         NoteTextBox.Foreground = fgBrush;
         NoteTextBox.CaretBrush = fgBrush;
@@ -148,8 +165,6 @@ public partial class StickyNoteWindow : Window
 
         IconDragGrip.Foreground = mutedBrush;
         IconColor.Foreground = mutedBrush;
-        IconPin.Foreground = _item.IsPinnedTopmost ? accentBrush : mutedBrush;
-        IconPin.Symbol = _item.IsPinnedTopmost ? SymbolRegular.Pin16 : SymbolRegular.PinOff16;
         IconClickThrough.Foreground = _item.IsClickThrough ? accentBrush : mutedBrush;
         IconClickThrough.Symbol = _item.IsClickThrough ? SymbolRegular.LockClosed16 : SymbolRegular.LockOpen16;
         IconCollapse.Foreground = mutedBrush;
@@ -157,12 +172,19 @@ public partial class StickyNoteWindow : Window
         IconHide.Foreground = mutedBrush;
         IconDelete.Foreground = mutedBrush;
 
-        StylePopupBorder.Background = StickyNotePalette.CreateFrozenBrush(theme.HeaderHex);
+        StylePopupBorder.Background = StickyNotePalette.CreatePopupBackgroundBrush(theme);
         StylePopupBorder.BorderBrush = borderBrush;
-        TxtStyleColorLabel.Foreground = fgBrush;
+        TxtPopupTitle.Foreground = fgBrush;
+        TxtStyleBasicLabel.Foreground = fgBrush;
+        TxtStyleGradientLabel.Foreground = fgBrush;
         TxtOpacityLabel.Foreground = fgBrush;
         TxtFontLabel.Foreground = fgBrush;
-        TxtOpacityLabel.Text = $"Прозрачность: {Math.Round(opacity * 100)}%";
+        BtnFontDown.Foreground = fgBrush;
+        BtnFontUp.Foreground = fgBrush;
+        ChkTopmost.Foreground = fgBrush;
+        ChkAutoHeight.Foreground = fgBrush;
+        ChkClickThrough.Foreground = fgBrush;
+        TxtOpacityLabel.Text = $"Непрозрачность: {Math.Round(opacity * 100)}%";
         TxtFontLabel.Text = $"Шрифт: {Math.Round(_item.FontSize)} px";
     }
 
@@ -170,13 +192,12 @@ public partial class StickyNoteWindow : Window
     {
         if (_item.IsClickThrough)
         {
-            // Тело окна полностью пропускает клики на уровне ОС (WS_EX_TRANSPARENT),
-            // а верхняя кликабельная панель перекрывается отдельным мини-окном без WS_EX_TRANSPARENT.
             StickyNoteWindowInterop.ApplyExtendedStyle(this, clickThrough: true, noActivate: true);
             HeaderControlsGrid.Visibility = Visibility.Hidden;
             NoteTextBox.IsReadOnly = true;
             NoteTextBox.IsHitTestVisible = false;
             SetResizeThumbsEnabled(false);
+            ApplyThemeColors();
             EnsureHeaderOverlaySynced();
         }
         else
@@ -187,6 +208,7 @@ public partial class StickyNoteWindow : Window
             NoteTextBox.IsReadOnly = false;
             NoteTextBox.IsHitTestVisible = true;
             SetResizeThumbsEnabled(!_item.IsCollapsed);
+            ApplyThemeColors();
         }
     }
 
@@ -213,8 +235,9 @@ public partial class StickyNoteWindow : Window
                 {
                     _item.IsClickThrough = false;
                     _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
+                    _isApplyingModel = true;
+                    try { ChkClickThrough.IsChecked = false; } finally { _isApplyingModel = false; }
                     ApplyWindowMode();
-                    ApplyThemeColors();
                     _onChanged(_item);
                 },
                 onToggleCollapse: () => ToggleCollapse(),
@@ -266,31 +289,92 @@ public partial class StickyNoteWindow : Window
 
     private void BuildColorSwatches()
     {
-        ColorSwatchesPanel.Children.Clear();
+        BasicSwatchesPanel.Children.Clear();
+        GradientSwatchesPanel.Children.Clear();
+
         foreach (var preset in StickyNotePalette.Presets)
         {
             var swatchBtn = new System.Windows.Controls.Button
             {
-                Width = 26,
-                Height = 26,
+                Width = preset.IsGradient ? 30 : 26,
+                Height = 24,
                 Margin = new Thickness(0, 0, 6, 4),
-                Background = StickyNotePalette.CreateFrozenBrush(preset.BackgroundHex),
-                BorderBrush = StickyNotePalette.CreateFrozenBrush(preset.BorderHex),
+                Background = StickyNotePalette.CreateBackgroundBrush(preset, 1.0),
+                BorderBrush = StickyNotePalette.CreateBorderBrush(preset),
                 BorderThickness = new Thickness(1.5),
                 ToolTip = preset.Name,
                 Cursor = Cursors.Hand,
-                Tag = preset.BackgroundHex
+                Tag = preset.Id
             };
 
             swatchBtn.Click += (_, _) =>
             {
-                _item.ColorHex = preset.BackgroundHex;
+                _item.ColorHex = preset.Id;
                 _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
                 ApplyThemeColors();
+                if (_item.IsClickThrough)
+                {
+                    EnsureHeaderOverlaySynced();
+                }
                 _onChanged(_item);
             };
 
-            ColorSwatchesPanel.Children.Add(swatchBtn);
+            if (preset.IsGradient)
+            {
+                GradientSwatchesPanel.Children.Add(swatchBtn);
+            }
+            else
+            {
+                BasicSwatchesPanel.Children.Add(swatchBtn);
+            }
+        }
+    }
+
+    private void QueueAutoHeightAdjustment()
+    {
+        if (_heightAdjustQueued || !_item.AutoHeight || _item.IsCollapsed) return;
+        _heightAdjustQueued = true;
+
+        Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
+        {
+            _heightAdjustQueued = false;
+            AdjustHeightToContent();
+        });
+    }
+
+    private void AdjustHeightToContent()
+    {
+        if (!IsLoaded || !_item.AutoHeight || _item.IsCollapsed) return;
+
+        NoteTextBox.UpdateLayout();
+        int lineCount = Math.Max(1, NoteTextBox.LineCount);
+        double lineSpacing = NoteTextBox.FontFamily?.LineSpacing > 0
+            ? NoteTextBox.FontFamily.LineSpacing
+            : 1.35;
+        double singleLineHeight = lineSpacing * NoteTextBox.FontSize;
+        double textAreaPadding = NoteTextBox.Padding.Top + NoteTextBox.Padding.Bottom;
+
+        double neededHeight = StickyNoteItem.HeaderHeight
+            + textAreaPadding
+            + (lineCount * singleLineHeight)
+            + 8;
+
+        double maxAutoHeight = Math.Max(260, SystemParameters.WorkArea.Height * 0.65);
+        double targetHeight = Math.Round(Math.Clamp(neededHeight, StickyNoteItem.DefaultHeight, maxAutoHeight));
+
+        if (Math.Abs(Height - targetHeight) >= 1.5)
+        {
+            _isApplyingModel = true;
+            try
+            {
+                Height = targetHeight;
+                _item.Height = targetHeight;
+            }
+            finally
+            {
+                _isApplyingModel = false;
+            }
+            _onChanged(_item);
         }
     }
 
@@ -324,6 +408,12 @@ public partial class StickyNoteWindow : Window
         TxtPlaceholder.Visibility = string.IsNullOrEmpty(_item.Content) && !_item.IsCollapsed
             ? Visibility.Visible
             : Visibility.Collapsed;
+
+        if (_item.AutoHeight && !_item.IsCollapsed)
+        {
+            QueueAutoHeightAdjustment();
+        }
+
         _onChanged(_item);
     }
 
@@ -350,16 +440,57 @@ public partial class StickyNoteWindow : Window
 
     private void OnStyleClick(object sender, RoutedEventArgs e)
     {
+        _isApplyingModel = true;
+        try
+        {
+            SyncPopupControls();
+        }
+        finally
+        {
+            _isApplyingModel = false;
+        }
         ApplyThemeColors();
         StylePopup.IsOpen = !StylePopup.IsOpen;
     }
 
-    private void OnToggleTopmostClick(object sender, RoutedEventArgs e)
+    private void OnTopmostCheckChanged(object sender, RoutedEventArgs e)
     {
-        _item.IsPinnedTopmost = !_item.IsPinnedTopmost;
+        if (_isApplyingModel) return;
+
+        _item.IsPinnedTopmost = ChkTopmost.IsChecked == true;
         _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
         Topmost = _item.IsPinnedTopmost;
-        ApplyThemeColors();
+        if (_item.IsClickThrough)
+        {
+            EnsureHeaderOverlaySynced();
+        }
+        _onChanged(_item);
+    }
+
+    private void OnAutoHeightCheckChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isApplyingModel) return;
+
+        _item.AutoHeight = ChkAutoHeight.IsChecked == true;
+        _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        if (_item.AutoHeight && !_item.IsCollapsed)
+        {
+            QueueAutoHeightAdjustment();
+        }
+        _onChanged(_item);
+    }
+
+    private void OnClickThroughCheckChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isApplyingModel) return;
+
+        bool enable = ChkClickThrough.IsChecked == true;
+        if (_item.IsClickThrough == enable) return;
+
+        StylePopup.IsOpen = false;
+        _item.IsClickThrough = enable;
+        _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        ApplyWindowMode();
         _onChanged(_item);
     }
 
@@ -368,8 +499,9 @@ public partial class StickyNoteWindow : Window
         StylePopup.IsOpen = false;
         _item.IsClickThrough = !_item.IsClickThrough;
         _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
+        _isApplyingModel = true;
+        try { ChkClickThrough.IsChecked = _item.IsClickThrough; } finally { _isApplyingModel = false; }
         ApplyWindowMode();
-        ApplyThemeColors();
         _onChanged(_item);
     }
 
@@ -384,6 +516,10 @@ public partial class StickyNoteWindow : Window
         if (IsLoaded)
         {
             ApplyWindowMode();
+            if (_item.AutoHeight && !_item.IsCollapsed)
+            {
+                QueueAutoHeightAdjustment();
+            }
         }
         _onChanged(_item);
     }
@@ -422,42 +558,57 @@ public partial class StickyNoteWindow : Window
 
     private void OnResizeRightDragDelta(object sender, DragDeltaEventArgs e)
     {
-        ResizeBy(e.HorizontalChange, 0);
+        ResizeBy(e.HorizontalChange, 0, manualVerticalResize: false);
     }
 
     private void OnResizeBottomDragDelta(object sender, DragDeltaEventArgs e)
     {
-        ResizeBy(0, e.VerticalChange);
+        ResizeBy(0, e.VerticalChange, manualVerticalResize: true);
     }
 
     private void OnResizeCornerDragDelta(object sender, DragDeltaEventArgs e)
     {
-        ResizeBy(e.HorizontalChange, e.VerticalChange);
+        ResizeBy(e.HorizontalChange, e.VerticalChange, manualVerticalResize: true);
     }
 
-    private void ResizeBy(double deltaW, double deltaH)
+    private void ResizeBy(double deltaW, double deltaH, bool manualVerticalResize)
     {
         if (_item.IsCollapsed || _item.IsClickThrough) return;
 
         var newW = Math.Clamp(Width + deltaW, StickyNoteItem.MinWidth, 1000);
-        var newH = Math.Clamp(Height + deltaH, StickyNoteItem.MinHeight, 900);
-
         Width = newW;
-        Height = newH;
         _item.Width = newW;
-        _item.Height = newH;
+
+        if (manualVerticalResize && Math.Abs(deltaH) > 0.1)
+        {
+            _item.AutoHeight = false;
+            _isApplyingModel = true;
+            try { ChkAutoHeight.IsChecked = false; } finally { _isApplyingModel = false; }
+
+            var newH = Math.Clamp(Height + deltaH, StickyNoteItem.MinHeight, 900);
+            Height = newH;
+            _item.Height = newH;
+        }
+        else if (_item.AutoHeight)
+        {
+            QueueAutoHeightAdjustment();
+        }
+
         _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
         _onChanged(_item);
     }
 
-    private void OnOpacityDecreaseClick(object sender, RoutedEventArgs e) => AdjustOpacity(-0.08);
-    private void OnOpacityIncreaseClick(object sender, RoutedEventArgs e) => AdjustOpacity(0.08);
-
-    private void AdjustOpacity(double delta)
+    private void OnOpacitySliderValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        _item.Opacity = Math.Clamp(Math.Round(_item.Opacity + delta, 2), 0.35, 1.0);
+        if (_isApplyingModel) return;
+
+        _item.Opacity = Math.Clamp(Math.Round(e.NewValue) / 100.0, 0.35, 1.0);
         _item.UpdatedAtUtc = DateTimeOffset.UtcNow;
         ApplyThemeColors();
+        if (_item.IsClickThrough)
+        {
+            EnsureHeaderOverlaySynced();
+        }
         _onChanged(_item);
     }
 
@@ -471,6 +622,10 @@ public partial class StickyNoteWindow : Window
         NoteTextBox.FontSize = _item.FontSize;
         TxtPlaceholder.FontSize = _item.FontSize;
         ApplyThemeColors();
+        if (_item.AutoHeight && !_item.IsCollapsed)
+        {
+            QueueAutoHeightAdjustment();
+        }
         _onChanged(_item);
     }
 

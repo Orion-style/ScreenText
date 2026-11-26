@@ -8,11 +8,11 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize"
         MinWidth="200"
-        MinHeight="30">
+        MinHeight="24">
     <Window.Resources>
         <Style x:Key="NoteActionBtnStyle" TargetType="Button">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
             <Setter Property="Margin" Value="1,0" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Background" Value="Transparent" />
@@ -30,10 +30,41 @@
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#24FFFFFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="#26FFFFFF" />
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#40FFFFFF" />
+                                <Setter TargetName="Bd" Property="Background" Value="#42FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PopupStepBtnStyle" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Background" Value="#22FFFFFF" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#38FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#55FFFFFF" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -47,15 +78,15 @@
             BorderThickness="1">
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="30" />
+                <RowDefinition Height="24" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Верхняя панель стикера -->
+            <!-- Компактная верхняя панель, полностью слитая с основным фоном -->
             <Border x:Name="HeaderBorder"
                     Grid.Row="0"
-                    CornerRadius="7,7,0,0"
-                    Padding="8,0,4,0">
+                    Background="Transparent"
+                    Padding="7,2,4,0">
                 <Grid x:Name="HeaderControlsGrid">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -70,10 +101,11 @@
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:SymbolIcon x:Name="IconDragGrip"
                                            Symbol="ReOrderDotsHorizontal16"
-                                           FontSize="13"
-                                           Margin="0,0,6,0" />
+                                           FontSize="12"
+                                           Opacity="0.65"
+                                           Margin="0,0,5,0" />
                             <TextBlock x:Name="TxtCollapsedPreview"
-                                       FontSize="11.5"
+                                       FontSize="11"
                                        FontWeight="Medium"
                                        VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis"
@@ -81,46 +113,40 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Кнопки управления -->
+                    <!-- Минималистичные кнопки управления -->
                     <StackPanel x:Name="HeaderButtonsPanel"
                                 Grid.Column="1"
                                 Orientation="Horizontal"
                                 VerticalAlignment="Center">
                         <Button x:Name="BtnStyle"
                                 Style="{StaticResource NoteActionBtnStyle}"
-                                ToolTip="Цвет, прозрачность и шрифт"
+                                ToolTip="Настройки этого стикера (тема, прозрачность, шрифт, режим)"
                                 Click="OnStyleClick">
-                            <ui:SymbolIcon x:Name="IconColor" Symbol="Color16" FontSize="13" />
-                        </Button>
-                        <Button x:Name="BtnTopmost"
-                                Style="{StaticResource NoteActionBtnStyle}"
-                                ToolTip="Поверх всех окон"
-                                Click="OnToggleTopmostClick">
-                            <ui:SymbolIcon x:Name="IconPin" Symbol="Pin16" FontSize="13" />
+                            <ui:SymbolIcon x:Name="IconColor" Symbol="Color16" FontSize="11.5" />
                         </Button>
                         <Button x:Name="BtnClickThrough"
                                 Style="{StaticResource NoteActionBtnStyle}"
                                 ToolTip="Прозрачность для кликов (клики проходят сквозь текст)"
                                 Click="OnToggleClickThroughClick">
-                            <ui:SymbolIcon x:Name="IconClickThrough" Symbol="LockOpen16" FontSize="13" />
+                            <ui:SymbolIcon x:Name="IconClickThrough" Symbol="LockOpen16" FontSize="11.5" />
                         </Button>
                         <Button x:Name="BtnCollapse"
                                 Style="{StaticResource NoteActionBtnStyle}"
                                 ToolTip="Свернуть / развернуть"
                                 Click="OnToggleCollapseClick">
-                            <ui:SymbolIcon x:Name="IconCollapse" Symbol="ChevronUp16" FontSize="13" />
+                            <ui:SymbolIcon x:Name="IconCollapse" Symbol="ChevronUp16" FontSize="11.5" />
                         </Button>
                         <Button x:Name="BtnHide"
                                 Style="{StaticResource NoteActionBtnStyle}"
                                 ToolTip="Скрыть с экрана (останется в списке)"
                                 Click="OnHideClick">
-                            <ui:SymbolIcon x:Name="IconHide" Symbol="Subtract16" FontSize="13" />
+                            <ui:SymbolIcon x:Name="IconHide" Symbol="Subtract16" FontSize="11.5" />
                         </Button>
                         <Button x:Name="BtnDelete"
                                 Style="{StaticResource NoteActionBtnStyle}"
                                 ToolTip="Удалить стикер"
                                 Click="OnDeleteClick">
-                            <ui:SymbolIcon x:Name="IconDelete" Symbol="Delete16" FontSize="13" />
+                            <ui:SymbolIcon x:Name="IconDelete" Symbol="Delete16" FontSize="11.5" />
                         </Button>
                     </StackPanel>
 
@@ -132,15 +158,15 @@
                                 Visibility="Collapsed">
                         <TextBlock x:Name="TxtConfirmDelete"
                                    Text="Удалить?"
-                                   FontSize="11"
+                                   FontSize="10.5"
                                    FontWeight="SemiBold"
                                    VerticalAlignment="Center"
-                                   Margin="0,0,5,0" />
+                                   Margin="0,0,4,0" />
                         <Button Content="Да"
-                                Height="22"
-                                Padding="7,0"
-                                Margin="0,0,3,0"
-                                FontSize="11"
+                                Height="18"
+                                Padding="6,0"
+                                Margin="0,0,2,0"
+                                FontSize="10.5"
                                 FontWeight="SemiBold"
                                 Foreground="White"
                                 Background="#DC2626"
@@ -148,9 +174,9 @@
                                 Cursor="Hand"
                                 Click="OnConfirmDeleteYesClick" />
                         <Button Content="Нет"
-                                Height="22"
-                                Padding="6,0"
-                                FontSize="11"
+                                Height="18"
+                                Padding="5,0"
+                                FontSize="10.5"
                                 Foreground="White"
                                 Background="#3F4654"
                                 BorderThickness="0"
@@ -169,7 +195,7 @@
                          HorizontalScrollBarVisibility="Disabled"
                          Background="Transparent"
                          BorderThickness="0"
-                         Padding="10,8,10,12"
+                         Padding="10,4,10,10"
                          UndoLimit="25"
                          FontFamily="Segoe UI"
                          TextChanged="OnNoteTextChanged" />
@@ -177,12 +203,12 @@
                 <!-- Лёгкий плейсхолдер при пустом стикере -->
                 <TextBlock x:Name="TxtPlaceholder"
                            Text="Введите заметку..."
-                           Margin="12,9,12,12"
+                           Margin="12,5,12,10"
                            IsHitTestVisible="False"
                            Opacity="0.45"
                            FontFamily="Segoe UI" />
 
-                <!-- Зоны изменения размера (без WindowChrome, чтобы не конфликтовать с AllowsTransparency) -->
+                <!-- Зоны изменения размера -->
                 <Thumb x:Name="ResizeRightThumb"
                        Width="6"
                        HorizontalAlignment="Right"
@@ -210,48 +236,66 @@
                                 <Path Data="M 10,3 L 3,10 M 10,7 L 7,10"
                                       Stroke="{Binding ElementName=IconDelete, Path=Foreground}"
                                       StrokeThickness="1.2"
-                                      Opacity="0.65" />
+                                      Opacity="0.55" />
                             </Grid>
                         </ControlTemplate>
                     </Thumb.Template>
                 </Thumb>
             </Grid>
 
-            <!-- Компактное всплывающее меню стиля (цвет / прозрачность / шрифт) -->
+            <!-- Индивидуальные настройки именно этого стикера (открываются по иконке палитры) -->
             <Popup x:Name="StylePopup"
                    PlacementTarget="{Binding ElementName=BtnStyle}"
                    Placement="Bottom"
                    StaysOpen="False"
                    AllowsTransparency="True">
                 <Border x:Name="StylePopupBorder"
-                        CornerRadius="8"
+                        CornerRadius="10"
                         BorderThickness="1"
-                        Padding="10"
+                        Padding="12"
                         Margin="4">
-                    <StackPanel Width="206">
-                        <TextBlock x:Name="TxtStyleColorLabel"
-                                   Text="Цвет"
-                                   FontSize="11.5"
-                                   FontWeight="SemiBold"
-                                   Margin="0,0,0,6" />
-                        <WrapPanel x:Name="ColorSwatchesPanel" Margin="0,0,0,10" />
+                    <StackPanel Width="228">
+                        <TextBlock x:Name="TxtPopupTitle"
+                                   Text="Настройки стикера"
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,8" />
 
-                        <Grid Margin="0,0,0,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="TxtStyleBasicLabel"
+                                   Text="Базовые"
+                                   FontSize="11"
+                                   Opacity="0.8"
+                                   Margin="0,0,0,4" />
+                        <WrapPanel x:Name="BasicSwatchesPanel" Margin="0,0,0,8" />
+
+                        <TextBlock x:Name="TxtStyleGradientLabel"
+                                   Text="Переливающиеся (Discord)"
+                                   FontSize="11"
+                                   Opacity="0.8"
+                                   Margin="0,0,0,4" />
+                        <WrapPanel x:Name="GradientSwatchesPanel" Margin="0,0,0,10" />
+
+                        <!-- Прозрачность -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
                             <TextBlock x:Name="TxtOpacityLabel"
-                                       Grid.Column="0"
-                                       VerticalAlignment="Center"
-                                       FontSize="11.5" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Content="−" Width="24" Height="22" Margin="0,0,4,0" Click="OnOpacityDecreaseClick" />
-                                <Button Content="+" Width="24" Height="22" Click="OnOpacityIncreaseClick" />
-                            </StackPanel>
+                                       Grid.Row="0"
+                                       FontSize="11.5"
+                                       Margin="0,0,0,2" />
+                            <Slider x:Name="OpacitySlider"
+                                    Grid.Row="1"
+                                    Minimum="35"
+                                    Maximum="100"
+                                    TickFrequency="5"
+                                    IsSnapToTickEnabled="True"
+                                    ValueChanged="OnOpacitySliderValueChanged" />
                         </Grid>
 
-                        <Grid>
+                        <!-- Шрифт -->
+                        <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
@@ -261,10 +305,40 @@
                                        VerticalAlignment="Center"
                                        FontSize="11.5" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Button Content="−" Width="24" Height="22" Margin="0,0,4,0" Click="OnFontDecreaseClick" />
-                                <Button Content="+" Width="24" Height="22" Click="OnFontIncreaseClick" />
+                                <Button x:Name="BtnFontDown"
+                                        Content="−"
+                                        Style="{StaticResource PopupStepBtnStyle}"
+                                        Margin="0,0,4,0"
+                                        Click="OnFontDecreaseClick" />
+                                <Button x:Name="BtnFontUp"
+                                        Content="+"
+                                        Style="{StaticResource PopupStepBtnStyle}"
+                                        Click="OnFontIncreaseClick" />
                             </StackPanel>
                         </Grid>
+
+                        <!-- Индивидуальные переключатели поведения -->
+                        <Border BorderThickness="0,1,0,0" BorderBrush="#28FFFFFF" Padding="0,8,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="ChkTopmost"
+                                          Content="Поверх всех окон"
+                                          FontSize="11.5"
+                                          Margin="0,0,0,5"
+                                          Checked="OnTopmostCheckChanged"
+                                          Unchecked="OnTopmostCheckChanged" />
+                                <CheckBox x:Name="ChkAutoHeight"
+                                          Content="Автовысота по строкам"
+                                          FontSize="11.5"
+                                          Margin="0,0,0,5"
+                                          Checked="OnAutoHeightCheckChanged"
+                                          Unchecked="OnAutoHeightCheckChanged" />
+                                <CheckBox x:Name="ChkClickThrough"
+                                          Content="Прозрачность для кликов"
+                                          FontSize="11.5"
+                                          Checked="OnClickThroughCheckChanged"
+                                          Unchecked="OnClickThroughCheckChanged" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
                 </Border>
             </Popup>

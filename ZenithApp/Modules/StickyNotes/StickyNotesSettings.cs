@@ -12,7 +12,7 @@ public sealed class StickyNotesSettings
     public Key ToggleVisibilityHotkeyKey { get; set; } = Key.H;
 
     public bool AllNotesHidden { get; set; } = false;
-    public string DefaultColorHex { get; set; } = "#232730";
+    public string DefaultColorHex { get; set; } = "graphite";
     public double DefaultOpacity { get; set; } = 0.92;
     public double DefaultFontSize { get; set; } = 14;
     public bool DefaultTopmost { get; set; } = true;

@@ -8,11 +8,11 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize"
         Topmost="True"
-        Height="30">
+        Height="24">
     <Window.Resources>
         <Style x:Key="HeaderActionBtnStyle" TargetType="Button">
-            <Setter Property="Width" Value="24" />
-            <Setter Property="Height" Value="24" />
+            <Setter Property="Width" Value="20" />
+            <Setter Property="Height" Value="20" />
             <Setter Property="Margin" Value="1,0" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Background" Value="Transparent" />
@@ -44,8 +44,8 @@
 
     <Border x:Name="RootBorder"
             CornerRadius="8,8,0,0"
-            BorderThickness="1,1,1,1"
-            Padding="8,0,4,0">
+            BorderThickness="1,1,1,0"
+            Padding="7,0,4,0">
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -59,19 +59,20 @@
                   MouseLeftButtonDown="OnDragMouseDown">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <ui:SymbolIcon Symbol="LockClosed16"
-                                   FontSize="12"
-                                   Margin="0,0,5,0"
+                                   FontSize="11"
+                                   Margin="0,0,4,0"
                                    Foreground="{Binding ElementName=TxtBadge, Path=Foreground}" />
                     <TextBlock x:Name="TxtBadge"
                                Text="Сквозь клики"
-                               FontSize="11"
+                               FontSize="10.5"
                                FontWeight="SemiBold"
+                               Opacity="0.82"
                                VerticalAlignment="Center"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
 
-            <!-- Обычная панель кнопок -->
+            <!-- Компактная панель кнопок -->
             <StackPanel x:Name="NormalActionsPanel"
                         Grid.Column="1"
                         Orientation="Horizontal"
@@ -79,21 +80,21 @@
                 <Button Style="{StaticResource HeaderActionBtnStyle}"
                         ToolTip="Вернуть обычный режим (отключить пропуск кликов)"
                         Click="OnUnlockClick">
-                    <ui:SymbolIcon x:Name="IconUnlock" Symbol="LockOpen16" FontSize="13" />
+                    <ui:SymbolIcon x:Name="IconUnlock" Symbol="LockOpen16" FontSize="11.5" />
                 </Button>
                 <Button Style="{StaticResource HeaderActionBtnStyle}"
                         ToolTip="Свернуть / развернуть"
                         Click="OnCollapseClick">
-                    <ui:SymbolIcon x:Name="IconCollapse" Symbol="ChevronUp16" FontSize="13" />
+                    <ui:SymbolIcon x:Name="IconCollapse" Symbol="ChevronUp16" FontSize="11.5" />
                 </Button>
                 <Button Style="{StaticResource HeaderActionBtnStyle}"
                         ToolTip="Удалить стикер"
                         Click="OnDeleteClick">
-                    <ui:SymbolIcon x:Name="IconDelete" Symbol="Delete16" FontSize="13" />
+                    <ui:SymbolIcon x:Name="IconDelete" Symbol="Delete16" FontSize="11.5" />
                 </Button>
             </StackPanel>
 
-            <!-- Компактное подтверждение удаления внутри менюшки -->
+            <!-- Встроенное подтверждение удаления -->
             <StackPanel x:Name="ConfirmDeletePanel"
                         Grid.Column="1"
                         Orientation="Horizontal"
@@ -101,15 +102,15 @@
                         Visibility="Collapsed">
                 <TextBlock x:Name="TxtConfirm"
                            Text="Удалить?"
-                           FontSize="11"
+                           FontSize="10.5"
                            FontWeight="SemiBold"
                            VerticalAlignment="Center"
                            Margin="0,0,4,0" />
                 <Button Content="Да"
-                        Height="22"
-                        Padding="7,0"
+                        Height="18"
+                        Padding="6,0"
                         Margin="0,0,2,0"
-                        FontSize="11"
+                        FontSize="10.5"
                         FontWeight="SemiBold"
                         Foreground="White"
                         Background="#DC2626"
@@ -117,9 +118,9 @@
                         Cursor="Hand"
                         Click="OnConfirmDeleteYesClick" />
                 <Button Content="Нет"
-                        Height="22"
-                        Padding="6,0"
-                        FontSize="11"
+                        Height="18"
+                        Padding="5,0"
+                        FontSize="10.5"
                         Foreground="White"
                         Background="#3F4654"
                         BorderThickness="0"

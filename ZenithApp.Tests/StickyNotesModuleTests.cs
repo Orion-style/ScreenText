@@ -89,8 +89,9 @@ public class StickyNotesModuleTests : IDisposable
             Left = 340,
             Top = 180,
             Width = 310,
-            Height = 240,
-            ColorHex = "#1B2838",
+            Height = 140,
+            AutoHeight = true,
+            ColorHex = "discord_aurora",
             Opacity = 0.85,
             FontSize = 16,
             IsPinnedTopmost = true,
@@ -109,14 +110,26 @@ public class StickyNotesModuleTests : IDisposable
         Assert.Equal(340, item.Left);
         Assert.Equal(180, item.Top);
         Assert.Equal(310, item.Width);
-        Assert.Equal(240, item.Height);
-        Assert.Equal("#1B2838", item.ColorHex);
+        Assert.Equal(140, item.Height);
+        Assert.True(item.AutoHeight);
+        Assert.Equal("discord_aurora", item.ColorHex);
         Assert.Equal(0.85, item.Opacity);
         Assert.Equal(16, item.FontSize);
         Assert.True(item.IsPinnedTopmost);
         Assert.True(item.IsClickThrough);
         Assert.True(item.IsCollapsed);
         Assert.True(item.IsVisible);
+    }
+
+    [Fact]
+    public void Palette_ResolvesDiscordGradientThemes_AndLegacyHex()
+    {
+        var discordTheme = StickyNotePalette.Resolve("discord_blurple");
+        Assert.True(discordTheme.IsGradient);
+        Assert.True(discordTheme.GradientStops.Count >= 3);
+
+        var legacyTheme = StickyNotePalette.Resolve("#1B2838");
+        Assert.Equal("discord_blurple", legacyTheme.Id);
     }
 
     [Fact]
